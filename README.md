@@ -135,6 +135,7 @@ docker-compose exec backend npm run migrate:run
 ## 📚 Documentación
 
 - [Plan Arquitectónico](./docs/PLAN_ARQUITECTONICO.md) - Decisiones, flujos, timeline
+- [Sistema de Diseño](./docs/SISTEMA_DISENO.md) - Identidad visual derivada de www.aamevi.ar
 - [API Reference](./docs/API.md) - Endpoints y ejemplos (próximamente)
 - [Database Schema](./docs/SCHEMA.md) - Modelo de datos normalizado (próximamente)
 - [Deployment Guide](./docs/DEPLOY.md) - Deploy a GCP (próximamente)

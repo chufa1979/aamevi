@@ -1,25 +1,27 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Layout } from '@/components/layout/Layout';
+import { Home } from '@/pages/Home';
+import { Placeholder } from '@/pages/Placeholder';
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={
-          <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-50 flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">🎓 AAMEVI</h1>
-              <p className="text-xl text-gray-600 mb-8">Plataforma de E-Learning</p>
-              <div className="space-y-2 text-gray-700">
-                <p>✅ Backend: http://localhost:3000</p>
-                <p>✅ API Docs: http://localhost:3000/api/docs</p>
-                <p className="mt-4 text-sm text-gray-500">Estructura lista para Fase 1: Autenticación</p>
-              </div>
-            </div>
-          </div>
-        } />
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="/cursos" element={<Placeholder title="Cursos" />} />
+          <Route path="/mis-cursos" element={<Placeholder title="Mis cursos" />} />
+          <Route path="/progreso" element={<Placeholder title="Mi progreso" />} />
+          <Route path="/certificados" element={<Placeholder title="Certificados" />} />
+          <Route path="/ayuda" element={<Placeholder title="Ayuda" />} />
+          <Route path="/buscar" element={<Placeholder title="Buscar" />} />
+          <Route path="/login" element={<Placeholder title="Iniciar sesión" />} />
+          <Route path="/registro" element={<Placeholder title="Crear cuenta" />} />
+          <Route path="*" element={<Placeholder title="Página no encontrada" />} />
+        </Route>
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

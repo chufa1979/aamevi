@@ -1,13 +1,13 @@
 {
-  "name": "AAMEVI - Plataforma de E-Learning",
-  "short_name": "AAMEVI",
+  "name": "AAMEVi - Plataforma de E-Learning",
+  "short_name": "AAMEVi",
   "description": "Plataforma de educación en línea con cursos, módulos y evaluaciones",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#0ea5e9",
-  "background_color": "#ffffff",
+  "theme_color": "#00b8b3",
+  "background_color": "#ececec",
   "icons": [
     {
       "src": "/icon-192.png",
