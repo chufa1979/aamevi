@@ -1,0 +1,12 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "array_indentation": true,
+        "blank_line_after_namespace": true,
+        "blank_line_between_class_members": true,
+        "not_operator_with_successor_space": true,
+        "ordered_imports": {
+            "sort_algorithm": "length"
+        }
+    }
+}
