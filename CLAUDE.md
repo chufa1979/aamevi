@@ -43,7 +43,7 @@ Tests live in `tests/Unit/` and `tests/Feature/`. PHPUnit is the test runner; co
 
 ## Architecture
 
-**App** — Laravel 11 + Blade + Eloquent ORM + MySQL 8 (InnoDB, `utf8mb4_unicode_ci`). Business logic lives in feature modules under `app/Http/Controllers/` organized by domain (`Auth`, `Users`, `Courses`, `Quiz`, `Tasks`, `Notifications`, `Storage`, `Certificates`, `Reports`), with models in `app/Models/`, form requests for validation in `app/Http/Requests/`, and middleware in `app/Http/Middleware/`. Migrations live in `database/migrations/`, seeders in `database/seeders/`.
+**App** — Laravel 13 (PHP 8.4) + Blade + Eloquent ORM + MySQL 8 (InnoDB, `utf8mb4_unicode_ci`). Business logic lives in feature modules under `app/Http/Controllers/` organized by domain (`Auth`, `Users`, `Courses`, `Quiz`, `Tasks`, `Notifications`, `Storage`, `Certificates`, `Reports`), with models in `app/Models/`, form requests for validation in `app/Http/Requests/`, and middleware in `app/Http/Middleware/`. Migrations live in `database/migrations/`, seeders in `database/seeders/`.
 
 Request validation uses `FormRequest` classes (not inline rules) with `authorize()` and `rules()` methods. All request/model validation must be explicit — no relying on defaults.
 

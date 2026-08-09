@@ -18,7 +18,7 @@ Plataforma de educación en línea moderna, construida con **Laravel + Blade + M
 ## 🚀 Tech Stack
 
 ### Backend & Frontend (Full Stack)
-- **Laravel 11** - Framework PHP con soporte a Blade templates
+- **Laravel 13** - Framework PHP con soporte a Blade templates
 - **Eloquent ORM** - ORM para MySQL
 - **MySQL 8** - Base de datos relacional
 - **Blade** - Motor de templates
@@ -107,7 +107,7 @@ aamevi/
 ## 🛠️ Setup Local
 
 ### Prerequisitos
-- **PHP 8.2+**
+- **PHP 8.4+**
 - **Composer**
 - **Docker & Docker Compose**
 - **Git**
