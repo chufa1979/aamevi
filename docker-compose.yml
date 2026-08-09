@@ -1,24 +1,26 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.0
     container_name: aamevi_db
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-aamevi_db}
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      MYSQL_DATABASE: ${DB_DATABASE:-aamevi_db}
+      MYSQL_USER: ${DB_USERNAME:-aamevi}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-aamevi}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     networks:
       - aamevi
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   app:
     build:
@@ -27,11 +29,12 @@ services:
     container_name: aamevi_app
     working_dir: /var/www/html
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-aamevi_db}
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_USERNAME: ${DB_USERNAME:-aamevi}
+      DB_PASSWORD: ${DB_PASSWORD:-aamevi}
       APP_KEY: ${APP_KEY}
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -42,7 +45,7 @@ services:
     networks:
       - aamevi
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
     command: >
       sh -c "php artisan migrate --force &&
@@ -63,7 +66,7 @@ services:
       - app
 
 volumes:
-  postgres_data:
+  mysql_data:
     driver: local
 
 networks:

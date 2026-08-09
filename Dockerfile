@@ -8,9 +8,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     zip \
     unzip \
-    postgresql-client \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql \
+    default-mysql-client \
+    && docker-php-ext-install pdo pdo_mysql \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer

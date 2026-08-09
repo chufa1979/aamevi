@@ -1,6 +1,6 @@
 # AAMEVI - E-Learning Platform
 
-Plataforma de educación en línea moderna, construida con **Laravel + Blade + PostgreSQL + Docker**.
+Plataforma de educación en línea moderna, construida con **Laravel + Blade + MySQL + Docker**.
 
 ## 📋 Características
 
@@ -19,8 +19,8 @@ Plataforma de educación en línea moderna, construida con **Laravel + Blade + P
 
 ### Backend & Frontend (Full Stack)
 - **Laravel 11** - Framework PHP con soporte a Blade templates
-- **Eloquent ORM** - ORM para PostgreSQL
-- **PostgreSQL** - Base de datos relacional
+- **Eloquent ORM** - ORM para MySQL
+- **MySQL 8** - Base de datos relacional
 - **Blade** - Motor de templates
 - **Tailwind CSS** - Utility-first CSS
 - **Laravel Sanctum** - Autenticación segura
@@ -138,7 +138,7 @@ aamevi/
 5. **Acceder**
    - **Aplicación**: http://localhost:8000
    - **API Health Check**: http://localhost:8000/api/health
-   - **Base de datos**: postgres://postgres:postgres@localhost:5432/aamevi_db
+   - **Base de datos**: mysql://aamevi:aamevi@localhost:3306/aamevi_db
 
 ### Verificar que todo funciona
 ```bash
@@ -218,7 +218,7 @@ docker-compose exec app php artisan tinker
 
 | Servicio | Costo |
 |----------|-------|
-| Google Cloud SQL (PostgreSQL) | $15-30/mes |
+| Google Cloud SQL (MySQL) | $15-30/mes |
 | Google Cloud Run (Backend) | $5-10/mes |
 | Google Cloud Storage | $1-2/mes |
 | **Total** | ~$25-50/mes |

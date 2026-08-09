@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-AAMEVI is an e-learning platform built with Laravel + Blade + PostgreSQL + Docker. **The repo is currently a scaffold**, not a working app: the app structure is initialized but contains only boilerplate controllers, migrations, and views. None of the business modules exist yet.
+AAMEVI is an e-learning platform built with Laravel + Blade + MySQL + Docker. **The repo is currently a scaffold**, not a working app: the app structure is initialized but contains only boilerplate controllers, migrations, and views. None of the business modules exist yet.
 
 The authoritative spec for what gets built is `docs/PLAN_ARQUITECTONICO.md` (Spanish, 825 lines) — full normalized SQL schema, per-module component breakdown, and the main user flows. **Read the relevant section of that doc before implementing a feature**; the entity definitions, enum values, and unique constraints there are the contract. `README.md` summarizes the same flows at a higher level.
 
@@ -12,7 +12,7 @@ Project docs, commit messages, and UI copy are in Spanish. Code identifiers are 
 
 ## Commands
 
-Everything runs through Docker Compose (`postgres` + `app`):
+Everything runs through Docker Compose (`mysql` + `app`):
 
 ```bash
 docker-compose up -d
@@ -20,7 +20,7 @@ docker-compose logs -f app
 docker-compose exec app php artisan migrate
 ```
 
-Ports: app http://localhost:8000, Postgres 5432 (`postgres:postgres@localhost:5432/aamevi_db`).
+Ports: app http://localhost:8000, MySQL 3306 (`aamevi:aamevi@localhost:3306/aamevi_db`).
 
 App (`cd app` or `docker-compose exec app`):
 
@@ -43,7 +43,7 @@ Tests live in `tests/Unit/` and `tests/Feature/`. PHPUnit is the test runner; co
 
 ## Architecture
 
-**App** — Laravel 11 + Blade + Eloquent ORM + Postgres. Business logic lives in feature modules under `app/Http/Controllers/` organized by domain (`Auth`, `Users`, `Courses`, `Quiz`, `Tasks`, `Notifications`, `Storage`, `Certificates`, `Reports`), with models in `app/Models/`, form requests for validation in `app/Http/Requests/`, and middleware in `app/Http/Middleware/`. Migrations live in `database/migrations/`, seeders in `database/seeders/`.
+**App** — Laravel 11 + Blade + Eloquent ORM + MySQL 8 (InnoDB, `utf8mb4_unicode_ci`). Business logic lives in feature modules under `app/Http/Controllers/` organized by domain (`Auth`, `Users`, `Courses`, `Quiz`, `Tasks`, `Notifications`, `Storage`, `Certificates`, `Reports`), with models in `app/Models/`, form requests for validation in `app/Http/Requests/`, and middleware in `app/Http/Middleware/`. Migrations live in `database/migrations/`, seeders in `database/seeders/`.
 
 Request validation uses `FormRequest` classes (not inline rules) with `authorize()` and `rules()` methods. All request/model validation must be explicit — no relying on defaults.
 
@@ -69,7 +69,7 @@ External services: Google Cloud Storage for uploads (videos, PDFs, submissions, 
 
 These will bite on first run — fix them rather than working around them:
 
-- **`.env` file is missing or incomplete**: Copy `.env.example` to `.env` and configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` to match the Docker Compose postgres service. Application key needs to be generated (`php artisan key:generate`).
+- **`.env` file is missing or incomplete**: Copy `.env.example` to `.env` and configure `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` to match the Docker Compose mysql service. Application key needs to be generated (`php artisan key:generate`).
 - **Database not initialized**: Run `php artisan migrate` inside the container after docker-compose starts to create tables.
 - **No seeders defined**: Create seeders in `database/seeders/` and run `php artisan db:seed` to populate initial data.
 - `.github/workflows/` is empty — no CI.

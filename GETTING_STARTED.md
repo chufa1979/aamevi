@@ -25,7 +25,7 @@ docker-compose up -d
 ```
 
 Esto va a:
-- Crear un contenedor PostgreSQL
+- Crear un contenedor MySQL
 - Crear un contenedor PHP-FPM con la app
 - Crear un contenedor Nginx (reverse proxy)
 - Ejecutar migraciones automáticamente
@@ -80,7 +80,7 @@ docker-compose exec app php artisan migrate
 docker-compose exec app bash
 
 # Acceder a la base de datos
-docker-compose exec postgres psql -U postgres -d aamevi_db
+docker-compose exec mysql mysql -u aamevi -paamevi aamevi_db
 
 # Detener containers
 docker-compose down
@@ -91,17 +91,18 @@ docker-compose up -d --build
 
 ## 🗄️ Base de datos
 
-Acceder a PostgreSQL:
+Acceder a MySQL:
 ```bash
-docker-compose exec postgres psql -U postgres -d aamevi_db
+docker-compose exec mysql mysql -u aamevi -paamevi aamevi_db
 ```
 
 Credenciales:
-- Host: postgres
-- Puerto: 5432
-- Usuario: postgres
-- Contraseña: postgres
+- Host: mysql
+- Puerto: 3306
+- Usuario: aamevi
+- Contraseña: aamevi
 - Base de datos: aamevi_db
+- Usuario root: root / root (solo para tareas administrativas)
 
 ## 📝 Desarrollo
 
@@ -135,10 +136,10 @@ php artisan test --coverage
 
 ## 🔧 Troubleshooting
 
-### "Connection refused" a PostgreSQL
-- Verificar que el contenedor postgres está corriendo: `docker-compose ps`
+### "Connection refused" a MySQL
+- Verificar que el contenedor mysql está corriendo: `docker-compose ps`
 - Verificar variables de entorno en `.env`
-- Revisar logs: `docker-compose logs postgres`
+- Revisar logs: `docker-compose logs mysql`
 
 ### "Laravel is not installed"
 ```bash

@@ -1,5 +1,5 @@
 # Plan Arquitectónico - Migración OSDOP
-## De PHP/MySQL → React + NestJS + PostgreSQL + Docker + GCP
+## De PHP/MySQL → React + NestJS + MySQL 8 + Docker + GCP
 
 **Fecha**: 2026-07-28  
 **Escala**: 50 alumnos/curso (inicial), extensible a 1000+  
@@ -11,7 +11,7 @@
 
 ```
 osdop-platform/
-├── docker-compose.yml          # Orquestación local (PostgreSQL + Backend + Frontend)
+├── docker-compose.yml          # Orquestación local (MySQL + Backend + Frontend)
 ├── .github/
 │   └── workflows/              # CI/CD básico (opcional, deploy manual por ahora)
 ├── backend/                    # NestJS
@@ -68,7 +68,7 @@ osdop-platform/
 ```sql
 -- Tabla base (todos los usuarios)
 CREATE TABLE users (
-  id UUID PRIMARY KEY,
+  id CHAR(36) PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255),
   first_name VARCHAR(100),
@@ -85,7 +85,7 @@ CREATE TABLE users (
 
 -- Información estudiante (extensión de users)
 CREATE TABLE students (
-  id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   dni VARCHAR(20) UNIQUE,
   date_of_birth DATE,
   phone VARCHAR(20),
@@ -97,7 +97,7 @@ CREATE TABLE students (
 
 -- Información profesor
 CREATE TABLE teachers (
-  id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   bio TEXT,
   specialization VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -107,10 +107,10 @@ CREATE TABLE teachers (
 ### Cursos, Módulos & Clases
 ```sql
 CREATE TABLE courses (
-  id UUID PRIMARY KEY,
+  id CHAR(36) PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  teacher_id UUID NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  teacher_id CHAR(36) NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   max_students INT DEFAULT 50,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -119,20 +119,20 @@ CREATE TABLE courses (
 
 -- Inscripción a cursos (con estado)
 CREATE TABLE course_enrollments (
-  id UUID PRIMARY KEY,
-  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  course_id CHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  student_id CHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   enrollment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   status ENUM ('pending', 'approved', 'rejected', 'active', 'completed'),
   approval_date TIMESTAMP,
-  approved_by UUID REFERENCES teachers(id),
+  approved_by CHAR(36) REFERENCES teachers(id),
   UNIQUE(course_id, student_id)
 );
 
 -- Módulos (planificación)
 CREATE TABLE modules (
-  id UUID PRIMARY KEY,
-  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  course_id CHAR(36) NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
   order_number INT,
@@ -141,8 +141,8 @@ CREATE TABLE modules (
 
 -- Clases
 CREATE TABLE classes (
-  id UUID PRIMARY KEY,
-  module_id UUID NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  module_id CHAR(36) NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
   order_number INT,
@@ -158,8 +158,8 @@ CREATE TABLE classes (
 ```sql
 -- Contenido multimodal (videos, PDFs, textos, tareas)
 CREATE TABLE class_content (
-  id UUID PRIMARY KEY,
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  class_id CHAR(36) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   type ENUM ('video', 'pdf', 'text', 'task'),
   title VARCHAR(255),
   description TEXT,
@@ -170,8 +170,8 @@ CREATE TABLE class_content (
 
 -- Tareas (assignments)
 CREATE TABLE tasks (
-  id UUID PRIMARY KEY,
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  class_id CHAR(36) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
   due_date TIMESTAMP,
@@ -180,15 +180,15 @@ CREATE TABLE tasks (
 );
 
 CREATE TABLE task_submissions (
-  id UUID PRIMARY KEY,
-  task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  task_id CHAR(36) NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  student_id CHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   submission_url VARCHAR(500), -- URL del archivo en Cloud Storage
   submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   score INT,
   feedback TEXT,
   graded_at TIMESTAMP,
-  graded_by UUID REFERENCES teachers(id),
+  graded_by CHAR(36) REFERENCES teachers(id),
   UNIQUE(task_id, student_id)
 );
 ```
@@ -197,19 +197,19 @@ CREATE TABLE task_submissions (
 ```sql
 -- Banco de preguntas (principal)
 CREATE TABLE questions (
-  id UUID PRIMARY KEY,
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  class_id CHAR(36) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   question_type ENUM ('multiple_choice') DEFAULT 'multiple_choice',
   is_active BOOLEAN DEFAULT true,
-  created_by UUID NOT NULL REFERENCES teachers(id),
+  created_by CHAR(36) NOT NULL REFERENCES teachers(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Opciones de respuesta
 CREATE TABLE question_options (
-  id UUID PRIMARY KEY,
-  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  question_id CHAR(36) NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   option_text TEXT NOT NULL,
   is_correct BOOLEAN DEFAULT false,
   order_number INT
@@ -217,8 +217,8 @@ CREATE TABLE question_options (
 
 -- Quiz configuración por clase
 CREATE TABLE quizzes (
-  id UUID PRIMARY KEY,
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  class_id CHAR(36) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   title VARCHAR(255),
   questions_per_student INT DEFAULT 3, -- Cuántas preguntas ve cada alumno
   passing_score INT DEFAULT 70, -- % mínimo
@@ -230,9 +230,9 @@ CREATE TABLE quizzes (
 
 -- Respuestas de estudiante (lo que responde)
 CREATE TABLE student_quiz_attempts (
-  id UUID PRIMARY KEY,
-  quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  quiz_id CHAR(36) NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  student_id CHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   attempt_number INT DEFAULT 1,
   started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   submitted_at TIMESTAMP,
@@ -243,19 +243,19 @@ CREATE TABLE student_quiz_attempts (
 );
 
 CREATE TABLE student_answers (
-  id UUID PRIMARY KEY,
-  attempt_id UUID NOT NULL REFERENCES student_quiz_attempts(id) ON DELETE CASCADE,
-  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  selected_option_id UUID NOT NULL REFERENCES question_options(id),
+  id CHAR(36) PRIMARY KEY,
+  attempt_id CHAR(36) NOT NULL REFERENCES student_quiz_attempts(id) ON DELETE CASCADE,
+  question_id CHAR(36) NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  selected_option_id CHAR(36) NOT NULL REFERENCES question_options(id),
   is_correct BOOLEAN,
   answered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Randomización per alumno (para saber qué preguntas vio cada uno)
 CREATE TABLE quiz_question_assignment (
-  id UUID PRIMARY KEY,
-  attempt_id UUID NOT NULL REFERENCES student_quiz_attempts(id),
-  question_id UUID NOT NULL REFERENCES questions(id),
+  id CHAR(36) PRIMARY KEY,
+  attempt_id CHAR(36) NOT NULL REFERENCES student_quiz_attempts(id),
+  question_id CHAR(36) NOT NULL REFERENCES questions(id),
   assigned_order INT
 );
 ```
@@ -264,9 +264,9 @@ CREATE TABLE quiz_question_assignment (
 ```sql
 -- Progreso del estudiante
 CREATE TABLE student_progress (
-  id UUID PRIMARY KEY,
-  enrollment_id UUID NOT NULL REFERENCES course_enrollments(id) ON DELETE CASCADE,
-  class_id UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  enrollment_id CHAR(36) NOT NULL REFERENCES course_enrollments(id) ON DELETE CASCADE,
+  class_id CHAR(36) NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
   completed_at TIMESTAMP,
   quiz_passed BOOLEAN,
   tasks_completed INT DEFAULT 0,
@@ -276,8 +276,8 @@ CREATE TABLE student_progress (
 
 -- Certificados
 CREATE TABLE certificates (
-  id UUID PRIMARY KEY,
-  enrollment_id UUID NOT NULL REFERENCES course_enrollments(id) ON DELETE CASCADE,
+  id CHAR(36) PRIMARY KEY,
+  enrollment_id CHAR(36) NOT NULL REFERENCES course_enrollments(id) ON DELETE CASCADE,
   certificate_number VARCHAR(50) UNIQUE,
   issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   pdf_url VARCHAR(500), -- PDF generado
@@ -288,8 +288,8 @@ CREATE TABLE certificates (
 ### Notificaciones
 ```sql
 CREATE TABLE email_queue (
-  id UUID PRIMARY KEY,
-  recipient_id UUID NOT NULL REFERENCES users(id),
+  id CHAR(36) PRIMARY KEY,
+  recipient_id CHAR(36) NOT NULL REFERENCES users(id),
   email_type ENUM ('verification', 'enrollment_approved', 'class_reminder', 'certificate', 'task_graded'),
   subject VARCHAR(255),
   body TEXT,
@@ -537,30 +537,32 @@ CREATE TABLE email_queue (
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
-      POSTGRES_DB: osdop
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
+      MYSQL_DATABASE: osdop
+      MYSQL_USER: osdop
+      MYSQL_PASSWORD: changeme
+      MYSQL_ROOT_PASSWORD: changeme
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   backend:
     build: ./backend
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: "postgresql://postgres:changeme@postgres:5432/osdop"
+      DATABASE_URL: "mysql://osdop:changeme@mysql:3306/osdop"
       JWT_SECRET: "your-secret-key"
       GOOGLE_CLIENT_ID: "xxx.apps.googleusercontent.com"
       GOOGLE_CLIENT_SECRET: "xxx"
       SENDGRID_API_KEY: "SG.xxx"
       GCS_BUCKET_NAME: "osdop-files"
     depends_on:
-      - postgres
+      - mysql
     volumes:
       - ./backend:/app
 
@@ -577,7 +579,7 @@ services:
       - ./frontend:/app
 
 volumes:
-  postgres_data:
+  mysql_data:
 ```
 
 ### Levantar localmente
@@ -703,7 +705,7 @@ docker-compose exec backend npm run migrate
 ### Estructura
 ```
 Google Cloud Project
-├── Cloud SQL (PostgreSQL)
+├── Cloud SQL (MySQL 8)
 ├── Cloud Run (Backend NestJS)
 ├── Cloud Storage (Archivos: videos, PDFs, certificados)
 └── Vercel o Cloud Run (Frontend React)
@@ -733,7 +735,7 @@ vercel --prod
 ```
 
 Costo estimado:
-- **Cloud SQL**: $15-30/mes (pequeña instancia PostgreSQL)
+- **Cloud SQL**: $15-30/mes (pequeña instancia MySQL)
 - **Cloud Run**: $5-10/mes (bajo tráfico)
 - **Cloud Storage**: $0.020/GB + transferencia (mínimo $1-2/mes)
 - **Total**: ~$25-50/mes
@@ -742,12 +744,17 @@ Costo estimado:
 
 ## 9. DECISIONES ARQUITECTÓNICAS
 
-### ¿Por qué PostgreSQL en lugar de MySQL?
-- ✅ Mejor soporte para tipos complejos (JSON, UUID)
-- ✅ Mejor performance en queries complejas
-- ✅ Mejor integridad referencial
-- ✅ TypeORM funciona mejor con Postgres
-- ✅ Mejor para escalar
+### ¿Por qué MySQL?
+- ✅ Stack de origen ya es MySQL (migración de datos directa, sin conversión de tipos)
+- ✅ Soporte de primera clase en Eloquent/Laravel (driver por defecto)
+- ✅ InnoDB: transacciones ACID e integridad referencial (FK con ON DELETE CASCADE)
+- ✅ `utf8mb4` para acentos y emojis sin sorpresas
+- ✅ JSON nativo desde MySQL 5.7 (suficiente para los campos semiestructurados del modelo)
+- ✅ Hosting más barato y ubicuo; Cloud SQL for MySQL en GCP
+
+**Nota sobre CHAR(36)s**: MySQL no tiene tipo `CHAR(36)` nativo. Las PKs se declaran
+`CHAR(36)` y en migraciones Laravel se usa `$table->uuid('id')->primary()`, que
+genera exactamente eso. Los modelos usan el trait `HasUuids`.
 
 ### ¿Por qué NestJS?
 - ✅ Estructura modular clara
