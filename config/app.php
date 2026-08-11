@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+
 return [
     'name' => env('APP_NAME', 'AAMEVI'),
     'env' => env('APP_ENV', 'production'),
@@ -13,8 +17,8 @@ return [
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-CBC',
     'aliases' => [
-        'Log' => Illuminate\Support\Facades\Log::class,
-        'Cache' => Illuminate\Support\Facades\Cache::class,
-        'DB' => Illuminate\Support\Facades\DB::class,
+        'Log' => Log::class,
+        'Cache' => Cache::class,
+        'DB' => DB::class,
     ],
 ];
