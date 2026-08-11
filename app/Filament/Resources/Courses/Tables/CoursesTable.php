@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Courses\Tables;
 
 use Filament\Tables\Table;
+use App\Enums\EnrollmentStatus;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkActionGroup;
@@ -38,9 +39,17 @@ class CoursesTable
                     ->counts('classes')
                     ->alignCenter(),
 
-                TextColumn::make('max_students')
-                    ->label('Cupo')
-                    ->alignCenter(),
+                TextColumn::make('enrollments_count')
+                    ->label('Inscriptos')
+                    ->counts([
+                        'enrollments' => fn ($query) => $query->whereIn('status', [
+                            EnrollmentStatus::Approved,
+                            EnrollmentStatus::Active,
+                            EnrollmentStatus::Completed,
+                        ]),
+                    ])
+                    ->alignCenter()
+                    ->description(fn ($record): string => "de {$record->max_students}"),
 
                 IconColumn::make('is_active')
                     ->label('Activo')

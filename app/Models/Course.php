@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EnrollmentStatus;
 use Database\Factories\CourseFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -45,5 +46,27 @@ class Course extends Model
     public function classes(): HasManyThrough
     {
         return $this->hasManyThrough(CourseClass::class, CourseModule::class, 'course_id', 'module_id');
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class);
+    }
+
+    /** Inscripciones que ocupan un lugar: aprobadas, en curso o finalizadas. */
+    public function occupiedSeats(): int
+    {
+        return $this->enrollments()
+            ->whereIn('status', [
+                EnrollmentStatus::Approved,
+                EnrollmentStatus::Active,
+                EnrollmentStatus::Completed,
+            ])
+            ->count();
+    }
+
+    public function isFull(): bool
+    {
+        return $this->occupiedSeats() >= $this->max_students;
     }
 }

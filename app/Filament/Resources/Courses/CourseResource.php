@@ -15,6 +15,7 @@ use App\Filament\Resources\Courses\Pages\CreateCourse;
 use App\Filament\Resources\Courses\Schemas\CourseForm;
 use App\Filament\Resources\Courses\Tables\CoursesTable;
 use App\Filament\Resources\Courses\RelationManagers\ModulesRelationManager;
+use App\Filament\Resources\Courses\RelationManagers\EnrollmentsRelationManager;
 
 class CourseResource extends Resource
 {
@@ -53,6 +54,7 @@ class CourseResource extends Resource
     {
         return [
             ModulesRelationManager::class,
+            EnrollmentsRelationManager::class,
         ];
     }
 
