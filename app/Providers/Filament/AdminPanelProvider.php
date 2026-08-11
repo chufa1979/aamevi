@@ -27,7 +27,14 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            // brandName queda como texto alternativo del logo
             ->brandName('AAMEVi')
+            ->brandLogo(asset('images/aamevi.svg'))
+            // El isotipo lleva el texto en #333333, ilegible sobre el modo
+            // oscuro; la variante lo tiene en blanco y conserva los seis colores
+            ->darkModeBrandLogo(asset('images/aamevi-dark.svg'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('favicon.png'))
             /*
              * Sin ->login(): el panel no expone su propio formulario. Los
              * administradores entran por /login como todo el mundo, que ya

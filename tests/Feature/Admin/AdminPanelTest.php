@@ -54,6 +54,15 @@ class AdminPanelTest extends TestCase
             ->assertSee('Carolina');
     }
 
+    public function test_el_panel_muestra_el_logo_y_no_el_nombre_en_texto(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->get('/admin')
+            ->assertSuccessful()
+            ->assertSee('images/aamevi.svg', escape: false)
+            ->assertSee('images/aamevi-dark.svg', escape: false);
+    }
+
     public function test_el_panel_no_expone_su_propio_login(): void
     {
         // El acceso es por /login, que tiene el limitador de intentos.
