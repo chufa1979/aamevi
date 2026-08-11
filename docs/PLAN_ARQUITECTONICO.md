@@ -130,6 +130,23 @@ CREATE TABLE teachers (
 );
 ```
 
+> **Desviación implementada (2026-08-11)** — Las migraciones de `users` renombran
+> tres columnas respecto de este DDL, para poder usar lo que Laravel ya trae en
+> lugar de reimplementarlo:
+>
+> | Acá | Implementado | Qué habilita |
+> |---|---|---|
+> | `password_hash` | `password` | `Auth::attempt()` |
+> | `email_verified` (bool) | `email_verified_at` (timestamp) | La interfaz `MustVerifyEmail` |
+> | `email_verification_token` | *(eliminada)* | Verificación por URL firmada |
+> | *(no existía)* | `remember_token` | El "recordarme" del login |
+>
+> La semántica del modelo no cambia. Se agrega además la tabla
+> `password_reset_tokens`, que el broker de contraseñas necesita y que este plan
+> no contemplaba porque resolvía la autenticación con JWT.
+>
+> `students` y `teachers` llevan `updated_at` además de `created_at`.
+
 ### Cursos, Módulos & Clases
 ```sql
 CREATE TABLE courses (
