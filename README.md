@@ -7,15 +7,23 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 
 ## Estado
 
-El proyecto está en desarrollo temprano.
+En desarrollo. Hay dos superficies funcionando sobre el mismo dominio de datos:
 
-**Implementado**: esqueleto Laravel, pipeline de assets (Vite + Tailwind), la
-identidad visual de [www.aamevi.ar](https://www.aamevi.ar) portada a componentes
-Blade, home y rutas de todas las secciones.
+**Sitio público** (Blade) — la plataforma es **privada**: sin sesión iniciada no
+se ve nada, ni el menú. El acceso es por `/login`, con limitador de intentos y
+bloqueo de cuentas desactivadas. La identidad visual de
+[www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
 
-**Pendiente**: todo el dominio. Las tablas, modelos y módulos descritos abajo
-están especificados en el plan arquitectónico pero **todavía no existen en el
-código**.
+**Panel de administración** (Filament, en `/admin`) — solo para el rol
+administrador. Permite gestionar usuarios con sus fichas de alumno o profesor, y
+el contenido académico: cursos, módulos y clases, con el cronograma y
+corrimiento de fechas en lote.
+
+**Pendiente**: el contenido dentro de cada clase (videos, PDFs), las
+inscripciones, el catálogo público, los quizzes, las tareas y los certificados.
+Todo está especificado en el
+[plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md), que también lleva la
+cuenta de qué está hecho.
 
 ---
 

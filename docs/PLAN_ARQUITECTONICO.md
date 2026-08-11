@@ -25,59 +25,67 @@ se renderizan en el mismo proceso que resuelve la lógica de negocio.
 
 Marcado con ✅ lo que ya existe en el repo; el resto es lo previsto.
 
+Hay **dos superficies** sobre el mismo dominio de datos: el sitio público, en
+Blade, y el panel de administración, en Filament (§11). No comparten vistas ni
+controladores; sí comparten modelos, sesión y reglas de acceso.
+
 ```
 aamevi/
 ├── app/
+│   ├── Enums/
+│   │   └── UserRole.php     ✅ admin | teacher | student
+│   ├── Filament/                  # Panel de administración (§11)
+│   │   └── Resources/
+│   │       ├── Users/       ✅ CRUD de usuarios + fichas de alumno/profesor
+│   │       ├── Courses/     ✅ CRUD de cursos + ModulesRelationManager
+│   │       └── CourseModules/ ✅ Pantalla del módulo + ClassesRelationManager
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Auth/           # Login, registro, verificación, Google OAuth
-│   │   │   ├── Users/          # Perfiles de alumno y profesor
-│   │   │   ├── Courses/        # Cursos, módulos, clases, inscripciones
-│   │   │   ├── Quiz/           # Preguntas, intentos, calificación
-│   │   │   ├── Tasks/          # Tareas: envío y corrección
-│   │   │   ├── Notifications/  # Encolado de emails
-│   │   │   ├── Storage/        # Subida y descarga de archivos
-│   │   │   ├── Certificates/   # Generación de certificados
-│   │   │   └── Reports/        # Dashboards y reportes
-│   │   ├── Requests/           # FormRequest: validación explícita
-│   │   └── Middleware/         # Autorización por rol
-│   ├── Models/                 # Eloquent, con trait HasUuids
-│   └── Providers/           ✅
-├── bootstrap/
-│   └── app.php              ✅ Esqueleto slim de Laravel 11+
+│   │   │   ├── Auth/        ✅ AuthenticatedSessionController
+│   │   │   ├── Courses/        # Catálogo, inscripción y aula (sitio público)
+│   │   │   ├── Quiz/           # Intentos y calificación
+│   │   │   ├── Tasks/          # Envío de tareas
+│   │   │   ├── Certificates/   # Descarga
+│   │   │   └── Reports/
+│   │   ├── Requests/        ✅ Auth/LoginRequest
+│   │   └── Middleware/
+│   ├── Models/              ✅ User, Student, Teacher, Course,
+│   │                           CourseModule, CourseClass
+│   └── Providers/
+│       └── Filament/AdminPanelProvider.php ✅
+├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
 ├── config/
-│   ├── database.php         ✅
-│   └── navigation.php       ✅ Fuente única del menú y datos de contacto
+│   ├── auth.php             ✅
+│   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
+│   └── navigation.php       ✅ Fuente única del menú público
 ├── database/
-│   ├── migrations/             # Vacío: el esquema de §2 está sin implementar
-│   ├── factories/              # Para tests y seeders
-│   └── seeders/                # Vacío
+│   ├── migrations/          ✅ users, password_reset_tokens, students,
+│   │                           teachers, courses, modules, classes
+│   ├── factories/           ✅ Una por modelo
+│   └── seeders/             ✅ Un usuario por rol
 ├── public/
 │   ├── index.php            ✅ Docroot
-│   ├── images/aamevi.svg    ✅ Isotipo del sitio madre
-│   └── build/                  Generado por Vite (no versionado)
+│   ├── images/              ✅ aamevi.svg y su variante para modo oscuro
+│   ├── build/                  Generado por Vite (no versionado)
+│   └── css|js|fonts/filament/  Publicado por Filament (no versionado)
 ├── resources/
 │   ├── css/app.css          ✅ Tokens de marca en @theme (Tailwind 4)
 │   ├── js/app.js            ✅ Menú hamburguesa; sin framework JS
+│   ├── lang/es/auth.php     ✅
 │   └── views/
-│       ├── layouts/app.blade.php  ✅
-│       ├── components/         ✅ header, footer, top-bar, page-hero,
-│       │                          section, button, icon, footer-icons
-│       ├── home.blade.php      ✅
+│       ├── layouts/
+│       │   ├── app.blade.php   ✅ Sitio, con navegación
+│       │   └── guest.blade.php ✅ Acceso, sin navegación
+│       ├── components/      ✅ header, footer, top-bar, page-hero, section,
+│       │   └── ui/icon.blade.php ✅ (x-icon lo toma blade-icons)
+│       ├── auth/            ✅ login, register
+│       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅
-├── routes/
-│   ├── web.php              ✅ Home + rutas placeholder
-│   ├── api.php              ✅
-│   └── console.php          ✅
-├── tests/
-│   ├── Unit/
-│   └── Feature/
-├── docs/
-│   ├── PLAN_ARQUITECTONICO.md ✅ Este documento
-│   ├── SISTEMA_DISENO.md      ✅ Sistema visual
-│   └── DEPLOY.md              ✅ Procedimiento de despliegue
+├── routes/web.php           ✅ Grupos `guest` y `auth`
+├── tests/Feature/           ✅ Auth/ y Admin/
+├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
+├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
-├── package.json             ✅
 └── vite.config.js           ✅
 ```
 
@@ -510,17 +518,20 @@ Autorización por rol con middleware y Policies (`CoursePolicy`,
 
 ### Módulo Courses
 
+> **La administración de cursos ya no vive acá.** Crear y editar cursos, módulos
+> y clases se hace desde el panel de Filament (§11). Estos controladores son los
+> del **sitio público**: lo que ve y hace un alumno.
+
 ```php
 // app/Http/Controllers/Courses/
-CourseController::index()      // GET  /cursos
-CourseController::store()      // POST /cursos                (profesor)
+CourseController::index()      // GET  /cursos                catálogo
 CourseController::show(Course) // GET  /cursos/{course}       (route model binding)
-EnrollmentController::store(Course)          // POST  /cursos/{course}/inscripcion → pending
-EnrollmentController::index(Course)          // GET   /cursos/{course}/inscripciones (profesor)
-EnrollmentController::approve(Enrollment)    // PATCH /inscripciones/{enrollment}/aprobar
-ModuleController::store(Course)
-ClassController::store(CourseModule)         // activationDate, meetLink?
+EnrollmentController::store(Course)  // POST /cursos/{course}/inscripcion → pending
+ClassroomController::show(CourseClass) // GET /clases/{class}  aula: contenido y quiz
 ```
+
+La aprobación de inscripciones (§3-A) es una acción del panel, no de este
+controlador.
 
 La lógica que excede un CRUD (transiciones de `course_enrollments`, cálculo de
 progreso) va en clases de servicio bajo `app/Services/`, no en el controlador.
@@ -660,21 +671,24 @@ propio es el toggle del menú móvil; el submenú desplegable se resuelve con
 - [x] Rutas placeholder para todas las secciones
 - [x] Procedimiento de despliegue documentado (`docs/DEPLOY.md`)
 
-### Fase 1: Setup & Autenticación (1-2 semanas)
-- [ ] Migraciones de `users`, `students`, `teachers` (§2)
-- [ ] Modelos Eloquent con `HasUuids` y relaciones 1:1
-- [ ] Auth con sesión de Laravel + Policies por rol
-- [ ] Google OAuth con Socialite
-- [ ] Vistas Blade de login y registro
+### Fase 1: Setup & Autenticación — **casi completa**
+- [x] Migraciones de `users`, `students`, `teachers` (§2)
+- [x] Modelos Eloquent con `HasUuids` y relaciones 1:1
+- [x] Login con sesión de Laravel, limitador de intentos y bloqueo de cuentas
+      inactivas. **Todo el sitio está detrás de `auth`**: sin sesión no se ve nada
+- [x] Seeders con usuarios de prueba de cada rol
+- [ ] Registro público (hoy es un marcador; las cuentas las crea la administración)
 - [ ] Verificación de email vía `email_queue`
-- [ ] Seeders con usuarios de prueba de cada rol
+- [ ] Google OAuth con Socialite
+- [ ] Policies por rol para el sitio público
 
-### Fase 2: Core Cursos & Clases (2-3 semanas)
-- [ ] Modelos: courses, modules, classes, class_content
-- [ ] CRUD de cursos (profesor)
-- [ ] Inscripción de alumnos (con aprobación)
-- [ ] Frontend: lista de cursos, detalle, inscripción
-- [ ] Visualización de contenido (videos, PDFs, textos)
+### Fase 2: Core Cursos & Clases — **en curso**
+- [x] Modelos y migraciones: `courses`, `modules`, `classes`
+- [x] Administración de cursos, módulos y clases desde el panel (§11)
+- [x] Cronograma: fecha de activación por clase y corrimiento de fechas en lote
+- [ ] `class_content`: videos, PDFs y textos dentro de cada clase
+- [ ] `course_enrollments` e inscripción con aprobación
+- [ ] Sitio público: catálogo, detalle del curso y aula
 
 ### Fase 3: Quiz & Evaluación (2-3 semanas)
 - [ ] Modelos: questions, quizzes, student_quiz_attempts, student_answers
@@ -973,6 +987,46 @@ Dos consecuencias operativas:
 El panel de `/profesores` queda pendiente: es un segundo panel de Filament con
 los recursos acotados a los cursos del docente.
 
+### Cómo está organizado el panel
+
+Los recursos viven en `app/Filament/Resources/`, uno por carpeta, con el
+formulario y la tabla en clases aparte (`Schemas/` y `Tables/`). Esa división la
+impone el generador de Filament 5; conviene respetarla.
+
+**Navegación del contenido** — se baja un nivel por pantalla:
+
+```
+Cursos  →  [abrir un curso]  →  pestaña Módulos
+                                     │
+                                     └── acción «Clases»  →  pantalla del módulo
+                                                                  │
+                                                                  └── pestaña Clases
+```
+
+El salto del medio es lo menos evidente del diseño y tiene un motivo:
+**un relation manager de Filament no puede anidar otro**. Como las clases cuelgan
+del módulo y el módulo del curso, hacen falta dos pantallas. Por eso existe
+`CourseModuleResource`, que:
+
+- **no aparece en la navegación** (`$shouldRegisterNavigation = false`)
+- **no tiene página de alta**: los módulos se crean desde el curso, que es donde
+  se conoce a cuál pertenecen
+- solo sirve para abrir un módulo y trabajar sus clases
+
+**Convenciones a respetar** al sumar recursos:
+
+| | |
+|---|---|
+| Generar, no escribir a mano | `php artisan make:filament-resource Foo --generate`. La API de v5 difiere bastante de la de v3 y el generador la acierta |
+| Revisar siempre lo generado | Los selects de relación salen mostrando el UUID, y los campos de contraseña se sobreescriben con `null` al editar |
+| Etiquetas y colores en el enum | Implementar `HasLabel` y `HasColor` (como `UserRole`) en vez de repetirlos en cada recurso |
+| `order_number` único por padre | La unicidad es `(padre_id, order_number)`; el formulario sugiere la posición siguiente |
+| Acciones masivas para lo repetitivo | Editar treinta clases de a una no es una interfaz; ver «Correr fechas» |
+
+**Cuidado con `x-icon`**: `blade-icons`, dependencia de Filament, lo registra
+globalmente y le gana a cualquier componente propio con ese nombre. El del
+proyecto es `<x-ui.icon>`.
+
 ### Impacto en el resto del plan
 
 - **§2**: sin cambios. El enum de roles ya contempla `admin`
@@ -985,10 +1039,32 @@ los recursos acotados a los cursos del docente.
 
 ## 12. PRÓXIMOS PASOS
 
-1. [x] **Plan arquitectónico**: actualizado a Laravel 12 + Blade (2026-08-11)
-2. [x] **Base del proyecto**: pipeline de assets, identidad visual, layout
-3. [x] **Procedimiento de deploy**: `docs/DEPLOY.md`
-4. [ ] **Primer despliegue** en `aamevi.demosdesarrollos.com.ar`
-5. [ ] **Migraciones de §2**: empezar por `users`, `students`, `teachers`
-6. [ ] **Fase 1**: autenticación con sesión + Google OAuth
-7. [ ] **Decidir el panel**: correr el `--dry-run` de Filament y confirmar (§11)
+Hecho hasta el 2026-08-11:
+
+1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
+2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
+3. [x] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
+4. [x] Esquema base: `users`, `students`, `teachers`
+5. [x] Login, con el sitio entero detrás de sesión
+6. [x] Panel de administración con Filament: usuarios, cursos, módulos y clases
+
+Lo que sigue, en orden de dependencia:
+
+1. [ ] **`class_content`** — videos, PDFs y textos dentro de cada clase. Sin
+       esto un curso es una estructura vacía, así que es lo primero
+2. [ ] **`course_enrollments`** — inscripción con aprobación (§3-A). Habilita el
+       catálogo público y los paneles de progreso
+3. [ ] **Sitio público de cursos** — catálogo, detalle y aula, reemplazando las
+       rutas placeholder
+4. [ ] **Panel `/profesores`** — segundo panel, acotado a los cursos del docente
+5. [ ] **Fase 3: quiz** — la parte más intrincada del dominio (§9)
+
+### Deuda pendiente
+
+| | |
+|---|---|
+| `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
+| Registro público | Hoy es un marcador: las cuentas las crea la administración |
+| Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo ni `email_queue` |
+| Google Cloud Storage | Los archivos todavía no se suben a ningún lado |
+| `docs/SISTEMA_DISENO.md` | Sus rutas siguen apuntando a `frontend/src/...` de la etapa React; los tokens que enumera sí son correctos |
