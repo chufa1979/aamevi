@@ -1,0 +1,160 @@
+/* Montserrat: misma tipografía institucional que www.aamevi.ar */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,700&display=swap');
+@import 'tailwindcss';
+
+@source '../views';
+
+/*
+ * Paleta tomada de www.aamevi.ar (css/global.css + images/aamevi.svg).
+ * Ver docs/SISTEMA_DISENO.md — si el sitio madre cambia su identidad, esos dos
+ * archivos son el punto de partida para actualizar estos tokens.
+ */
+@theme {
+    --font-sans: 'Montserrat', system-ui, sans-serif;
+
+    /* --green: color institucional (borde del header, botones, foco) */
+    --color-primary-50: #e6f8f7;
+    --color-primary-100: #c0efee;
+    --color-primary-200: #8ae2e0;
+    --color-primary-300: #4dd4d1;
+    --color-primary-400: #1ac5c1;
+    --color-primary-500: #00b8b3;
+    --color-primary-600: #009c98;
+    --color-primary-700: #007c79;
+    --color-primary-800: #005f5c;
+    --color-primary-900: #004442;
+    --color-primary: #00b8b3;
+
+    /* --orange: hover de navegación, CTA */
+    --color-accent-50: #fff3e9;
+    --color-accent-100: #ffe0c7;
+    --color-accent-200: #fdc294;
+    --color-accent-300: #fba25f;
+    --color-accent-400: #f88736;
+    --color-accent-500: #f46707;
+    --color-accent-600: #d45606;
+    --color-accent-700: #ab4405;
+    --color-accent-800: #833403;
+    --color-accent-900: #5c2402;
+    --color-accent: #f46707;
+
+    /* Fondo translúcido del submenú desplegable del sitio madre */
+    --color-accent-overlay: rgba(232, 118, 40, 0.75);
+
+    --color-ink: #333333; /* texto principal y fondo del footer */
+    --color-surface: #ececec; /* fondo de página */
+    --color-panel: #d3d3d2; /* fondo de formularios destacados */
+    --color-muted: #c1c1c1; /* pasos inactivos, bordes suaves */
+    --color-danger: #eb3f3f;
+    --color-error: #cc0000;
+
+    /*
+     * Colores del isotipo: los 6 pilares de la medicina del estilo de vida.
+     * Sirven para diferenciar cursos, módulos o categorías.
+     */
+    --color-pillar-blue: #0071b6;
+    --color-pillar-teal: #00b8b3;
+    --color-pillar-green: #01875f;
+    --color-pillar-red: #d04742;
+    --color-pillar-orange: #f46707;
+    --color-pillar-yellow: #edbc42;
+
+    /* .container / .container.small del sitio madre */
+    --container-site: 1315px;
+    --container-site-sm: 1070px;
+
+    --radius-button: 0.5rem;
+
+    /* Título de sección del sitio madre: 4em mobile / 5.5em desktop (raíz 10px) */
+    --text-title-sm: 2.5rem;
+    --text-title-sm--line-height: 1.1;
+    --text-title: 3.4375rem;
+    --text-title--line-height: 1.1;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-surface font-sans text-ink antialiased;
+    }
+
+    /* El sitio madre no marca los focus; los mantenemos visibles por accesibilidad,
+       usando el color institucional. */
+    :focus-visible {
+        @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-surface;
+    }
+}
+
+@layer components {
+    /* .container / .container.small del sitio madre */
+    .container-site {
+        @apply mx-auto w-full max-w-site px-5;
+    }
+
+    .container-site-sm {
+        @apply mx-auto w-full max-w-site-sm px-5;
+    }
+
+    /*
+     * .button: fondo institucional, texto oscuro heredado, esquinas suaves.
+     * La base va en un selector agrupado en lugar de `@apply btn` porque en
+     * Tailwind v4 `@apply` opera sobre utilidades, no sobre clases de componente.
+     */
+    .btn,
+    .btn-accent,
+    .btn-danger,
+    .btn-ghost {
+        @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-button
+               px-4 py-2 font-medium no-underline transition-colors
+               disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .btn {
+        @apply bg-primary text-ink hover:bg-primary-600;
+    }
+
+    .btn-accent {
+        @apply bg-accent text-white hover:bg-accent-600;
+    }
+
+    .btn-danger {
+        @apply bg-danger text-white hover:bg-red-600;
+    }
+
+    .btn-ghost {
+        @apply bg-transparent text-ink hover:bg-black/5;
+    }
+
+    /* Variante en cursiva usada en las llamadas a la acción del sitio madre */
+    .btn-cta {
+        @apply text-lg font-medium italic;
+    }
+
+    /* Campos de formulario: fondo blanco, borde gris, radio 4px */
+    .field {
+        @apply block w-full rounded border border-gray-300 bg-white px-2 py-2
+               text-base text-ink placeholder:text-gray-400
+               focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
+    }
+
+    .field-label {
+        @apply mb-1 block text-xs uppercase tracking-wide text-ink;
+    }
+
+    /* Título de sección */
+    .section-title {
+        @apply text-title-sm font-normal md:text-title;
+    }
+
+    .section-subtitle {
+        @apply text-2xl font-normal;
+    }
+
+    /* Enlace de navegación: mayúsculas, hover naranja */
+    .nav-link {
+        @apply uppercase no-underline transition-colors hover:text-accent;
+    }
+}
