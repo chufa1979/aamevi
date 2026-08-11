@@ -23,6 +23,11 @@ Thumbs.db
 _ide_helper.php
 _ide_helper_models.php
 
+# Herramientas de agentes y configuracion local
+/.agents
+/.claude
+/.github
+
 # Storage
 /storage/*.key
 /bootstrap/cache/*
