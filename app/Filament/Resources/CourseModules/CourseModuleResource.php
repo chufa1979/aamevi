@@ -7,6 +7,7 @@ use App\Models\CourseModule;
 use Filament\Schemas\Schema;
 use App\Filament\Forms\RichText;
 use Filament\Resources\Resource;
+use App\Filament\Forms\ModuleExam;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
@@ -58,6 +59,8 @@ class CourseModuleResource extends Resource
                         ->label('Descripción')
                         ->columnSpanFull(),
                 ]),
+
+            ModuleExam::section(),
         ]);
     }
 

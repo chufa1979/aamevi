@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Filament\Forms\RichText;
 use Filament\Actions\EditAction;
+use App\Filament\Forms\ModuleExam;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
@@ -46,6 +47,8 @@ class ModulesRelationManager extends RelationManager
             RichText::make('description')
                 ->label('Descripción')
                 ->columnSpanFull(),
+
+            ModuleExam::section()->columnSpanFull(),
         ]);
     }
 

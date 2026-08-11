@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseModuleFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,12 @@ class CourseModule extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    /** Examen que evalúa el módulo entero. */
+    public function quiz(): HasOne
+    {
+        return $this->hasOne(Quiz::class, 'module_id');
     }
 
     public function classes(): HasMany

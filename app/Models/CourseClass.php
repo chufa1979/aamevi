@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseClassFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +45,16 @@ class CourseClass extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(CourseModule::class, 'module_id');
+    }
+
+    public function quiz(): HasOne
+    {
+        return $this->hasOne(Quiz::class, 'class_id');
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class, 'class_id')->orderBy('order_number');
     }
 
     public function contents(): HasMany

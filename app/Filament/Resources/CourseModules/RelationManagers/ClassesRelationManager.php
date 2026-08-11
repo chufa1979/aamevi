@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\CourseModules\RelationManagers;
 
 use Filament\Tables\Table;
+use App\Models\CourseClass;
 use App\Models\ClassContent;
+use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Enums\ClassContentType;
 use App\Filament\Forms\RichText;
@@ -27,6 +29,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Resources\CourseClasses\CourseClassResource;
 
 class ClassesRelationManager extends RelationManager
 {
@@ -208,6 +211,13 @@ class ClassesRelationManager extends RelationManager
                 CreateAction::make()->label('Agregar clase')->modalWidth('4xl'),
             ])
             ->recordActions([
+                // El banco de preguntas se administra en la pantalla de la
+                // clase: un relation manager no puede anidar otro.
+                Action::make('questions')
+                    ->label('Preguntas')
+                    ->icon('heroicon-o-question-mark-circle')
+                    ->url(fn (CourseClass $record): string => CourseClassResource::getUrl('edit', ['record' => $record])),
+
                 EditAction::make()->modalWidth('4xl'),
                 DeleteAction::make(),
             ])
