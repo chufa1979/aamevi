@@ -3,21 +3,25 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class ExampleTest extends TestCase
 {
-    public function test_the_application_returns_a_successful_response(): void
-    {
-        $response = $this->get('/');
+    use RefreshDatabase;
 
-        $response->assertStatus(200);
+    public function test_la_home_responde_a_un_usuario_autenticado(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get('/')
+            ->assertStatus(200);
     }
 
+    /** El health check queda público a propósito: no expone ningún dato. */
     public function test_api_health_check(): void
     {
-        $response = $this->get('/api/health');
-
-        $response->assertStatus(200);
-        $response->assertJson(['status' => 'ok']);
+        $this->get('/api/health')
+            ->assertStatus(200)
+            ->assertJson(['status' => 'ok']);
     }
 }

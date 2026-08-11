@@ -106,10 +106,22 @@ DB_PORT=3306
 DB_DATABASE=<base>
 DB_USERNAME=<usuario>
 DB_PASSWORD=<password>
+
+CACHE_STORE=file
+SESSION_DRIVER=file
 ```
 
 `APP_DEBUG=false` no es opcional: en `true`, Laravel muestra el stack trace con
 variables de entorno ante cualquier error.
+
+⚠️ **`CACHE_STORE`, no `CACHE_DRIVER`.** Laravel 11 renombró esa variable, y la
+vieja se ignora en silencio: el store cae al default `database`, que necesita una
+tabla `cache` inexistente. El síntoma aparece recién cuando algo usa la caché
+—por ejemplo el limitador de intentos del login— y revienta con
+`no such table: cache`. Lo mismo con `BROADCAST_DRIVER`, hoy `BROADCAST_CONNECTION`.
+
+Si el `.env` del servidor se creó antes de agosto de 2026, tiene los nombres
+viejos y hay que corregirlos a mano.
 
 Los datos de la base salen del panel de LatinCloud. El `DB_HOST` que figura en
 el `.env` de desarrollo apunta a un servidor externo y **no** es necesariamente

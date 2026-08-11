@@ -21,7 +21,9 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="CACHE_DRIVER" value="array"/>
+        <!-- CACHE_STORE, no CACHE_DRIVER: Laravel 11 renombró la variable y la
+             vieja se ignora, cayendo al store `database` (tabla inexistente). -->
+        <env name="CACHE_STORE" value="array"/>
         <!--
             sqlite en memoria, a propósito: con mysql, DB_HOST se tomaría del
             .env y los tests crearían y borrarían tablas en el servidor real.

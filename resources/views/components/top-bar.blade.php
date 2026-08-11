@@ -1,10 +1,15 @@
 {{--
-    Barra superior de cortesía, equivalente al `#top` del sitio madre:
-    texto pequeño alineado a la derecha con el acceso a la cuenta.
+    Barra superior de cortesía, equivalente al `#top` del sitio madre: texto
+    pequeño alineado a la derecha. Como todo el layout está detrás de `auth`,
+    acá siempre hay usuario; muestra quién es y permite cerrar sesión.
 --}}
-<div class="container-site flex w-full items-center justify-end pt-5">
-    <p class="text-xs">
-        ¿Ya tenés cuenta?
-        <a href="/login" class="ml-1 underline-offset-2 hover:underline">Iniciar sesión</a>
-    </p>
+<div class="container-site flex w-full items-center justify-end gap-3 pt-5 text-xs">
+    <span>Hola, {{ auth()->user()->first_name }}</span>
+
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" class="cursor-pointer underline-offset-2 hover:underline">
+            Cerrar sesión
+        </button>
+    </form>
 </div>
