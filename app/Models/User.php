@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use Filament\Panel;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\HasName;
 use Illuminate\Notifications\Notifiable;
+use Filament\Models\Contracts\FilamentUser;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -16,7 +19,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  * Tabla base de usuarios. `students` y `teachers` son extensiones 1:1
  * identificadas por la misma clave.
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, HasName, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, Notifiable;
@@ -65,6 +68,27 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    /**
+     * Filament busca por defecto un atributo `name`, que este modelo no tiene:
+     * el nombre está partido en `first_name` y `last_name`.
+     */
+    public function getFilamentName(): string
+    {
+        return $this->full_name;
+    }
+
+    /**
+     * Quién puede entrar al panel. Sin esto, Filament dejaría pasar a cualquier
+     * usuario autenticado, incluidos los alumnos.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return match ($panel->getId()) {
+            'admin' => $this->isAdmin() && $this->is_active,
+            default => false,
+        };
     }
 
     public function isTeacher(): bool

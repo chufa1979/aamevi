@@ -67,7 +67,8 @@ External services: Google Cloud Storage for uploads (videos, PDFs, submissions, 
 
 - **No migrations exist**: `database/migrations/` is empty, so `php artisan migrate` only creates the `migrations` table. The schema in `docs/PLAN_ARQUITECTONICO.md` §2 is unimplemented — start there.
 - **No seeders defined**: Create seeders in `database/seeders/` and run `php artisan db:seed`.
-- **No admin panel yet**: §11 of the plan specifies it (`/admin` and `/profesores`) and recommends Filament, but its compatibility with Laravel 12 under `platform.php = 8.3.11` is **unverified** — check with `composer require filament/filament:"^5.0" --dry-run` before committing to it.
+- **Admin panel**: Filament 5 at `/admin`, resources under `app/Filament/Resources/`. Add one with `php artisan make:filament-resource Foo --generate` — use the generator rather than hand-writing, the v5 API differs from v3 (`Schema` instead of `Form`, schemas/tables split into their own classes). The `/profesores` panel is not built yet. Filament's assets live outside the Vite build; `php artisan filament:assets` republishes them.
+- **`x-icon` is taken** by blade-icons (a Filament dependency). The project's own icon component is `<x-ui.icon>`.
 - **`.env`**: copy from `.env.example`, set `DB_*` to your local MySQL, and run `php artisan key:generate`.
 - **No CI**: `.github/` is gitignored.
 

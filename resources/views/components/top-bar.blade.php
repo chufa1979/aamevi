@@ -6,6 +6,10 @@
 <div class="container-site flex w-full items-center justify-end gap-3 pt-5 text-xs">
     <span>Hola, {{ auth()->user()->first_name }}</span>
 
+    @if (auth()->user()->isAdmin())
+        <a href="/admin" class="underline-offset-2 hover:underline hover:text-accent">Administración</a>
+    @endif
+
     <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit" class="cursor-pointer underline-offset-2 hover:underline">

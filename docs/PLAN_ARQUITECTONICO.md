@@ -942,18 +942,36 @@ Esto no contradice la decisión de §9 de posponer Livewire: entraría **solo** 
 `/admin` y `/profesores`. Las vistas públicas siguen siendo Blade sin framework
 de JavaScript.
 
-### Verificar antes de adoptarlo
+### Estado: adoptado (2026-08-11)
 
-⚠️ **No está confirmado** que Filament resuelva contra Laravel 12 con
-`platform.php = 8.3.11`. Comprobarlo antes de comprometerse:
+**Filament 5.7.6 instalado.** Resuelve limpio contra Laravel 12 con
+`platform.php = 8.3.11`, arrastrando Livewire 4.4. El panel vive en `/admin`.
 
-```bash
-composer require filament/filament:"^5.0" --dry-run
-```
+Decisiones de integración:
 
-Si no resuelve, probar `^4.0`. Si ninguna de las dos entra, las alternativas son
-Nova o Blade a mano. Tener en cuenta además que Filament trae su propio pipeline
-de assets: convive con el Vite del sitio público, pero son dos builds.
+- **Sin login propio de Filament.** El panel no expone `/admin/login`: los
+  administradores entran por el `/login` del sitio, que ya tiene limitador de
+  intentos y control de cuentas desactivadas. Una sola sesión, un solo
+  formulario que auditar.
+- **`User` implementa `FilamentUser`**: `canAccessPanel()` exige rol `admin` y
+  cuenta activa. Sin eso Filament dejaría entrar a cualquier autenticado.
+- **`User` implementa `HasName`**, porque Filament espera un atributo `name` y
+  este modelo tiene el nombre partido en `first_name` y `last_name`.
+- **`UserRole` implementa `HasLabel` y `HasColor`**, para que las etiquetas en
+  español y los colores de los badges salgan del enum y no se repitan en cada
+  recurso.
+- **Color primario** `#00b8b3`, el institucional.
+
+Dos consecuencias operativas:
+
+- Filament sirve **sus propios assets** desde `public/css|js|fonts/filament`,
+  fuera del build de Vite. No están versionados: los republica
+  `php artisan filament:assets`, que ya está en `deploy.sh`.
+- `blade-icons`, que viene con Filament, registra un componente global `x-icon`
+  que le ganaba al nuestro. El componente propio pasó a ser `<x-ui.icon>`.
+
+El panel de `/profesores` queda pendiente: es un segundo panel de Filament con
+los recursos acotados a los cursos del docente.
 
 ### Impacto en el resto del plan
 

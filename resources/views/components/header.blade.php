@@ -8,8 +8,8 @@
         <button type="button" data-menu-toggle
                 class="p-2 text-2xl text-ink lg:hidden"
                 aria-expanded="false" aria-controls="main-menu" aria-label="Abrir menú">
-            <x-icon name="menu" data-icon-open />
-            <x-icon name="close" data-icon-close class="hidden" />
+            <x-ui.icon name="menu" data-icon-open />
+            <x-ui.icon name="close" data-icon-close class="hidden" />
         </button>
 
         <nav id="main-menu" data-menu
@@ -55,7 +55,7 @@
         <form action="/buscar" method="GET" role="search"
               class="mt-5 flex w-full items-center justify-center lg:mt-0 lg:w-auto">
             <button type="submit" class="px-2 text-ink" aria-label="Buscar">
-                <x-icon name="search" />
+                <x-ui.icon name="search" />
             </button>
             {{-- Radio asimétrico y bordes parciales: detalle propio del sitio madre --}}
             <input type="text" name="q" value="{{ request('q') }}"

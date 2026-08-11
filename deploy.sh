@@ -46,6 +46,10 @@
     npm ci
     npm run build
 
+    # Filament sirve sus propios assets desde public/, fuera del build de Vite.
+    # No están versionados y hay que republicarlos en cada actualización.
+    php artisan filament:assets
+
     step "Migraciones"
     php artisan migrate --force
 
