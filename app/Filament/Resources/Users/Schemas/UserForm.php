@@ -6,9 +6,12 @@ use App\Enums\UserRole;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Schemas\Components\Utilities\Get;
 
 class UserForm
 {
@@ -40,7 +43,10 @@ class UserForm
                             ->label('Rol')
                             ->options(UserRole::class)
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            // live() para que las fichas de abajo aparezcan al
+                            // elegir el rol, sin recargar
+                            ->live(),
                     ]),
 
                 Section::make('Acceso')
@@ -67,6 +73,67 @@ class UserForm
                             ->label('Correo verificado el')
                             ->helperText('Vacío significa que todavía no verificó su correo.'),
                     ]),
+
+                /*
+                 * Fichas de extensión. `students` y `teachers` comparten la clave
+                 * con `users`, así que Filament las crea sola al guardar la
+                 * relación. Sin esto, un usuario con rol Profesor no tendría fila
+                 * en `teachers` y no podría figurar como docente de un curso.
+                 */
+                Section::make('Ficha de alumno')
+                    ->relationship('student')
+                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Student))
+                    ->columns(2)
+                    ->components([
+                        TextInput::make('dni')
+                            ->label('DNI')
+                            ->maxLength(20)
+                            ->unique(ignoreRecord: true),
+
+                        DatePicker::make('date_of_birth')
+                            ->label('Fecha de nacimiento')
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now()),
+
+                        TextInput::make('phone')
+                            ->label('Teléfono')
+                            ->tel()
+                            ->maxLength(20),
+
+                        TextInput::make('cell_phone')
+                            ->label('Celular')
+                            ->tel()
+                            ->maxLength(20),
+
+                        TextInput::make('delegation')
+                            ->label('Delegación')
+                            ->maxLength(100),
+
+                        TextInput::make('sub_delegation')
+                            ->label('Subdelegación')
+                            ->maxLength(100),
+                    ]),
+
+                Section::make('Ficha de profesor')
+                    ->relationship('teacher')
+                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Teacher))
+                    ->components([
+                        TextInput::make('specialization')
+                            ->label('Especialización')
+                            ->maxLength(255),
+
+                        Textarea::make('bio')
+                            ->label('Biografía')
+                            ->rows(4),
+                    ]),
             ]);
+    }
+
+    /** El estado del select puede llegar como enum o como su valor. */
+    private static function roleIs(Get $get, UserRole $role): bool
+    {
+        $state = $get('role');
+
+        return $state === $role || $state === $role->value;
     }
 }
