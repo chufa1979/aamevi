@@ -49,8 +49,12 @@ aamevi/
 │   │   │   └── Reports/
 │   │   ├── Requests/        ✅ Auth/LoginRequest
 │   │   └── Middleware/
-│   ├── Models/              ✅ User, Student, Teacher, Course,
-│   │                           CourseModule, CourseClass
+│   ├── Models/              ✅ User, Student, Teacher, Course, CourseModule,
+│   │                           CourseClass, ClassContent, CourseEnrollment,
+│   │                           Quiz, Question, QuestionOption, QuizAttempt,
+│   │                           StudentAnswer, StudentProgress
+│   ├── Services/            ✅ QuizService, ProgressService
+│   ├── Exceptions/          ✅ EnrollmentException, QuizException
 │   └── Providers/
 │       └── Filament/AdminPanelProvider.php ✅
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
@@ -59,8 +63,11 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú público
 ├── database/
-│   ├── migrations/          ✅ users, password_reset_tokens, students,
-│   │                           teachers, courses, modules, classes
+│   ├── migrations/          ✅ 14: users, password_reset_tokens, students,
+│   │                           teachers, courses, modules, classes,
+│   │                           class_content, course_enrollments, questions,
+│   │                           question_options, quizzes, los tres de intentos
+│   │                           y student_progress
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ Un usuario por rol
 ├── public/
@@ -494,6 +501,69 @@ CREATE TABLE email_queue (
 
 ---
 
+## 3-bis. REGLAS IMPLEMENTADAS
+
+Lo que sigue no se deduce del esquema: son decisiones tomadas al construir, cada
+una con su test. Modificarlas rompe tests a propósito.
+
+### Inscripciones — `CourseEnrollment`
+
+Las transiciones son métodos (`approve`, `reject`, `activate`, `complete`), no
+asignaciones a `status`. Cada una valida el estado de origen y lanza
+`EnrollmentException` si no corresponde: asignar a mano permitiría marcar como
+finalizada una inscripción rechazada.
+
+| | |
+|---|---|
+| Cupo | Solo cuentan las **aprobadas, en curso y finalizadas**. Si las pendientes y rechazadas ocuparan lugar, un curso con veinte solicitudes rechazadas quedaría bloqueado teniendo vacantes |
+| Duplicados | `unique (course_id, student_id)` en la base, más validación en el formulario |
+| Docente eliminado | `approved_by` es `SET NULL`, no cascada: perder inscripciones porque cambió el profesor sería irrecuperable |
+
+### Evaluaciones — `Quiz`, `QuizService`
+
+Un quiz cuelga de **una clase o de un módulo**, nunca de ambos ni de ninguno; lo
+valida el modelo en `saving`.
+
+| | |
+|---|---|
+| Sorteo de clase | `questions_per_student` preguntas del banco de esa clase |
+| Sorteo de módulo | `questions_percentage` % del banco combinado de **todas** sus clases, redondeando hacia arriba |
+| Tope | Nunca sortea más preguntas que las disponibles: pedir 10 de un banco de 6 calificaría sobre un total distinto al configurado |
+| Piso | Nunca sortea cero si hay preguntas — un examen vacío se aprueba solo |
+| Inactivas | Las preguntas con `is_active = false` quedan fuera del sorteo |
+| Opciones | Exactamente una correcta. Sin correcta no se puede aprobar nunca; con dos, la calificación es ambigua |
+
+Del intento:
+
+- **Reabrir un intento en curso devuelve el mismo**, no abre otro. Recargar la
+  página no puede consumir un intento ni cambiar las preguntas a mitad de camino.
+- **Las preguntas sin responder se guardan igual**, con la opción en null. Si se
+  omitieran, sería indistinguible «no contestó» de «no se le preguntó».
+- **Responder algo que no estaba asignado aborta la entrega**: indica un
+  formulario manipulado.
+- **Aprobar una vez alcanza**, aunque un intento posterior desapruebe.
+
+`quiz_question_assignment` registra qué preguntas le tocaron a cada alumno y en
+qué orden. Como el sorteo es distinto para cada uno, sin ese registro una nota
+reclamada no se puede reconstruir ni recalcular.
+
+### Progresión — `ProgressService`
+
+Una clase se abre con tres condiciones **acumulativas**: inscripción aprobada,
+fecha de activación cumplida, y clase anterior aprobada.
+
+Se evalúan por separado para exponer `lockReason()`: «se habilita el 20/09» y
+«primero aprobá la clase anterior» son accionables; un «no tenés acceso»
+genérico solo genera consultas al soporte.
+
+- **El encadenamiento es por módulo, no por curso entero.** Los módulos se
+  habilitan por fecha; encadenar el curso completo dejaría al alumno trabado
+  esperando la última clase de un módulo que todavía no le toca cursar.
+- **Completar una clase con quiz exige haberlo aprobado.** Sin esa guarda,
+  marcarla completa saltearía la evaluación que la progresión protege.
+
+---
+
 ## 4. COMPONENTES PRINCIPALES POR MÓDULO
 
 La sesión es la de Laravel (cookie + `web` middleware), no JWT: al renderizar
@@ -682,20 +752,25 @@ propio es el toggle del menú móvil; el submenú desplegable se resuelve con
 - [ ] Google OAuth con Socialite
 - [ ] Policies por rol para el sitio público
 
-### Fase 2: Core Cursos & Clases — **en curso**
-- [x] Modelos y migraciones: `courses`, `modules`, `classes`
+### Fase 2: Core Cursos & Clases — **completa del lado de administración**
+- [x] Modelos y migraciones: `courses`, `modules`, `classes`, `class_content`
 - [x] Administración de cursos, módulos y clases desde el panel (§11)
 - [x] Cronograma: fecha de activación por clase y corrimiento de fechas en lote
-- [ ] `class_content`: videos, PDFs y textos dentro de cada clase
-- [ ] `course_enrollments` e inscripción con aprobación
+- [x] `class_content`: video con previsualización, PDF con subida y descarga,
+      texto y consigna con editor enriquecido
+- [x] `course_enrollments` con aprobación, rechazo y control de cupo (§3-bis)
+- [x] `student_progress`: gateo por inscripción, fecha y aprobación previa
 - [ ] Sitio público: catálogo, detalle del curso y aula
 
-### Fase 3: Quiz & Evaluación (2-3 semanas)
-- [ ] Modelos: questions, quizzes, student_quiz_attempts, student_answers
-- [ ] Lógica de randomización de preguntas
-- [ ] Calificación automática
-- [ ] Frontend: interfaz quiz (ver pregunta, responder, ver score)
-- [ ] Reintentos
+### Fase 3: Quiz & Evaluación — **completa del lado de la lógica**
+- [x] Modelos y migraciones: `questions`, `question_options`, `quizzes`,
+      `student_quiz_attempts`, `student_answers`, `quiz_question_assignment`
+- [x] Quiz por clase **y examen de módulo por porcentaje** (extensión de §2)
+- [x] Sorteo aleatorio por alumno, con registro de qué le tocó a cada uno
+- [x] Calificación automática y control de reintentos
+- [x] Carga de preguntas desde el panel, con enunciado enriquecido
+- [ ] Frontend: interfaz de quiz (ver pregunta, responder, ver score)
+- [ ] Revisión de intentos desde el panel, para atender una nota reclamada
 
 ### Fase 4: Tareas (1-2 semanas)
 - [ ] Modelos: tasks, task_submissions
@@ -1039,32 +1114,46 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-11:
+Hecho hasta el 2026-08-11 — **14 migraciones, 14 modelos, 123 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
 3. [x] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
-4. [x] Esquema base: `users`, `students`, `teachers`
-5. [x] Login, con el sitio entero detrás de sesión
-6. [x] Panel de administración con Filament: usuarios, cursos, módulos y clases
+4. [x] Login, con el sitio entero detrás de sesión
+5. [x] Panel de administración con Filament (§11)
+6. [x] Dominio académico completo: cursos → módulos → clases → contenido
+7. [x] Inscripciones con aprobación y cupo
+8. [x] Evaluaciones: banco de preguntas, quiz de clase, examen de módulo por
+       porcentaje, intentos y corrección automática
+9. [x] Progresión: gateo de clases por inscripción, fecha y aprobación previa
 
-Lo que sigue, en orden de dependencia:
+### La brecha
 
-1. [ ] **`class_content`** — videos, PDFs y textos dentro de cada clase. Sin
-       esto un curso es una estructura vacía, así que es lo primero
-2. [ ] **`course_enrollments`** — inscripción con aprobación (§3-A). Habilita el
-       catálogo público y los paneles de progreso
-3. [ ] **Sitio público de cursos** — catálogo, detalle y aula, reemplazando las
-       rutas placeholder
-4. [ ] **Panel `/profesores`** — segundo panel, acotado a los cursos del docente
-5. [ ] **Fase 3: quiz** — la parte más intrincada del dominio (§9)
+**Todo lo anterior es administración y lógica. No hay una sola pantalla para el
+alumno.** `/cursos`, `/mis-cursos`, `/progreso` y `/certificados` siguen
+sirviendo `placeholder.blade.php`. Un alumno que inicia sesión hoy no ve nada de
+lo que se construyó.
+
+Cerrar esa brecha es lo único que separa el proyecto de ser usable:
+
+1. [ ] **Aula pública** — catálogo, detalle del curso con inscripción, y la
+       pantalla de clase con su contenido. `ProgressService` ya resuelve qué
+       puede ver cada alumno y por qué; falta la vista
+2. [ ] **Pantalla de quiz** — rendir, responder y ver el resultado.
+       `QuizService` ya resuelve el sorteo, la corrección y los reintentos
+3. [ ] **Revisión de intentos en el panel** — sin esto, un docente no puede
+       atender una nota reclamada, aunque el dato esté guardado
+4. [ ] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
+5. [ ] **Fase 4 en adelante** — tareas, notificaciones, certificados
 
 ### Deuda pendiente
 
 | | |
 |---|---|
+| **Sanitizar el HTML** | Cuatro campos guardan texto enriquecido —descripción de curso, módulo y clase, contenido y enunciado de pregunta—. Al renderizarlos en el sitio público hay que sanitizarlos antes de `{!! !!}`, o cada uno es un vector de XSS. Hoy solo cargan administradores; el día que cargue un profesor, deja de ser teórico |
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
+| `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
 | Registro público | Hoy es un marcador: las cuentas las crea la administración |
 | Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo ni `email_queue` |
-| Google Cloud Storage | Los archivos todavía no se suben a ningún lado |
+| Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
 | `docs/SISTEMA_DISENO.md` | Sus rutas siguen apuntando a `frontend/src/...` de la etapa React; los tokens que enumera sí son correctos |

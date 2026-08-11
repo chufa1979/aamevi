@@ -15,15 +15,25 @@ bloqueo de cuentas desactivadas. La identidad visual de
 [www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
 
 **Panel de administración** (Filament, en `/admin`) — solo para el rol
-administrador. Permite gestionar usuarios con sus fichas de alumno o profesor, y
-el contenido académico: cursos, módulos y clases, con el cronograma y
-corrimiento de fechas en lote.
+administrador. Gestiona:
 
-**Pendiente**: el contenido dentro de cada clase (videos, PDFs), las
-inscripciones, el catálogo público, los quizzes, las tareas y los certificados.
-Todo está especificado en el
-[plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md), que también lleva la
-cuenta de qué está hecho.
+- **Usuarios**, con su ficha de alumno o profesor según el rol
+- **Cursos → módulos → clases**, con cronograma y corrimiento de fechas en lote
+- **Contenido de clase**: video con previsualización, PDF con subida y descarga,
+  texto y consignas con editor enriquecido
+- **Inscripciones**, con aprobación, rechazo y control de cupo
+- **Evaluaciones**: banco de preguntas por clase, quiz de clase, y examen de
+  módulo que sortea un porcentaje del banco combinado de todas sus clases
+
+La lógica del alumno también está implementada y probada —sorteo de preguntas,
+corrección automática, reintentos, y el desbloqueo de una clase al aprobar la
+anterior— pero **todavía no tiene pantallas**: las secciones del sitio siguen
+sirviendo un marcador.
+
+**Pendiente**: el aula pública, la pantalla de rendir un quiz, las tareas, las
+notificaciones y los certificados. El
+[plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué está
+hecho, y su §3-bis documenta las reglas de negocio implementadas.
 
 ---
 

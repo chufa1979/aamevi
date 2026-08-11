@@ -80,10 +80,20 @@ Resources live in `app/Filament/Resources/`, one folder each, with the form and 
 - **`x-icon` is taken** by blade-icons, a Filament dependency, and shadows any component of that name. The project's own is `<x-ui.icon>`.
 - Filament's assets sit outside the Vite build; `php artisan filament:assets` republishes them (already in `deploy.sh`).
 
+## Domain rules live in code, not in the schema
+
+Business rules are enforced in models and services, each covered by a test. **§3-bis of the plan documents all of them** — read it before touching enrollment, quiz or progression logic. The short version:
+
+- **State transitions are methods**, not `status` assignments. `CourseEnrollment::approve()/reject()/activate()/complete()` each validate the source state and throw `EnrollmentException`. Same idea for quizzes.
+- **Business exceptions throw, they don't return false.** Approving an already-rejected enrollment is a programming error and must fail loudly; the panel catches and turns it into a notification.
+- **Two services own the intricate parts**: `QuizService` (draw, grade, attempt limits) and `ProgressService` (who can open which class, and why not). Controllers and Filament actions call them — don't reimplement.
+- **`quiz_question_assignment` records which questions each student got.** The draw is per-student, so without it a disputed grade cannot be reconstructed. Questions are `RESTRICT` on delete for the same reason.
+
 ## Known gaps
 
-- **Domain is partial**: `users`, `students`, `teachers`, `courses`, `modules`, `classes` exist. `class_content`, `course_enrollments`, the quiz tables, tasks and certificates do not — see §2 and §12 of the plan.
-- **Public course pages are placeholders**: `/cursos`, `/progreso` and the rest render `placeholder.blade.php`.
+- **No student-facing screens.** All the domain logic is implemented and tested, but `/cursos`, `/mis-cursos`, `/progreso` and `/certificados` still render `placeholder.blade.php`. This is the single biggest gap — see §12 of the plan.
+- **Rich text is not sanitised yet.** Four fields store HTML from the editor. Blade escapes by default, so the risk appears the moment someone uses `{!! !!}` to render the formatting on the public site. Sanitise there.
+- **Tasks, notifications and certificates** are unimplemented — phases 4 to 6.
 - **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
 - **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.
 - **No CI**: `.github/` is gitignored.
