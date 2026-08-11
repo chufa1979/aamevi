@@ -81,4 +81,40 @@ class ClassContent extends Model
 
         return Storage::disk('public')->url($this->content_url);
     }
+
+    /** URL embebible del video, o null si no se puede incrustar. */
+    public function embedUrl(): ?string
+    {
+        return static::embedUrlFor($this->content_url);
+    }
+
+    /**
+     * Convierte el enlace de un video en su URL para `<iframe>`.
+     *
+     * Es estático para poder previsualizar lo que se está tipeando en el panel,
+     * antes de que exista el registro.
+     *
+     * YouTube reparte el mismo video en varias formas —`watch?v=`, `youtu.be`,
+     * `/embed/`, `/shorts/`, `/live/`— y ninguna sirve directamente dentro de un
+     * iframe salvo la de `/embed/`. Devuelve null para cualquier otro origen:
+     * ahí lo correcto es ofrecer el enlace, no incrustar algo que no va a cargar.
+     */
+    public static function embedUrlFor(?string $url): ?string
+    {
+        if (blank($url)) {
+            return null;
+        }
+
+        $youtube = '~(?:youtube\.com/(?:watch\?(?:[^#]*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})~i';
+
+        if (preg_match($youtube, $url, $matches) === 1) {
+            return "https://www.youtube.com/embed/{$matches[1]}";
+        }
+
+        if (preg_match('~vimeo\.com/(?:video/)?(\d+)~i', $url, $matches) === 1) {
+            return "https://player.vimeo.com/video/{$matches[1]}";
+        }
+
+        return null;
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CourseModules\RelationManagers;
 
 use Filament\Tables\Table;
+use App\Models\ClassContent;
 use Filament\Schemas\Schema;
 use App\Enums\ClassContentType;
 use App\Filament\Forms\RichText;
@@ -10,6 +11,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Illuminate\Contracts\View\View;
 use Filament\Actions\BulkActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -20,6 +22,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
@@ -123,9 +126,21 @@ class ClassesRelationManager extends RelationManager
                             ->maxLength(500)
                             ->columnSpanFull()
                             ->dehydrated()
+                            // Al salir del campo se actualiza la previsualización
+                            ->live(onBlur: true)
                             ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Video))
                             ->required(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Video))
                             ->helperText('YouTube, Vimeo o el enlace del archivo en Google Cloud Storage.'),
+
+                        Placeholder::make('video_preview')
+                            ->hiddenLabel()
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Video)
+                                && filled($get('content_url')))
+                            ->content(fn (Get $get): View => view('filament.video-preview', [
+                                'url' => $get('content_url'),
+                                'embed' => ClassContent::embedUrlFor($get('content_url')),
+                            ])),
 
                         FileUpload::make('content_file')
                             ->label('Archivo PDF')
@@ -133,7 +148,10 @@ class ClassesRelationManager extends RelationManager
                             ->directory('class-content')
                             ->acceptedFileTypes(['application/pdf'])
                             ->maxSize(20480)
+                            // Con ambos, Filament muestra el archivo guardado con
+                            // botones para abrirlo en una pestaña y descargarlo
                             ->downloadable()
+                            ->openable()
                             ->columnSpanFull()
                             ->dehydrated()
                             ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Pdf))
