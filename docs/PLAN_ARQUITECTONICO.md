@@ -1,64 +1,90 @@
-# Plan Arquitectónico - Migración OSDOP
-## De PHP/MySQL → React + NestJS + MySQL 8 + Docker + GCP
+# Plan Arquitectónico — AAMEVi
+## Laravel 12 + Blade + MySQL 8
 
 **Fecha**: 2026-07-28  
 **Escala**: 50 alumnos/curso (inicial), extensible a 1000+  
-**Tecnología**: Monorepo (React + NestJS + Docker)
+**Tecnología**: Laravel 12 (PHP 8.2+) + Blade + Vite 8 + Tailwind 4 + MySQL 8
+**Actualizado**: 2026-08-11
+
+> **Nota de revisión — 2026-08-11**
+>
+> Este documento nació describiendo una migración a monorepo React + NestJS
+> desplegada en GCP, bajo el nombre OSDOP. El proyecto cambió de rumbo: hoy es
+> una aplicación Laravel monolítica con vistas Blade, desplegada en hosting
+> compartido. Las secciones 1 y 4 a 11 fueron reescritas para reflejarlo.
+>
+> **Las secciones 2 (modelo de datos) y 3 (flujos) se conservan sin cambios**:
+> describen el dominio, no el stack, y siguen siendo el contrato a implementar.
 
 ---
 
-## 1. ESTRUCTURA DEL MONOREPO
+## 1. ESTRUCTURA DEL PROYECTO
+
+Aplicación Laravel única. No hay separación backend/frontend: las vistas Blade
+se renderizan en el mismo proceso que resuelve la lógica de negocio.
+
+Marcado con ✅ lo que ya existe en el repo; el resto es lo previsto.
 
 ```
-osdop-platform/
-├── docker-compose.yml          # Orquestación local (MySQL + Backend + Frontend)
-├── .github/
-│   └── workflows/              # CI/CD básico (opcional, deploy manual por ahora)
-├── backend/                    # NestJS
-│   ├── src/
-│   │   ├── modules/
-│   │   │   ├── auth/          # Autenticación JWT + OAuth
-│   │   │   ├── users/         # Usuarios, roles, perfiles
-│   │   │   ├── courses/       # Cursos, módulos, clases
-│   │   │   ├── quiz/          # Preguntas, respuestas, calificaciones
-│   │   │   ├── tasks/         # Tareas (envío/validación)
-│   │   │   ├── notifications/ # Emails, recordatorios
-│   │   │   ├── storage/       # Upload/download de archivos
-│   │   │   ├── certificates/  # Generación de certificados
-│   │   │   └── reports/       # Dashboards y reportes
-│   │   ├── common/            # Guards, decorators, pipes
-│   │   ├── config/            # Variables de entorno
-│   │   ├── database/          # Migrations, seeders
-│   │   └── main.ts
-│   ├── .env.example
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/                   # React + TypeScript
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── auth/          # Login, registro, reset password
-│   │   │   ├── dashboard/     # Inicio por rol
-│   │   │   ├── courses/       # Listado, detalle, inscripción
-│   │   │   ├── classroom/     # Ver clase, contenido, quiz
-│   │   │   ├── admin/         # Panel administrador
-│   │   │   └── profile/       # Perfil usuario
-│   │   ├── components/        # Componentes reutilizables
-│   │   ├── hooks/             # Custom hooks (auth, api, etc)
-│   │   ├── services/          # API calls
-│   │   ├── types/             # TypeScript types
-│   │   ├── styles/            # Tailwind/CSS
-│   │   └── App.tsx
-│   ├── .env.example
-│   ├── Dockerfile
-│   └── package.json
+aamevi/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Auth/           # Login, registro, verificación, Google OAuth
+│   │   │   ├── Users/          # Perfiles de alumno y profesor
+│   │   │   ├── Courses/        # Cursos, módulos, clases, inscripciones
+│   │   │   ├── Quiz/           # Preguntas, intentos, calificación
+│   │   │   ├── Tasks/          # Tareas: envío y corrección
+│   │   │   ├── Notifications/  # Encolado de emails
+│   │   │   ├── Storage/        # Subida y descarga de archivos
+│   │   │   ├── Certificates/   # Generación de certificados
+│   │   │   └── Reports/        # Dashboards y reportes
+│   │   ├── Requests/           # FormRequest: validación explícita
+│   │   └── Middleware/         # Autorización por rol
+│   ├── Models/                 # Eloquent, con trait HasUuids
+│   └── Providers/           ✅
+├── bootstrap/
+│   └── app.php              ✅ Esqueleto slim de Laravel 11+
+├── config/
+│   ├── database.php         ✅
+│   └── navigation.php       ✅ Fuente única del menú y datos de contacto
 ├── database/
-│   ├── migrations/            # SQL migrations (TypeORM)
-│   └── seeds/                 # Datos iniciales
-└── docs/
-    ├── API.md                 # Documentación OpenAPI
-    ├── SCHEMA.md              # Esquema de BD
-    └── DEPLOY.md              # Guía de deployment
+│   ├── migrations/             # Vacío: el esquema de §2 está sin implementar
+│   ├── factories/              # Para tests y seeders
+│   └── seeders/                # Vacío
+├── public/
+│   ├── index.php            ✅ Docroot
+│   ├── images/aamevi.svg    ✅ Isotipo del sitio madre
+│   └── build/                  Generado por Vite (no versionado)
+├── resources/
+│   ├── css/app.css          ✅ Tokens de marca en @theme (Tailwind 4)
+│   ├── js/app.js            ✅ Menú hamburguesa; sin framework JS
+│   └── views/
+│       ├── layouts/app.blade.php  ✅
+│       ├── components/         ✅ header, footer, top-bar, page-hero,
+│       │                          section, button, icon, footer-icons
+│       ├── home.blade.php      ✅
+│       └── placeholder.blade.php ✅
+├── routes/
+│   ├── web.php              ✅ Home + rutas placeholder
+│   ├── api.php              ✅
+│   └── console.php          ✅
+├── tests/
+│   ├── Unit/
+│   └── Feature/
+├── docs/
+│   ├── PLAN_ARQUITECTONICO.md ✅ Este documento
+│   ├── SISTEMA_DISENO.md      ✅ Sistema visual
+│   └── DEPLOY.md              ✅ Procedimiento de despliegue
+├── composer.json            ✅
+├── package.json             ✅
+└── vite.config.js           ✅
 ```
+
+**Sobre `docs/SISTEMA_DISENO.md`**: describe la paleta, tipografía y elementos
+característicos heredados de www.aamevi.ar. Su texto todavía referencia rutas
+`frontend/src/...` de la etapa React; los tokens que enumera son correctos y
+viven hoy en `resources/css/app.css`.
 
 ---
 
@@ -445,216 +471,195 @@ CREATE TABLE email_queue (
 
 ## 4. COMPONENTES PRINCIPALES POR MÓDULO
 
-### Backend - Módulo Auth
-```typescript
-// src/modules/auth/auth.service.ts
-- register(email, password, firstName, lastName, type: 'student' | 'teacher')
-- login(email, password) → JWT token
-- verifyEmail(token)
-- googleOAuth(accessToken) → crea/loguea usuario
-- requestPasswordReset(email)
-- resetPassword(token, newPassword)
-- validateToken(jwt) → returns user
+La sesión es la de Laravel (cookie + `web` middleware), no JWT: al renderizar
+en el servidor no hay cliente separado que necesite un token. Sanctum queda
+disponible por si más adelante hace falta una API para mobile.
 
-// src/modules/auth/jwt.strategy.ts
-- Guardia para rutas protegidas
-- Extrae role del usuario
+### Módulo Auth
+
+```php
+// app/Http/Controllers/Auth/
+RegisteredUserController::store(RegisterRequest)   // type: student|teacher
+AuthenticatedSessionController::store(LoginRequest)
+AuthenticatedSessionController::destroy()
+EmailVerificationController::verify(id, hash)
+GoogleOAuthController::redirect() / callback()     // Laravel Socialite
+PasswordResetLinkController::store(email)
+NewPasswordController::store(token, password)
 ```
 
-### Backend - Módulo Courses
-```typescript
-// src/modules/courses/courses.service.ts
-- createCourse(title, description, teacherId)
-- getCoursesByTeacher(teacherId)
-- getCoursesByStudent(studentId)
-- enrollStudent(courseId, studentId) → status='pending'
-- approveEnrollment(enrollmentId, teacherId)
-- createModule(courseId, title, order)
-- createClass(moduleId, title, activationDate, meetLink?)
+Autorización por rol con middleware y Policies (`CoursePolicy`,
+`EnrollmentPolicy`), no con chequeos sueltos en los controladores.
 
-// src/modules/courses/courses.controller.ts
-- GET /courses
-- POST /courses
-- GET /courses/:id
-- POST /courses/:id/enroll
-- GET /courses/:id/enrollments (solo para profesor)
-- PATCH /enrollments/:id/approve (admin/profesor)
+### Módulo Courses
+
+```php
+// app/Http/Controllers/Courses/
+CourseController::index()      // GET  /cursos
+CourseController::store()      // POST /cursos                (profesor)
+CourseController::show(Course) // GET  /cursos/{course}       (route model binding)
+EnrollmentController::store(Course)          // POST  /cursos/{course}/inscripcion → pending
+EnrollmentController::index(Course)          // GET   /cursos/{course}/inscripciones (profesor)
+EnrollmentController::approve(Enrollment)    // PATCH /inscripciones/{enrollment}/aprobar
+ModuleController::store(Course)
+ClassController::store(CourseModule)         // activationDate, meetLink?
 ```
 
-### Backend - Módulo Quiz
-```typescript
-// src/modules/quiz/quiz.service.ts
-- createQuestion(classId, text, options, correctOption)
-- createQuiz(classId, questionsPerStudent, passingScore, maxAttempts)
-- getRandomQuestions(quizId, studentId, count) 
-  → Selecciona N preguntas aleatorias, las asigna a este alumno
-- submitQuiz(attemptId, answers)
-  → Califica automáticamente, retorna score + passed
-- getStudentAttempts(quizId, studentId) → historial de intentos
+La lógica que excede un CRUD (transiciones de `course_enrollments`, cálculo de
+progreso) va en clases de servicio bajo `app/Services/`, no en el controlador.
+
+### Módulo Quiz
+
+Es la parte más intrincada del dominio; ver §3-B y las tablas de §2.
+
+```php
+// app/Services/Quiz/
+QuizService::createQuestion(CourseClass, text, options, correctOption)
+QuizService::configure(CourseClass, questionsPerStudent, passingScore, maxAttempts)
+QuizService::startAttempt(Quiz, Student): QuizAttempt
+    // Sortea N preguntas del banco de la clase y las graba en
+    // quiz_question_assignment, para que el intento sea reproducible
+QuizService::submit(QuizAttempt, array $answers): QuizResult
+    // Califica automáticamente y devuelve score + passed
+QuizService::attemptsFor(Quiz, Student): Collection
 ```
 
-### Frontend - Páginas Principales
-```typescript
-// pages/auth/LoginPage.tsx
-- Form: email + contraseña
-- Botón: "Login con Google"
-- Link: "¿Olvidaste tu contraseña?"
-- Redirect después de login según role
+### Vistas Blade
 
-// pages/dashboard/StudentDashboard.tsx
-- Mis Cursos (card con progreso %)
-- Clases próximas
-- Tareas pendientes
-- Certificados
+Sustituyen a las páginas React del plan original. Cada una extiende
+`layouts.app` y reutiliza los componentes de `resources/views/components/`.
 
-// pages/dashboard/TeacherDashboard.tsx
-- Mis Cursos
-- Inscripciones pendientes (botón Aprobar/Rechazar)
-- Tareas para calificar
-- Reportes (quién completó qué)
-
-// pages/courses/CourseDetail.tsx
-- Información del curso
-- Botón "Inscribirse" (si no estoy inscrito)
-- Módulos → Clases (árbol visual)
-
-// pages/classroom/ClassDetail.tsx
-- Contenido: videos, PDFs, textos
-- Quiz (si existe)
-  * Mostra preguntas
-  * Maneja reintentos
-  * Muestra score al enviar
-- Tareas (submit file, ver calificación)
-- Botón siguiente clase (si completó)
 ```
+auth/login, auth/register          Form + botón de Google + olvido de contraseña
+dashboard/student                  Mis cursos (con % de progreso), próximas
+                                   clases, tareas pendientes, certificados
+dashboard/teacher                  Mis cursos, inscripciones pendientes con
+                                   aprobar/rechazar, tareas por calificar
+courses/index, courses/show        Catálogo; detalle con árbol módulos → clases
+                                   y botón de inscripción
+classroom/class                    Contenido (video, PDF, texto), quiz con
+                                   reintentos y score, tareas, siguiente clase
+certificates/index                 Listado y descarga
+```
+
+El quiz es la única pantalla con interacción no trivial. Se resuelve con envío
+de formulario por paso; si más adelante se quiere sin recargas, la vía natural
+es Livewire, que fue considerado y pospuesto (§9).
 
 ---
 
-## 5. CONFIGURACIÓN LOCAL CON DOCKER
+## 5. ENTORNO LOCAL
 
-### docker-compose.yml
-```yaml
-version: '3.8'
+El procedimiento paso a paso está en `GETTING_STARTED.md`. Resumen:
 
-services:
-  mysql:
-    image: mysql:8.0
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-    environment:
-      MYSQL_DATABASE: osdop
-      MYSQL_USER: osdop
-      MYSQL_PASSWORD: changeme
-      MYSQL_ROOT_PASSWORD: changeme
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-  backend:
-    build: ./backend
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: "mysql://osdop:changeme@mysql:3306/osdop"
-      JWT_SECRET: "your-secret-key"
-      GOOGLE_CLIENT_ID: "xxx.apps.googleusercontent.com"
-      GOOGLE_CLIENT_SECRET: "xxx"
-      SENDGRID_API_KEY: "SG.xxx"
-      GCS_BUCKET_NAME: "osdop-files"
-    depends_on:
-      - mysql
-    volumes:
-      - ./backend:/app
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3001:3000"
-    environment:
-      REACT_APP_API_URL: "http://localhost:3000"
-      REACT_APP_GOOGLE_CLIENT_ID: "xxx.apps.googleusercontent.com"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-
-volumes:
-  mysql_data:
-```
-
-### Levantar localmente
 ```bash
-# Clonar repo
-git clone <repo> osdop-platform
-cd osdop-platform
-
-# Copiar .env
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-
-# Levantar
-docker-compose up -d
-
-# Base de datos (migrations)
-docker-compose exec backend npm run migrate
-
-# Acceder
-# Frontend: http://localhost:3001
-# Backend: http://localhost:3000
-# Swagger API: http://localhost:3000/api/docs
+composer install
+npm install
+cp .env.example .env && php artisan key:generate
+# configurar DB_* en .env
+php artisan migrate
+npm run dev          # Vite en watch
+php artisan serve    # http://localhost:8000
 ```
+
+Hacen falta **dos procesos** en desarrollo: `php artisan serve` sirve la
+aplicación y `npm run dev` mantiene el servidor de Vite, que es el que resuelve
+la directiva `@vite` de `layouts/app.blade.php` con recarga en caliente. Sin él,
+Blade busca el manifiesto de `public/build` y hay que haber corrido `npm run build`.
+
+**Requisitos**: PHP ≥ 8.2 con `pdo_mysql`, `mbstring`, `intl`, `gd` y `zip`;
+Composer 2; Node ≥ 20.19 (Vite 8 lo exige); MySQL 8 o MariaDB.
+
+### Docker (opcional)
+
+`docker-compose.yml` sigue en el repo y levanta `mysql` + `app` + `nginx`:
+
+```bash
+docker-compose up -d
+docker-compose exec app php artisan migrate
+```
+
+No es el camino recomendado: el entorno de destino es hosting compartido sin
+contenedores, así que desarrollar sin Docker se parece más a producción. El
+compose apunta a `mysql` como host y ejecuta `artisan migrate` al arrancar.
 
 ---
 
 ## 6. TECNOLOGÍAS & LIBRERÍAS
 
-### Backend (NestJS)
+### PHP — instalado
+
 ```json
 {
-  "dependencies": {
-    "@nestjs/core": "^10.0.0",
-    "@nestjs/common": "^10.0.0",
-    "@nestjs/jwt": "^11.0.0",
-    "@nestjs/passport": "^9.0.0",
-    "passport-jwt": "^4.0.1",
-    "passport-google-oauth20": "^2.0.0",
-    "typeorm": "^0.3.0",
-    "pg": "^8.0.0",
-    "axios": "^1.6.0",
-    "@google-cloud/storage": "^6.10.0",
-    "nodemailer": "^6.9.0",
-    "@nestjs/swagger": "^7.0.0"
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^12.0",
+    "laravel/tinker": "^2.10",
+    "laravel/sanctum": "^4.0"
+  },
+  "require-dev": {
+    "pestphp/pest": "^4.0",
+    "pestphp/pest-plugin-laravel": "^4.0",
+    "laravel/pint": "^1.30",
+    "fakerphp/faker": "^1.24",
+    "mockery/mockery": "^1.6"
+  },
+  "config": {
+    "platform": { "php": "8.3.11" }
   }
 }
 ```
 
-### Frontend (React)
+`config.platform.php` fija la resolución de dependencias a **8.3.11**, que es el
+PHP del CLI en el servidor de destino. Ver §9 y `docs/DEPLOY.md`.
+
+### PHP — pendiente de incorporar
+
+| Paquete | Para qué |
+|---|---|
+| `laravel/socialite` | Login con Google (§3-A) |
+| `google/cloud-storage` | Videos, PDFs, entregas y certificados |
+| `barryvdh/laravel-dompdf` | PDF de certificados (§3-E) |
+| `laravel/breeze` *(opcional)* | Andamiaje de auth con Blade, si conviene no escribirlo a mano |
+
+### Front-end — instalado
+
 ```json
 {
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-router-dom": "^6.20.0",
-    "axios": "^1.6.0",
-    "@tanstack/react-query": "^5.0.0",
-    "zustand": "^4.4.0",
-    "tailwindcss": "^3.4.0",
-    "react-hook-form": "^7.48.0",
-    "zod": "^3.22.0"
+  "devDependencies": {
+    "vite": "^8.2.1",
+    "laravel-vite-plugin": "^3.2.0",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3"
   }
 }
 ```
+
+Sin framework de JS. Tailwind 4 se configura **en CSS** con `@theme` dentro de
+`resources/css/app.css`, no en un `tailwind.config.js`. El único JavaScript
+propio es el toggle del menú móvil; el submenú desplegable se resuelve con
+`group-hover` y el buscador es un form GET.
 
 ---
 
 ## 7. TIMELINE DE IMPLEMENTACIÓN
 
+### Fase 0: Base del proyecto — **completada**
+- [x] Esqueleto Laravel 12 con estructura slim (`bootstrap/app.php`)
+- [x] Pipeline de assets: Vite 8 + Tailwind 4
+- [x] Identidad visual del sitio madre portada a componentes Blade
+- [x] `config/navigation.php` como fuente única de navegación
+- [x] Rutas placeholder para todas las secciones
+- [x] Procedimiento de despliegue documentado (`docs/DEPLOY.md`)
+
 ### Fase 1: Setup & Autenticación (1-2 semanas)
-- [ ] Crear repo monorepo
-- [ ] Configurar Docker local
-- [ ] Modelos de BD (users, students, teachers)
-- [ ] Implementar Auth (JWT + Google OAuth)
-- [ ] Login/Register frontend
-- [ ] Email verification
+- [ ] Migraciones de `users`, `students`, `teachers` (§2)
+- [ ] Modelos Eloquent con `HasUuids` y relaciones 1:1
+- [ ] Auth con sesión de Laravel + Policies por rol
+- [ ] Google OAuth con Socialite
+- [ ] Vistas Blade de login y registro
+- [ ] Verificación de email vía `email_queue`
+- [ ] Seeders con usuarios de prueba de cada rol
 
 ### Fase 2: Core Cursos & Clases (2-3 semanas)
 - [ ] Modelos: courses, modules, classes, class_content
@@ -690,55 +695,74 @@ docker-compose exec backend npm run migrate
 - [ ] Modelo de certificado visual
 
 ### Fase 7: Deployment & Polish (1 semana)
-- [ ] Configurar GCP (Cloud Run, Cloud Storage)
-- [ ] Docker image para prod
-- [ ] Variables de entorno
+- [x] Documentación de deploy (`docs/DEPLOY.md`)
+- [ ] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
+- [ ] Variables de entorno de producción (`APP_DEBUG=false`, base, GCS)
+- [ ] Clave SSH en lugar de contraseña
+- [ ] HTTPS y redirección desde HTTP
 - [ ] Testing manual completo
-- [ ] Documentación de deploy
 
 **Total estimado: 10-14 semanas** (depende del equipo)
 
+Las estimaciones vienen del plan original, que suponía dos aplicaciones
+separadas. Con un monolito Blade cabe esperar menos trabajo en las fases 2 a 6,
+porque desaparecen la capa de API, el estado de cliente y la duplicación de
+validaciones entre back y front.
+
 ---
 
-## 8. DEPLOYMENT EN GCP
+## 8. DEPLOYMENT
 
-### Estructura
+El procedimiento completo está en **`docs/DEPLOY.md`**. Acá va lo que condiciona
+el diseño.
+
+### Entorno de demo
+
+`aamevi.demosdesarrollos.com.ar`, hosting compartido en LatinCloud (CloudSSH).
+No hay contenedores ni Cloud Run: se clona el repo en la carpeta del dominio,
+de modo que el `public/` del proyecto **es** el docroot y `.env` con `vendor/`
+quedan fuera del alcance web.
+
 ```
-Google Cloud Project
-├── Cloud SQL (MySQL 8)
-├── Cloud Run (Backend NestJS)
-├── Cloud Storage (Archivos: videos, PDFs, certificados)
-└── Vercel o Cloud Run (Frontend React)
+~/aamevi.demosdesarrollos.com.ar/
+├── app/  config/  resources/  vendor/  .env      ← fuera del docroot
+└── public/                                       ← docroot verificado
 ```
 
-### Pasos (deploy manual)
+### Restricciones relevadas (2026-08-11)
+
+| | |
+|---|---|
+| PHP del web (FPM) | 8.4.3 |
+| PHP del CLI (SSH) | **8.3.11** — `/etc/php/` no lista 8.4 |
+| Composer / Git | disponibles |
+| Node / npm | **18.20.4** / 10.7.0 |
+| rsync | no está |
+
+Dos consecuencias de diseño:
+
+1. **Artisan corre en el CLI**, o sea en 8.3. Eso descartó Laravel 13, que vía
+   Symfony 8 exige `php >=8.4.1`: el sitio habría cargado, pero migraciones,
+   cachés y colas quedaban inutilizables.
+2. **Node 18 no alcanza para Vite 8** (`^20.19.0 || >=22.12.0`). Se instala Node
+   moderno con `nvm` en el home del usuario, o se compilan los assets localmente
+   y se suben con `scp` (no hay `rsync`).
+
+### Actualizaciones
+
 ```bash
-# 1. Buildear
-docker build -t gcr.io/my-project/osdop-backend:latest ./backend
-docker build -t gcr.io/my-project/osdop-frontend:latest ./frontend
-
-# 2. Push a Container Registry
-docker push gcr.io/my-project/osdop-backend:latest
-docker push gcr.io/my-project/osdop-frontend:latest
-
-# 3. Deploy a Cloud Run
-gcloud run deploy osdop-backend \
-  --image gcr.io/my-project/osdop-backend:latest \
-  --platform managed \
-  --region us-central1 \
-  --set-env-vars DATABASE_URL=... JWT_SECRET=...
-
-# 4. Frontend a Vercel (o Cloud Run)
-cd frontend
-npm run build
-vercel --prod
+git pull
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan migrate --force
+php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
-Costo estimado:
-- **Cloud SQL**: $15-30/mes (pequeña instancia MySQL)
-- **Cloud Run**: $5-10/mes (bajo tráfico)
-- **Cloud Storage**: $0.020/GB + transferencia (mínimo $1-2/mes)
-- **Total**: ~$25-50/mes
+### Producción definitiva
+
+Sin definir. Las opciones razonables son un VPS con PHP 8.4 —que permitiría
+volver a Laravel 13— o mantener hosting compartido. Google Cloud Storage sigue
+siendo la elección para archivos (§9), y es independiente de dónde corra la app.
 
 ---
 
@@ -756,19 +780,36 @@ Costo estimado:
 `CHAR(36)` y en migraciones Laravel se usa `$table->uuid('id')->primary()`, que
 genera exactamente eso. Los modelos usan el trait `HasUuids`.
 
-### ¿Por qué NestJS?
-- ✅ Estructura modular clara
-- ✅ TypeScript nativo (type-safety)
-- ✅ Integración fácil con TypeORM
-- ✅ Middleware, guards, pipes listos
-- ✅ Swagger automático (documentación)
+### ¿Por qué Laravel (y no NestJS)?
+- ✅ Eloquent cubre el modelo de §2 sin capa extra de ORM
+- ✅ Migraciones, validación (`FormRequest`), Policies, colas y scheduler ya vienen
+- ✅ Blade permite render en servidor: una sola aplicación en lugar de dos
+- ✅ Corre en hosting compartido barato, que es el entorno real de destino
+- ✅ Un solo lenguaje en todo el proyecto
 
-### ¿Por qué React?
-- ✅ Ecosistema más grande
-- ✅ Componentes reutilizables
-- ✅ Performance excelente
-- ✅ TypeScript soporte nativo
-- ✅ Muchas librerías (react-query, zustand, etc)
+### ¿Por qué Blade (y no el SPA React)?
+
+Existía una rama, `feat/identidad-visual-aamevi`, con un front React completo y
+ya branded. Se decidió portarlo a Blade en vez de conservarlo:
+
+- ✅ Un artefacto para desplegar, no dos, en un hosting sin Node moderno
+- ✅ Sin API intermedia, sin CORS, sin duplicar validaciones entre back y front
+- ✅ Sesión de servidor en lugar de manejo de tokens en el cliente
+- ✅ La identidad visual se conserva: los tokens y componentes se tradujeron uno
+  a uno (§1 y `docs/SISTEMA_DISENO.md`)
+- ⚠️ Costo: las pantallas muy interactivas —el quiz sobre todo— requieren más
+  trabajo o incorporar Livewire
+
+### ¿Por qué Laravel 12 y no 13?
+
+Laravel 13 arrastra Symfony 8, que exige `php >=8.4.1`. El servidor de destino
+sirve el sitio con PHP 8.4.3 pero **solo ofrece 8.3.11 por SSH**, y Artisan corre
+ahí: migraciones, `config:cache`, scheduler y workers habrían quedado
+inutilizables. Laravel 12 usa Symfony 7 (`php >=8.2`) y funciona en ambos.
+
+Es reversible: si el hosting llega a ofrecer PHP 8.4 en el CLI, volver a 13 es
+revertir un commit. `config.platform.php = 8.3.11` evita mientras tanto que
+`composer update` incorpore paquetes que el CLI no pueda ejecutar.
 
 ### ¿Por qué Google Cloud Storage (no local)?
 - ✅ Escalable (no depende del servidor)
@@ -780,10 +821,16 @@ genera exactamente eso. Los modelos usan el trait `HasUuids`.
 ### Aleatorización de Preguntas
 **Problema**: Todos ven las mismas 3 preguntas → facilita copia
 **Solución**: Por cada alumno, seleccionar N preguntas aleatorias **en el momento que empieza el intento**
-```typescript
-// Backend
-const questions = await getRandomQuestions(quizId, 3);
-// Guardar en quiz_question_assignment para tracking
+```php
+// app/Services/Quiz/QuizService.php
+$questions = $quiz->courseClass->questions()
+    ->inRandomOrder()
+    ->limit($quiz->questions_per_student)
+    ->get();
+
+// Se graban en quiz_question_assignment para que el intento sea reproducible:
+// sin esto no se puede auditar ni recalcular una nota reclamada.
+$attempt->assignedQuestions()->attach($questions->pluck('id'));
 ```
 
 ---
@@ -799,17 +846,18 @@ const questions = await getRandomQuestions(quizId, 3);
 ### Implicancias Técnicas
 
 **Quiz - Feedback Inmediato**:
-```typescript
-// Al enviar quiz, backend retorna:
-{
-  score: 75,
-  passed: true,
-  feedback: "¡Pasaste con 75%! Siguiente clase desbloqueada.",
-  correctAnswers: [
-    { questionId: 1, userAnswer: "A", correct: true },
-    { questionId: 2, userAnswer: "C", correct: false, correctOption: "B" }
-  ]
-}
+```php
+// QuizService::submit() devuelve el resultado que la vista Blade renderiza
+// en la misma respuesta, sin round-trip adicional:
+[
+    'score' => 75,
+    'passed' => true,
+    'feedback' => '¡Pasaste con 75%! Siguiente clase desbloqueada.',
+    'answers' => [
+        ['question_id' => '...', 'given' => 'A', 'correct' => true],
+        ['question_id' => '...', 'given' => 'C', 'correct' => false, 'expected' => 'B'],
+    ],
+]
 ```
 
 **PWA (Progressive Web App)**:
@@ -821,12 +869,101 @@ const questions = await getRandomQuestions(quizId, 3);
 
 ---
 
-## 11. PRÓXIMOS PASOS
+## 11. PANEL DE ADMINISTRACIÓN (CMS)
 
-1. ✅ **Plan arquitectónico**: Completado y guardado
-2. **Setup del repo**: Crear estructura monorepo
-3. **Configurar Docker local**: `docker-compose.yml`
-4. **Modelo de BD**: Migraciones TypeORM
-5. **Empezar Fase 1**: Auth (JWT + Google OAuth)
+Backoffice para que administración y docentes gestionen el material sin tocar la
+base ni el código. **El sitio público de §1 no cambia**: son dos superficies
+distintas sobre el mismo dominio de datos.
 
-**¿Listo para empezar?**
+### Dos paneles
+
+| Ruta | Quién entra | Alcance |
+|---|---|---|
+| `/admin` | `users.role = 'admin'` | Todo: usuarios, docentes, cursos de cualquier profesor, configuración |
+| `/profesores` | `users.role = 'teacher'` | Solo sus propios cursos, su material y sus alumnos |
+
+El enum `users.role` de §2 ya distingue `admin`, `teacher` y `student`, así que
+**no hace falta un paquete de permisos**: alcanza con middleware por rol y
+Policies. Si más adelante aparecen permisos finos (p. ej. un docente que puede
+editar el curso de otro), ahí entra `spatie/laravel-permission`.
+
+### Alcance funcional
+
+**Contenido académico**
+- Cursos: alta, edición, activar/desactivar, asignar docente, cupo
+- Módulos: creación y reordenamiento dentro del curso
+- Clases: orden, `activation_date`, marcar en vivo con `meet_link`, grabación
+- Contenido de clase: videos, PDFs y texto — el archivo va a GCS, la base guarda la URL
+- **Cronograma**: vista por curso ordenada por `activation_date`, con edición de
+  fechas en lote (correr todo un módulo N días es la operación real de un docente)
+
+**Evaluación**
+- Banco de preguntas por clase, con opciones y marca de correcta
+- Configuración del quiz: `questions_per_student`, `passing_score`, `max_attempts`, `randomize_options`
+- Tareas: consigna, fecha límite, y corrección con nota y devolución
+- Intentos de cada alumno, incluyendo **qué preguntas le tocaron** (vía `quiz_question_assignment`)
+
+**Personas**
+- CRUD de alumnos, docentes y administradores
+- Alta de docente = fila en `users` con `role='teacher'` + fila en `teachers`
+- Inscripciones: aprobar y rechazar (§3-A)
+- Activar/desactivar usuarios en lugar de borrarlos
+
+**Operación**
+- Cola de emails (`email_queue`): estado, reintentos, errores
+- Certificados emitidos
+- Reportes de progreso por curso
+
+### Opciones evaluadas
+
+| Opción | A favor | En contra |
+|---|---|---|
+| **Filament** (MIT, gratuito) | Constructor de paneles sobre Livewire. Trae CRUD, tablas con filtros y búsqueda, formularios, subida de archivos y *relation managers*, que calzan exactamente con la jerarquía cursos → módulos → clases → contenido. Soporta múltiples paneles, uno para `/admin` y otro para `/profesores` | Incorpora Livewire y Alpine; estética propia, ajena a la identidad AAMEVi; tiene curva de aprendizaje |
+| **Blade a mano** | Control total, identidad institucional coherente, cero dependencias nuevas | Hay que escribir tablas, filtros, paginación, subida de archivos y validación para ~12 entidades. Es el grueso del trabajo del proyecto |
+| **Laravel Nova** | Oficial y pulido | Licencia paga por sitio |
+| **Backpack** | Maduro | Varias piezas son pagas |
+
+### Recomendación
+
+**Filament para el backoffice, Blade plano para el sitio público.**
+
+El panel concentra casi todo el volumen de CRUD, y es justo donde la identidad
+visual importa poco: no lo ve nadie de afuera. Escribirlo a mano son semanas
+reproduciendo lo que un constructor de paneles ya resuelve.
+
+Esto no contradice la decisión de §9 de posponer Livewire: entraría **solo** en
+`/admin` y `/profesores`. Las vistas públicas siguen siendo Blade sin framework
+de JavaScript.
+
+### Verificar antes de adoptarlo
+
+⚠️ **No está confirmado** que Filament resuelva contra Laravel 12 con
+`platform.php = 8.3.11`. Comprobarlo antes de comprometerse:
+
+```bash
+composer require filament/filament:"^5.0" --dry-run
+```
+
+Si no resuelve, probar `^4.0`. Si ninguna de las dos entra, las alternativas son
+Nova o Blade a mano. Tener en cuenta además que Filament trae su propio pipeline
+de assets: convive con el Vite del sitio público, pero son dos builds.
+
+### Impacto en el resto del plan
+
+- **§2**: sin cambios. El enum de roles ya contempla `admin`
+- **§4**: los controladores de `Courses` quedan para el sitio público —catálogo,
+  inscripción, aula—. La administración pasa a ser recursos del panel
+- **§7**: hace falta una fase nueva para el panel, entre la 2 y la 3, porque
+  cargar contenido de prueba a mano deja de ser viable apenas exista el modelo
+
+---
+
+## 12. PRÓXIMOS PASOS
+
+1. [x] **Plan arquitectónico**: actualizado a Laravel 12 + Blade (2026-08-11)
+2. [x] **Base del proyecto**: pipeline de assets, identidad visual, layout
+3. [x] **Procedimiento de deploy**: `docs/DEPLOY.md`
+4. [ ] **Primer despliegue** en `aamevi.demosdesarrollos.com.ar`
+5. [ ] **Migraciones de §2**: empezar por `users`, `students`, `teachers`
+6. [ ] **Fase 1**: autenticación con sesión + Google OAuth
+7. [ ] **Decidir el panel**: correr el `--dry-run` de Filament y confirmar (§11)
