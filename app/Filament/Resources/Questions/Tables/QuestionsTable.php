@@ -34,6 +34,8 @@ class QuestionsTable
                     ->label('Pregunta')
                     ->searchable()
                     ->wrap()
+                    // En el listado interesa el texto, no el marcado
+                    ->formatStateUsing(fn (?string $state): string => strip_tags((string) $state))
                     ->limit(100),
 
                 TextColumn::make('options_count')

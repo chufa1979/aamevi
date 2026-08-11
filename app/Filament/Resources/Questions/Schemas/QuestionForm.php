@@ -4,10 +4,10 @@ namespace App\Filament\Resources\Questions\Schemas;
 
 use App\Models\CourseClass;
 use Filament\Schemas\Schema;
+use App\Filament\Forms\RichText;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use App\Filament\Forms\QuestionOptions;
-use Filament\Forms\Components\Textarea;
 
 class QuestionForm
 {
@@ -34,9 +34,8 @@ class QuestionForm
                     ->preload()
                     ->required(),
 
-                Textarea::make('text')
+                RichText::make('text')
                     ->label('Pregunta')
-                    ->rows(2)
                     ->required(),
 
                 QuestionOptions::repeater(),

@@ -5,11 +5,12 @@ namespace App\Filament\Resources\CourseClasses\RelationManagers;
 use App\Models\Question;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
+use App\Filament\Forms\RichText;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Textarea;
+use App\Filament\Forms\QuestionOptions;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
@@ -30,9 +31,8 @@ class QuestionsRelationManager extends RelationManager
         return $schema
             ->columns(4)
             ->components([
-                Textarea::make('text')
+                RichText::make('text')
                     ->label('Pregunta')
-                    ->rows(2)
                     ->required()
                     ->columnSpan(3),
 
@@ -68,6 +68,9 @@ class QuestionsRelationManager extends RelationManager
                     ->label('Pregunta')
                     ->searchable()
                     ->wrap()
+                    // En el listado interesa el texto, no el marcado: sin esto
+                    // la celda mostraría las etiquetas del editor
+                    ->formatStateUsing(fn (?string $state): string => strip_tags((string) $state))
                     ->limit(120),
 
                 TextColumn::make('options_count')
