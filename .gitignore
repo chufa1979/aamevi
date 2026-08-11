@@ -51,4 +51,5 @@ _ide_helper_models.php
 /public/hot
 
 # Composer
-composer.lock
+# composer.lock SE COMMITEA: es lo que garantiza que el hosting instale
+# exactamente las mismas versiones que se probaron acá.
