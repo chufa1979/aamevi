@@ -6,10 +6,10 @@ use Filament\Tables\Table;
 use App\Models\CourseModule;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
+use App\Filament\Forms\RichText;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -43,9 +43,8 @@ class ModulesRelationManager extends RelationManager
                 ->default(fn (): int => $this->getOwnerRecord()->modules()->max('order_number') + 1)
                 ->helperText('Define la secuencia dentro del curso.'),
 
-            Textarea::make('description')
+            RichText::make('description')
                 ->label('Descripción')
-                ->rows(3)
                 ->columnSpanFull(),
         ]);
     }

@@ -5,8 +5,8 @@ namespace App\Filament\Resources\CourseModules;
 use Filament\Tables\Table;
 use App\Models\CourseModule;
 use Filament\Schemas\Schema;
+use App\Filament\Forms\RichText;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
@@ -54,9 +54,8 @@ class CourseModuleResource extends Resource
                         ->minValue(1)
                         ->required(),
 
-                    Textarea::make('description')
+                    RichText::make('description')
                         ->label('Descripción')
-                        ->rows(3)
                         ->columnSpanFull(),
                 ]),
         ]);

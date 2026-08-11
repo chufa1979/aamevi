@@ -4,9 +4,9 @@ namespace App\Filament\Resources\Courses\Schemas;
 
 use App\Models\Teacher;
 use Filament\Schemas\Schema;
+use App\Filament\Forms\RichText;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -25,9 +25,8 @@ class CourseForm
                             ->maxLength(255)
                             ->columnSpanFull(),
 
-                        Textarea::make('description')
+                        RichText::make('description')
                             ->label('Descripción')
-                            ->rows(4)
                             ->columnSpanFull(),
 
                         /*

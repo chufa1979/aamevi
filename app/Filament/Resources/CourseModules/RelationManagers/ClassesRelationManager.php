@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CourseModules\RelationManagers;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use App\Enums\ClassContentType;
+use App\Filament\Forms\RichText;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
@@ -14,13 +15,11 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
@@ -77,9 +76,8 @@ class ClassesRelationManager extends RelationManager
                     ->label('Grabación disponible')
                     ->visible(fn (Get $get): bool => (bool) $get('is_live_session')),
 
-                Textarea::make('description')
+                RichText::make('description')
                     ->label('Descripción')
-                    ->rows(3)
                     ->columnSpanFull(),
 
                 /*
@@ -144,17 +142,10 @@ class ClassesRelationManager extends RelationManager
                             // van al disco público local.
                             ->helperText('Hasta 20 MB.'),
 
-                        RichEditor::make('description')
+                        RichText::make('description')
                             ->label(fn (Get $get): string => self::tipoEs($get, ClassContentType::Task)
                                 ? 'Consigna'
                                 : 'Texto')
-                            ->toolbarButtons([
-                                'bold', 'italic', 'underline', 'strike',
-                                'h2', 'h3',
-                                'bulletList', 'orderedList',
-                                'link', 'blockquote',
-                                'undo', 'redo',
-                            ])
                             ->columnSpanFull()
                             ->dehydrated()
                             ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Text)

@@ -61,6 +61,47 @@ class CourseResourceTest extends TestCase
         ]);
     }
 
+    public function test_la_descripcion_del_curso_acepta_texto_enriquecido(): void
+    {
+        $teacher = Teacher::factory()->create();
+
+        Livewire::test(CreateCourse::class)
+            ->fillForm([
+                'title' => 'Curso con formato',
+                'description' => '<p>Dictado por <strong>especialistas</strong>.</p><ul><li>Módulo inicial</li></ul>',
+                'teacher_id' => $teacher->id,
+                'max_students' => 30,
+                'is_active' => true,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $description = Course::where('title', 'Curso con formato')->firstOrFail()->description;
+
+        $this->assertStringContainsString('<strong>especialistas</strong>', $description);
+        $this->assertStringContainsString('<ul>', $description);
+    }
+
+    public function test_la_descripcion_del_modulo_acepta_texto_enriquecido(): void
+    {
+        $course = Course::factory()->create();
+
+        Livewire::test(ModulesRelationManager::class, [
+            'ownerRecord' => $course,
+            'pageClass' => EditCourse::class,
+        ])
+            ->callAction(TestAction::make('create')->table(), data: [
+                'title' => 'Módulo con formato',
+                'order_number' => 1,
+                'description' => '<p>Contenido en <em>cursiva</em>.</p>',
+            ])
+            ->assertHasNoActionErrors();
+
+        $description = CourseModule::where('title', 'Módulo con formato')->firstOrFail()->description;
+
+        $this->assertStringContainsString('<em>cursiva</em>', $description);
+    }
+
     public function test_se_puede_agregar_un_modulo_al_curso(): void
     {
         $course = Course::factory()->create();
