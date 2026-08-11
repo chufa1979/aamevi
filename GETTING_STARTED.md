@@ -171,22 +171,6 @@ Agregar un color o un tamaño es agregar una variable ahí. Ver
 
 ---
 
-## Docker (opcional)
-
-`docker-compose.yml` levanta `mysql` + `app` + `nginx`:
-
-```bash
-docker-compose up -d
-docker-compose exec app php artisan migrate
-docker-compose logs -f app
-```
-
-**No es el camino recomendado.** El entorno de destino es hosting compartido sin
-contenedores, así que trabajar sin Docker se parece más a producción. Además el
-compose no contempla el build de assets.
-
----
-
 ## Problemas frecuentes
 
 **`zsh: command not found: php`**
@@ -210,8 +194,7 @@ Si corriste `php artisan config:cache`, Laravel deja de leer el archivo.
 
 **Conexión rechazada a MySQL**
 Verificá que el servicio esté arriba (`brew services list`) y que `DB_HOST` sea
-`127.0.0.1` y no `mysql`, que es el nombre del contenedor y solo resuelve dentro
-de Docker.
+`127.0.0.1`. Si en `.env` figura un host remoto, estás apuntando a otra base.
 
 ---
 

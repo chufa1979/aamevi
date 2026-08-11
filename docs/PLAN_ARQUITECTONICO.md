@@ -570,18 +570,9 @@ Blade busca el manifiesto de `public/build` y hay que haber corrido `npm run bui
 **Requisitos**: PHP ≥ 8.2 con `pdo_mysql`, `mbstring`, `intl`, `gd` y `zip`;
 Composer 2; Node ≥ 20.19 (Vite 8 lo exige); MySQL 8 o MariaDB.
 
-### Docker (opcional)
-
-`docker-compose.yml` sigue en el repo y levanta `mysql` + `app` + `nginx`:
-
-```bash
-docker-compose up -d
-docker-compose exec app php artisan migrate
-```
-
-No es el camino recomendado: el entorno de destino es hosting compartido sin
-contenedores, así que desarrollar sin Docker se parece más a producción. El
-compose apunta a `mysql` como host y ejecuta `artisan migrate` al arrancar.
+**Sin contenedores.** El proyecto se instala directamente sobre PHP y MySQL
+locales. El entorno de destino es hosting compartido, donde tampoco hay Docker,
+así que desarrollar así se parece más a producción.
 
 ---
 
@@ -719,9 +710,8 @@ el diseño.
 ### Entorno de demo
 
 `aamevi.demosdesarrollos.com.ar`, hosting compartido en LatinCloud (CloudSSH).
-No hay contenedores ni Cloud Run: se clona el repo en la carpeta del dominio,
-de modo que el `public/` del proyecto **es** el docroot y `.env` con `vendor/`
-quedan fuera del alcance web.
+Se clona el repo en la carpeta del dominio, de modo que el `public/` del proyecto
+**es** el docroot y `.env` con `vendor/` quedan fuera del alcance web.
 
 ```
 ~/aamevi.demosdesarrollos.com.ar/
