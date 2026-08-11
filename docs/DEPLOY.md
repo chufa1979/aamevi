@@ -32,20 +32,37 @@ Dos consecuencias que explican decisiones del proyecto:
 
 ## Puesta en marcha (una sola vez)
 
-### 1. Clonar en la carpeta del dominio
+### 1. Traer el repo a la carpeta del dominio
 
-El repo tiene su propio `public/`, que pasa a ser el docroot. `git clone` exige
-un destino vacío, así que primero se borra el `public/` que crea el panel:
+El repo tiene su propio `public/`, que pasa a ser el docroot.
+
+**No usar `git clone`**: exige que el destino esté vacío, y la carpeta del
+dominio ya trae un `public/` creado por el panel. Además, `git clone <url>` sin
+un `.` final crea un subdirectorio `aamevi/` y deja todo un nivel más abajo, con
+lo que el docroot queda apuntando a una carpeta vacía.
 
 ```bash
 cd ~/aamevi.demosdesarrollos.com.ar
-rmdir public
-git clone https://github.com/chufa1979/aamevi.git .
-git checkout develop
+
+git init
+git remote add origin https://github.com/chufa1979/aamevi.git
+git fetch origin develop
+git checkout -t origin/develop -f
 ```
 
-Queda `.env`, `vendor/` y el código fuera del docroot: solo `public/` es
+`init` + `fetch` + `checkout -f` deja el mismo resultado que un clone, pero
+tolera que el directorio ya tenga contenido. Verificar que `app/`, `config/`,
+`resources/` y `public/` quedaron en la raíz del dominio:
+
+```bash
+ls -la
+```
+
+Así, `.env`, `vendor/` y el código quedan fuera del docroot: solo `public/` es
 alcanzable por web.
+
+> Si en un intento anterior quedó un subdirectorio `aamevi/`, borrarlo con
+> `rm -rf aamevi` antes de empezar. No contiene nada propio.
 
 ### 2. Node moderno con nvm
 
