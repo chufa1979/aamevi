@@ -1,245 +1,209 @@
-# AAMEVI - E-Learning Platform
+# AAMEVi — Plataforma de E-Learning
 
-Plataforma de educación en línea moderna, construida con **Laravel + Blade + MySQL + Docker**.
+Plataforma de formación en medicina del estilo de vida para profesionales de la
+salud, de la **Asociación Argentina de Medicina del Estilo de Vida**.
 
-## 📋 Características
+Construida con **Laravel 12 + Blade + MySQL 8**.
 
-- ✅ **Cursos con Módulos y Clases** - Estructura jerárquica clara
-- ✅ **Quiz Interactivos** - Preguntas aleatorias, calificación automática, reintentos
-- ✅ **Contenido Multimodal** - Videos, PDFs, textos, tareas, clases en vivo (Google Meet)
-- ✅ **Inscripción & Validación** - Formulario de inscripción, aprobación por profesor
-- ✅ **Seguimiento de Progreso** - Dashboard para profesores y alumnos
-- ✅ **Tareas** - Envío de archivos, calificación por profesor
-- ✅ **Certificados** - Generación automática al completar cursos
-- ✅ **Autenticación** - Usuario/contraseña + Google OAuth
-- ✅ **Notificaciones** - Emails: verificación, recordatorios, certificados
-- ✅ **PWA** - Funciona como app móvil en navegador
+## Estado
 
-## 🚀 Tech Stack
+El proyecto está en desarrollo temprano.
 
-### Backend & Frontend (Full Stack)
-- **Laravel 11** - Framework PHP con soporte a Blade templates
-- **Eloquent ORM** - ORM para MySQL
-- **MySQL 8** - Base de datos relacional
-- **Blade** - Motor de templates
-- **Tailwind CSS** - Utility-first CSS
-- **Laravel Sanctum** - Autenticación segura
-- **Google OAuth** - Login con Google
-- **Google Cloud Storage** - Almacenamiento de archivos
+**Implementado**: esqueleto Laravel, pipeline de assets (Vite + Tailwind), la
+identidad visual de [www.aamevi.ar](https://www.aamevi.ar) portada a componentes
+Blade, home y rutas de todas las secciones.
 
-### DevOps
-- **Docker** - Containerización
-- **Docker Compose** - Orquestación local
-- **Nginx** - Reverse proxy
-- **PHP-FPM** - PHP FastCGI Process Manager
+**Pendiente**: todo el dominio. Las tablas, modelos y módulos descritos abajo
+están especificados en el plan arquitectónico pero **todavía no existen en el
+código**.
 
 ---
 
-## 📦 Estructura del Proyecto
+## Funcionalidad prevista
+
+| | |
+|---|---|
+| **Cursos con módulos y clases** | Estructura jerárquica: curso → módulo → clase → contenido |
+| **Quiz** | Preguntas aleatorias por alumno, calificación automática, reintentos |
+| **Contenido multimodal** | Videos, PDFs, textos, tareas y clases en vivo por Google Meet |
+| **Inscripción con aprobación** | El alumno solicita, el docente aprueba |
+| **Seguimiento de progreso** | Paneles diferenciados para alumno y docente |
+| **Tareas** | Envío de archivos y corrección con nota y devolución |
+| **Certificados** | Generación automática de PDF al completar el curso |
+| **Autenticación** | Usuario y contraseña, más Google OAuth |
+| **Notificaciones** | Emails de verificación, recordatorios y certificados |
+| **Panel de administración** | Backoffice en `/admin` y `/profesores` para gestionar el material |
+
+---
+
+## Stack
+
+| Capa | Tecnología |
+|---|---|
+| Framework | Laravel 12 (PHP 8.2+) |
+| Vistas | Blade, renderizado en servidor |
+| ORM | Eloquent, con UUIDs como clave primaria |
+| Base de datos | MySQL 8 (InnoDB, `utf8mb4_unicode_ci`) |
+| Estilos | Tailwind 4, configurado en CSS con `@theme` |
+| Build | Vite 8 (requiere Node ≥ 20.19) |
+| Autenticación | Sesión de Laravel; Sanctum disponible para una futura API |
+| Archivos | Google Cloud Storage — la base guarda solo URLs |
+
+No hay framework de JavaScript en el sitio público: el único JS propio es el
+toggle del menú móvil.
+
+---
+
+## Estructura
 
 ```
 aamevi/
-├── app/                     # Código Laravel
+├── app/
 │   ├── Http/
-│   │   ├── Controllers/    # Controladores por dominio
-│   │   │   ├── Auth/       # Autenticación
-│   │   │   ├── Users/      # Usuarios
-│   │   │   ├── Courses/    # Cursos, módulos, clases
-│   │   │   ├── Quiz/       # Preguntas, evaluaciones
-│   │   │   ├── Tasks/      # Tareas
-│   │   │   ├── Notifications/
-│   │   │   ├── Storage/    # Upload/download
-│   │   │   ├── Certificates/
-│   │   │   └── Reports/
-│   │   ├── Middleware/     # Middleware personalizado
-│   │   └── Requests/       # Form Requests (validación)
-│   ├── Models/             # Modelos Eloquent
-│   ├── Providers/          # Service Providers
-│   └── Console/            # Comandos artisan personalizados
-├── bootstrap/
-│   └── app.php             # Configuración de la aplicación
-├── config/                 # Archivos de configuración
-│   ├── app.php
+│   │   ├── Controllers/     # Por dominio: Auth, Users, Courses, Quiz, Tasks…
+│   │   ├── Requests/        # Validación con FormRequest
+│   │   └── Middleware/
+│   ├── Models/              # Eloquent
+│   └── Providers/
+├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
+├── config/
 │   ├── database.php
-│   ├── filesystems.php
-│   └── logging.php
+│   └── navigation.php       # Fuente única del menú y datos de contacto
 ├── database/
-│   ├── migrations/         # Migraciones de esquema
-│   ├── seeders/            # Seeders para datos iniciales
-│   └── factories/          # Model factories para testing
-├── resources/
-│   ├── views/              # Blade templates
-│   │   ├── layouts/        # Layouts base
-│   │   ├── components/     # Componentes Blade reutilizables
-│   │   └── ...             # Vistas por feature
-│   ├── css/                # Estilos (Tailwind)
-│   ├── js/                 # JavaScript (Alpine.js, etc.)
-│   └── lang/               # Localizaciones (es)
-├── routes/
-│   ├── web.php             # Rutas web
-│   ├── api.php             # Rutas API
-│   └── console.php         # Comandos CLI
-├── storage/                # Archivos generados
-│   ├── app/                # Uploads
-│   ├── logs/               # Logs de aplicación
-│   └── framework/          # Cache, sessions
-├── tests/
-│   ├── Unit/               # Tests unitarios
-│   └── Feature/            # Tests de características
+│   ├── migrations/          # Único lugar donde cambia el esquema
+│   ├── seeders/
+│   └── factories/
 ├── public/
-│   ├── index.php           # Punto de entrada
-│   ├── css/                # CSS compilado
-│   └── js/                 # JS compilado
+│   ├── index.php            # Docroot
+│   ├── images/aamevi.svg
+│   └── build/               # Assets compilados (no versionado)
+├── resources/
+│   ├── css/app.css          # Tokens de marca en @theme
+│   ├── js/app.js
+│   ├── lang/es/
+│   └── views/
+│       ├── layouts/
+│       └── components/      # header, footer, page-hero, section, button…
+├── routes/
+│   ├── web.php
+│   ├── api.php
+│   └── console.php
+├── tests/
+│   ├── Unit/
+│   └── Feature/
 ├── docs/
-│   └── PLAN_ARQUITECTONICO.md
-├── Dockerfile
-├── docker-compose.yml
-├── nginx.conf
+│   ├── PLAN_ARQUITECTONICO.md
+│   ├── SISTEMA_DISENO.md
+│   └── DEPLOY.md
 ├── composer.json
-├── artisan                 # Laravel CLI
-├── .env.example
-├── .gitignore
-└── README.md
+├── package.json
+└── vite.config.js
 ```
 
 ---
 
-## 🛠️ Setup Local
+## Puesta en marcha
 
-### Prerequisitos
-- **PHP 8.2+**
-- **Composer**
-- **Docker & Docker Compose**
-- **Git**
+Requiere **PHP ≥ 8.2**, **Composer 2**, **Node ≥ 20.19** y **MySQL 8**.
 
-### Instalación
-
-1. **Clonar el repo**
-   ```bash
-   git clone https://github.com/chufa1979/aamevi.git
-   cd aamevi
-   ```
-
-2. **Copiar variables de entorno**
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Levantar con Docker**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Generar app key**
-   ```bash
-   docker-compose exec app php artisan key:generate
-   ```
-
-5. **Acceder**
-   - **Aplicación**: http://localhost:8000
-   - **API Health Check**: http://localhost:8000/api/health
-   - **Base de datos**: mysql://aamevi:aamevi@localhost:3306/aamevi_db
-
-### Verificar que todo funciona
 ```bash
-# Ver logs
-docker-compose logs -f app
+git clone https://github.com/chufa1979/aamevi.git
+cd aamevi
 
-# Ejecutar migraciones (se hacen automáticamente en startup)
-docker-compose exec app php artisan migrate
+composer install
+npm install
 
-# Ejecutar seeders
-docker-compose exec app php artisan db:seed
+cp .env.example .env
+php artisan key:generate
+# configurar DB_* en .env
 
-# Acceder a Tinker (REPL de Laravel)
-docker-compose exec app php artisan tinker
+php artisan migrate
 ```
 
----
+Desarrollo con **dos procesos**, en dos terminales:
 
-## 📚 Documentación
+```bash
+php artisan serve      # http://localhost:8000
+npm run dev            # servidor de Vite con recarga en caliente
+```
 
-- [Plan Arquitectónico](./docs/PLAN_ARQUITECTONICO.md) - Decisiones, flujos, timeline
-- [Sistema de Diseño](./docs/SISTEMA_DISENO.md) - Identidad visual derivada de www.aamevi.ar
-- [API Reference](./docs/API.md) - Endpoints y ejemplos (próximamente)
-- [Database Schema](./docs/SCHEMA.md) - Modelo de datos normalizado (próximamente)
-- [Deployment Guide](./docs/DEPLOY.md) - Deploy a GCP (próximamente)
-
----
-
-## 🔄 Flujos Principales
-
-### 1. Inscripción de Alumno
-1. Alumno llena formulario (email, contraseña, datos personales)
-2. Sistema envía email de verificación con link privado
-3. Alumno verifica email → acceso a plataforma
-4. Solicita inscripción a curso
-5. Profesor aprueba inscripción
-6. Email de bienvenida al alumno
-
-### 2. Progresión por Clase
-1. Alumno accede a clase (contenido: videos, PDFs, textos)
-2. Responde quiz interactivo
-   - Sistema genera 3 preguntas aleatorias (distintas por alumno)
-   - Calificación automática en tiempo real
-3. Si ≥ puntuación mínima: siguiente clase desbloqueada
-4. Si < puntuación: puede reintentar (hasta 3 intentos)
-
-### 3. Tareas
-1. Profesor sube tarea a clase con fecha de entrega
-2. Alumno envía archivo
-3. Profesor descarga, califica y deja feedback
-4. Alumno recibe email con calificación
-
-### 4. Certificado
-1. Alumno completa todas las clases y tareas
-2. Sistema genera certificado PDF automáticamente
-3. Email con descarga del certificado
+El detalle, los comandos habituales y los problemas frecuentes están en
+[`GETTING_STARTED.md`](./GETTING_STARTED.md).
 
 ---
 
-## 📊 Fases de Desarrollo
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| [Plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) | Modelo de datos, flujos, decisiones y timeline |
+| [Sistema de diseño](./docs/SISTEMA_DISENO.md) | Paleta, tipografía y elementos heredados de www.aamevi.ar |
+| [Guía de deploy](./docs/DEPLOY.md) | Despliegue en el hosting, con sus restricciones |
+| [Guía de inicio](./GETTING_STARTED.md) | Entorno local, comandos y convenciones |
+| [CLAUDE.md](./CLAUDE.md) | Convenciones para trabajar en el repo |
+
+---
+
+## Flujos principales
+
+### Inscripción de alumno
+1. El alumno completa el formulario de registro
+2. Recibe un email de verificación con link privado
+3. Verifica el email y accede a la plataforma
+4. Solicita inscripción a un curso
+5. El docente aprueba la solicitud
+6. El alumno recibe el email de bienvenida
+
+### Progresión por clase
+1. Accede al contenido de la clase: videos, PDFs, textos
+2. Responde el quiz
+   - El sistema sortea N preguntas del banco de esa clase, distintas por alumno
+   - Se registra qué preguntas le tocaron, para que el intento sea auditable
+   - Calificación automática, con resultado inmediato
+3. Si alcanza la nota mínima, se desbloquea la clase siguiente
+4. Si no, puede reintentar hasta el máximo configurado
+
+### Tareas
+1. El docente publica la consigna con fecha de entrega
+2. El alumno envía su archivo
+3. El docente lo descarga, califica y deja devolución
+4. El alumno recibe la nota por email
+
+### Certificado
+1. El alumno completa todas las clases y tareas del curso
+2. El sistema genera el certificado en PDF
+3. Se le envía el link de descarga
+
+---
+
+## Fases de desarrollo
 
 | Fase | Descripción | Semanas |
-|------|-------------|---------|
-| 1 | Setup + Autenticación | 1-2 |
-| 2 | Cursos & Módulos | 2-3 |
-| 3 | Quiz & Evaluación | 2-3 |
-| 4 | Tareas | 1-2 |
-| 5 | Notificaciones | 1 |
-| 6 | Reportes & Certificados | 1-2 |
-| 7 | Deploy | 1 |
+|---|---|---|
+| 0 | Base del proyecto, identidad visual y pipeline | ✅ hecho |
+| 1 | Autenticación | 1-2 |
+| 2 | Cursos, módulos y clases | 2-3 |
+| 3 | Panel de administración | 1-2 |
+| 4 | Quiz y evaluación | 2-3 |
+| 5 | Tareas | 1-2 |
+| 6 | Notificaciones | 1 |
+| 7 | Reportes y certificados | 1-2 |
 
-**Total**: 10-14 semanas (dependiendo del equipo)
-
----
-
-## 💰 Costos (Producción)
-
-| Servicio | Costo |
-|----------|-------|
-| Google Cloud SQL (MySQL) | $15-30/mes |
-| Google Cloud Run (Backend) | $5-10/mes |
-| Google Cloud Storage | $1-2/mes |
-| **Total** | ~$25-50/mes |
+Las estimaciones vienen del plan original, que suponía dos aplicaciones
+separadas. Con un monolito Blade cabe esperar algo menos de trabajo.
 
 ---
 
-## 🔐 Seguridad
+## Seguridad
 
-- ✅ JWT con expiración configurable
-- ✅ Contraseñas hasheadas (bcrypt)
-- ✅ CORS configurado
-- ✅ Validación de entrada (Zod + class-validator)
-- ✅ Variables sensibles en `.env`
-- ✅ Google OAuth para terceros
-
----
-
-## 📞 Contacto
-
-Para preguntas o contribuciones, contactar al equipo de desarrollo.
+- Sesión de servidor con las protecciones de Laravel (CSRF, cookies firmadas)
+- Contraseñas hasheadas con bcrypt
+- Validación explícita mediante `FormRequest`, nunca reglas inline
+- Autorización por rol con middleware y Policies
+- Credenciales y claves solo en `.env`, fuera del control de versiones y fuera
+  del docroot
+- `APP_DEBUG=false` en producción
 
 ---
 
-**Última actualización**: 2026-08-06
+**Última actualización**: 2026-08-11

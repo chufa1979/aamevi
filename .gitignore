@@ -23,11 +23,26 @@ Thumbs.db
 _ide_helper.php
 _ide_helper_models.php
 
+# Herramientas de agentes y configuracion local
+/.agents
+/.claude
+/.github
+
 # Storage
 /storage/*.key
 /bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
 /public/storage
 /storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/app/*
+!/storage/app/.gitkeep
 
 # Testing
 /coverage
@@ -37,6 +52,9 @@ _ide_helper_models.php
 # Build artifacts
 /dist
 /build
+/public/build
+/public/hot
 
 # Composer
-composer.lock
+# composer.lock SE COMMITEA: es lo que garantiza que el hosting instale
+# exactamente las mismas versiones que se probaron acá.
