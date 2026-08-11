@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseClassFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -43,6 +44,11 @@ class CourseClass extends Model
     public function module(): BelongsTo
     {
         return $this->belongsTo(CourseModule::class, 'module_id');
+    }
+
+    public function contents(): HasMany
+    {
+        return $this->hasMany(ClassContent::class, 'class_id')->orderBy('order_number');
     }
 
     /** Una clase está disponible cuando llegó su fecha de activación. */
