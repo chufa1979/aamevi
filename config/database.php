@@ -3,6 +3,17 @@
 return [
     'default' => env('DB_CONNECTION', 'mysql'),
     'connections' => [
+        // Usada por los tests (phpunit.xml la fija en :memory:). Mantener las
+        // claves foráneas activas: sin eso, sqlite las ignora y los tests
+        // dejarían pasar violaciones de integridad que MySQL sí rechaza.
+        'sqlite' => [
+            'driver' => 'sqlite',
+            'url' => env('DATABASE_URL'),
+            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),

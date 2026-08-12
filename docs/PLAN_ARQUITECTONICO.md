@@ -25,59 +25,74 @@ se renderizan en el mismo proceso que resuelve la lógica de negocio.
 
 Marcado con ✅ lo que ya existe en el repo; el resto es lo previsto.
 
+Hay **dos superficies** sobre el mismo dominio de datos: el sitio público, en
+Blade, y el panel de administración, en Filament (§11). No comparten vistas ni
+controladores; sí comparten modelos, sesión y reglas de acceso.
+
 ```
 aamevi/
 ├── app/
+│   ├── Enums/
+│   │   └── UserRole.php     ✅ admin | teacher | student
+│   ├── Filament/                  # Panel de administración (§11)
+│   │   └── Resources/
+│   │       ├── Users/       ✅ CRUD de usuarios + fichas de alumno/profesor
+│   │       ├── Courses/     ✅ CRUD de cursos + ModulesRelationManager
+│   │       └── CourseModules/ ✅ Pantalla del módulo + ClassesRelationManager
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Auth/           # Login, registro, verificación, Google OAuth
-│   │   │   ├── Users/          # Perfiles de alumno y profesor
-│   │   │   ├── Courses/        # Cursos, módulos, clases, inscripciones
-│   │   │   ├── Quiz/           # Preguntas, intentos, calificación
-│   │   │   ├── Tasks/          # Tareas: envío y corrección
-│   │   │   ├── Notifications/  # Encolado de emails
-│   │   │   ├── Storage/        # Subida y descarga de archivos
-│   │   │   ├── Certificates/   # Generación de certificados
-│   │   │   └── Reports/        # Dashboards y reportes
-│   │   ├── Requests/           # FormRequest: validación explícita
-│   │   └── Middleware/         # Autorización por rol
-│   ├── Models/                 # Eloquent, con trait HasUuids
-│   └── Providers/           ✅
-├── bootstrap/
-│   └── app.php              ✅ Esqueleto slim de Laravel 11+
+│   │   │   ├── Auth/        ✅ AuthenticatedSessionController
+│   │   │   ├── Courses/        # Catálogo, inscripción y aula (sitio público)
+│   │   │   ├── Quiz/           # Intentos y calificación
+│   │   │   ├── Tasks/          # Envío de tareas
+│   │   │   ├── Certificates/   # Descarga
+│   │   │   └── Reports/
+│   │   ├── Requests/        ✅ Auth/LoginRequest
+│   │   └── Middleware/
+│   ├── Models/              ✅ User, Student, Teacher, Course, CourseModule,
+│   │                           CourseClass, ClassContent, CourseEnrollment,
+│   │                           Quiz, Question, QuestionOption, QuizAttempt,
+│   │                           StudentAnswer, StudentProgress
+│   ├── Services/            ✅ QuizService, ProgressService
+│   ├── Exceptions/          ✅ EnrollmentException, QuizException
+│   └── Providers/
+│       └── Filament/AdminPanelProvider.php ✅
+├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
 ├── config/
-│   ├── database.php         ✅
-│   └── navigation.php       ✅ Fuente única del menú y datos de contacto
+│   ├── auth.php             ✅
+│   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
+│   └── navigation.php       ✅ Fuente única del menú público
 ├── database/
-│   ├── migrations/             # Vacío: el esquema de §2 está sin implementar
-│   ├── factories/              # Para tests y seeders
-│   └── seeders/                # Vacío
+│   ├── migrations/          ✅ 14: users, password_reset_tokens, students,
+│   │                           teachers, courses, modules, classes,
+│   │                           class_content, course_enrollments, questions,
+│   │                           question_options, quizzes, los tres de intentos
+│   │                           y student_progress
+│   ├── factories/           ✅ Una por modelo
+│   └── seeders/             ✅ Un usuario por rol
 ├── public/
 │   ├── index.php            ✅ Docroot
-│   ├── images/aamevi.svg    ✅ Isotipo del sitio madre
-│   └── build/                  Generado por Vite (no versionado)
+│   ├── images/              ✅ aamevi.svg y su variante para modo oscuro
+│   ├── build/                  Generado por Vite (no versionado)
+│   └── css|js|fonts/filament/  Publicado por Filament (no versionado)
 ├── resources/
 │   ├── css/app.css          ✅ Tokens de marca en @theme (Tailwind 4)
 │   ├── js/app.js            ✅ Menú hamburguesa; sin framework JS
+│   ├── lang/es/auth.php     ✅
 │   └── views/
-│       ├── layouts/app.blade.php  ✅
-│       ├── components/         ✅ header, footer, top-bar, page-hero,
-│       │                          section, button, icon, footer-icons
-│       ├── home.blade.php      ✅
+│       ├── layouts/
+│       │   ├── app.blade.php   ✅ Sitio, con navegación
+│       │   └── guest.blade.php ✅ Acceso, sin navegación
+│       ├── components/      ✅ header, footer, top-bar, page-hero, section,
+│       │   └── ui/icon.blade.php ✅ (x-icon lo toma blade-icons)
+│       ├── auth/            ✅ login, register
+│       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅
-├── routes/
-│   ├── web.php              ✅ Home + rutas placeholder
-│   ├── api.php              ✅
-│   └── console.php          ✅
-├── tests/
-│   ├── Unit/
-│   └── Feature/
-├── docs/
-│   ├── PLAN_ARQUITECTONICO.md ✅ Este documento
-│   ├── SISTEMA_DISENO.md      ✅ Sistema visual
-│   └── DEPLOY.md              ✅ Procedimiento de despliegue
+├── routes/web.php           ✅ Grupos `guest` y `auth`
+├── tests/Feature/           ✅ Auth/ y Admin/
+├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
+├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
-├── package.json             ✅
 └── vite.config.js           ✅
 ```
 
@@ -129,6 +144,23 @@ CREATE TABLE teachers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+> **Desviación implementada (2026-08-11)** — Las migraciones de `users` renombran
+> tres columnas respecto de este DDL, para poder usar lo que Laravel ya trae en
+> lugar de reimplementarlo:
+>
+> | Acá | Implementado | Qué habilita |
+> |---|---|---|
+> | `password_hash` | `password` | `Auth::attempt()` |
+> | `email_verified` (bool) | `email_verified_at` (timestamp) | La interfaz `MustVerifyEmail` |
+> | `email_verification_token` | *(eliminada)* | Verificación por URL firmada |
+> | *(no existía)* | `remember_token` | El "recordarme" del login |
+>
+> La semántica del modelo no cambia. Se agrega además la tabla
+> `password_reset_tokens`, que el broker de contraseñas necesita y que este plan
+> no contemplaba porque resolvía la autenticación con JWT.
+>
+> `students` y `teachers` llevan `updated_at` además de `created_at`.
 
 ### Cursos, Módulos & Clases
 ```sql
@@ -469,6 +501,69 @@ CREATE TABLE email_queue (
 
 ---
 
+## 3-bis. REGLAS IMPLEMENTADAS
+
+Lo que sigue no se deduce del esquema: son decisiones tomadas al construir, cada
+una con su test. Modificarlas rompe tests a propósito.
+
+### Inscripciones — `CourseEnrollment`
+
+Las transiciones son métodos (`approve`, `reject`, `activate`, `complete`), no
+asignaciones a `status`. Cada una valida el estado de origen y lanza
+`EnrollmentException` si no corresponde: asignar a mano permitiría marcar como
+finalizada una inscripción rechazada.
+
+| | |
+|---|---|
+| Cupo | Solo cuentan las **aprobadas, en curso y finalizadas**. Si las pendientes y rechazadas ocuparan lugar, un curso con veinte solicitudes rechazadas quedaría bloqueado teniendo vacantes |
+| Duplicados | `unique (course_id, student_id)` en la base, más validación en el formulario |
+| Docente eliminado | `approved_by` es `SET NULL`, no cascada: perder inscripciones porque cambió el profesor sería irrecuperable |
+
+### Evaluaciones — `Quiz`, `QuizService`
+
+Un quiz cuelga de **una clase o de un módulo**, nunca de ambos ni de ninguno; lo
+valida el modelo en `saving`.
+
+| | |
+|---|---|
+| Sorteo de clase | `questions_per_student` preguntas del banco de esa clase |
+| Sorteo de módulo | `questions_percentage` % del banco combinado de **todas** sus clases, redondeando hacia arriba |
+| Tope | Nunca sortea más preguntas que las disponibles: pedir 10 de un banco de 6 calificaría sobre un total distinto al configurado |
+| Piso | Nunca sortea cero si hay preguntas — un examen vacío se aprueba solo |
+| Inactivas | Las preguntas con `is_active = false` quedan fuera del sorteo |
+| Opciones | Exactamente una correcta. Sin correcta no se puede aprobar nunca; con dos, la calificación es ambigua |
+
+Del intento:
+
+- **Reabrir un intento en curso devuelve el mismo**, no abre otro. Recargar la
+  página no puede consumir un intento ni cambiar las preguntas a mitad de camino.
+- **Las preguntas sin responder se guardan igual**, con la opción en null. Si se
+  omitieran, sería indistinguible «no contestó» de «no se le preguntó».
+- **Responder algo que no estaba asignado aborta la entrega**: indica un
+  formulario manipulado.
+- **Aprobar una vez alcanza**, aunque un intento posterior desapruebe.
+
+`quiz_question_assignment` registra qué preguntas le tocaron a cada alumno y en
+qué orden. Como el sorteo es distinto para cada uno, sin ese registro una nota
+reclamada no se puede reconstruir ni recalcular.
+
+### Progresión — `ProgressService`
+
+Una clase se abre con tres condiciones **acumulativas**: inscripción aprobada,
+fecha de activación cumplida, y clase anterior aprobada.
+
+Se evalúan por separado para exponer `lockReason()`: «se habilita el 20/09» y
+«primero aprobá la clase anterior» son accionables; un «no tenés acceso»
+genérico solo genera consultas al soporte.
+
+- **El encadenamiento es por módulo, no por curso entero.** Los módulos se
+  habilitan por fecha; encadenar el curso completo dejaría al alumno trabado
+  esperando la última clase de un módulo que todavía no le toca cursar.
+- **Completar una clase con quiz exige haberlo aprobado.** Sin esa guarda,
+  marcarla completa saltearía la evaluación que la progresión protege.
+
+---
+
 ## 4. COMPONENTES PRINCIPALES POR MÓDULO
 
 La sesión es la de Laravel (cookie + `web` middleware), no JWT: al renderizar
@@ -493,17 +588,20 @@ Autorización por rol con middleware y Policies (`CoursePolicy`,
 
 ### Módulo Courses
 
+> **La administración de cursos ya no vive acá.** Crear y editar cursos, módulos
+> y clases se hace desde el panel de Filament (§11). Estos controladores son los
+> del **sitio público**: lo que ve y hace un alumno.
+
 ```php
 // app/Http/Controllers/Courses/
-CourseController::index()      // GET  /cursos
-CourseController::store()      // POST /cursos                (profesor)
+CourseController::index()      // GET  /cursos                catálogo
 CourseController::show(Course) // GET  /cursos/{course}       (route model binding)
-EnrollmentController::store(Course)          // POST  /cursos/{course}/inscripcion → pending
-EnrollmentController::index(Course)          // GET   /cursos/{course}/inscripciones (profesor)
-EnrollmentController::approve(Enrollment)    // PATCH /inscripciones/{enrollment}/aprobar
-ModuleController::store(Course)
-ClassController::store(CourseModule)         // activationDate, meetLink?
+EnrollmentController::store(Course)  // POST /cursos/{course}/inscripcion → pending
+ClassroomController::show(CourseClass) // GET /clases/{class}  aula: contenido y quiz
 ```
+
+La aprobación de inscripciones (§3-A) es una acción del panel, no de este
+controlador.
 
 La lógica que excede un CRUD (transiciones de `course_enrollments`, cálculo de
 progreso) va en clases de servicio bajo `app/Services/`, no en el controlador.
@@ -643,28 +741,36 @@ propio es el toggle del menú móvil; el submenú desplegable se resuelve con
 - [x] Rutas placeholder para todas las secciones
 - [x] Procedimiento de despliegue documentado (`docs/DEPLOY.md`)
 
-### Fase 1: Setup & Autenticación (1-2 semanas)
-- [ ] Migraciones de `users`, `students`, `teachers` (§2)
-- [ ] Modelos Eloquent con `HasUuids` y relaciones 1:1
-- [ ] Auth con sesión de Laravel + Policies por rol
-- [ ] Google OAuth con Socialite
-- [ ] Vistas Blade de login y registro
+### Fase 1: Setup & Autenticación — **casi completa**
+- [x] Migraciones de `users`, `students`, `teachers` (§2)
+- [x] Modelos Eloquent con `HasUuids` y relaciones 1:1
+- [x] Login con sesión de Laravel, limitador de intentos y bloqueo de cuentas
+      inactivas. **Todo el sitio está detrás de `auth`**: sin sesión no se ve nada
+- [x] Seeders con usuarios de prueba de cada rol
+- [ ] Registro público (hoy es un marcador; las cuentas las crea la administración)
 - [ ] Verificación de email vía `email_queue`
-- [ ] Seeders con usuarios de prueba de cada rol
+- [ ] Google OAuth con Socialite
+- [ ] Policies por rol para el sitio público
 
-### Fase 2: Core Cursos & Clases (2-3 semanas)
-- [ ] Modelos: courses, modules, classes, class_content
-- [ ] CRUD de cursos (profesor)
-- [ ] Inscripción de alumnos (con aprobación)
-- [ ] Frontend: lista de cursos, detalle, inscripción
-- [ ] Visualización de contenido (videos, PDFs, textos)
+### Fase 2: Core Cursos & Clases — **completa del lado de administración**
+- [x] Modelos y migraciones: `courses`, `modules`, `classes`, `class_content`
+- [x] Administración de cursos, módulos y clases desde el panel (§11)
+- [x] Cronograma: fecha de activación por clase y corrimiento de fechas en lote
+- [x] `class_content`: video con previsualización, PDF con subida y descarga,
+      texto y consigna con editor enriquecido
+- [x] `course_enrollments` con aprobación, rechazo y control de cupo (§3-bis)
+- [x] `student_progress`: gateo por inscripción, fecha y aprobación previa
+- [ ] Sitio público: catálogo, detalle del curso y aula
 
-### Fase 3: Quiz & Evaluación (2-3 semanas)
-- [ ] Modelos: questions, quizzes, student_quiz_attempts, student_answers
-- [ ] Lógica de randomización de preguntas
-- [ ] Calificación automática
-- [ ] Frontend: interfaz quiz (ver pregunta, responder, ver score)
-- [ ] Reintentos
+### Fase 3: Quiz & Evaluación — **completa del lado de la lógica**
+- [x] Modelos y migraciones: `questions`, `question_options`, `quizzes`,
+      `student_quiz_attempts`, `student_answers`, `quiz_question_assignment`
+- [x] Quiz por clase **y examen de módulo por porcentaje** (extensión de §2)
+- [x] Sorteo aleatorio por alumno, con registro de qué le tocó a cada uno
+- [x] Calificación automática y control de reintentos
+- [x] Carga de preguntas desde el panel, con enunciado enriquecido
+- [ ] Frontend: interfaz de quiz (ver pregunta, responder, ver score)
+- [ ] Revisión de intentos desde el panel, para atender una nota reclamada
 
 ### Fase 4: Tareas (1-2 semanas)
 - [ ] Modelos: tasks, task_submissions
@@ -925,18 +1031,76 @@ Esto no contradice la decisión de §9 de posponer Livewire: entraría **solo** 
 `/admin` y `/profesores`. Las vistas públicas siguen siendo Blade sin framework
 de JavaScript.
 
-### Verificar antes de adoptarlo
+### Estado: adoptado (2026-08-11)
 
-⚠️ **No está confirmado** que Filament resuelva contra Laravel 12 con
-`platform.php = 8.3.11`. Comprobarlo antes de comprometerse:
+**Filament 5.7.6 instalado.** Resuelve limpio contra Laravel 12 con
+`platform.php = 8.3.11`, arrastrando Livewire 4.4. El panel vive en `/admin`.
 
-```bash
-composer require filament/filament:"^5.0" --dry-run
+Decisiones de integración:
+
+- **Sin login propio de Filament.** El panel no expone `/admin/login`: los
+  administradores entran por el `/login` del sitio, que ya tiene limitador de
+  intentos y control de cuentas desactivadas. Una sola sesión, un solo
+  formulario que auditar.
+- **`User` implementa `FilamentUser`**: `canAccessPanel()` exige rol `admin` y
+  cuenta activa. Sin eso Filament dejaría entrar a cualquier autenticado.
+- **`User` implementa `HasName`**, porque Filament espera un atributo `name` y
+  este modelo tiene el nombre partido en `first_name` y `last_name`.
+- **`UserRole` implementa `HasLabel` y `HasColor`**, para que las etiquetas en
+  español y los colores de los badges salgan del enum y no se repitan en cada
+  recurso.
+- **Color primario** `#00b8b3`, el institucional.
+
+Dos consecuencias operativas:
+
+- Filament sirve **sus propios assets** desde `public/css|js|fonts/filament`,
+  fuera del build de Vite. No están versionados: los republica
+  `php artisan filament:assets`, que ya está en `deploy.sh`.
+- `blade-icons`, que viene con Filament, registra un componente global `x-icon`
+  que le ganaba al nuestro. El componente propio pasó a ser `<x-ui.icon>`.
+
+El panel de `/profesores` queda pendiente: es un segundo panel de Filament con
+los recursos acotados a los cursos del docente.
+
+### Cómo está organizado el panel
+
+Los recursos viven en `app/Filament/Resources/`, uno por carpeta, con el
+formulario y la tabla en clases aparte (`Schemas/` y `Tables/`). Esa división la
+impone el generador de Filament 5; conviene respetarla.
+
+**Navegación del contenido** — se baja un nivel por pantalla:
+
+```
+Cursos  →  [abrir un curso]  →  pestaña Módulos
+                                     │
+                                     └── acción «Clases»  →  pantalla del módulo
+                                                                  │
+                                                                  └── pestaña Clases
 ```
 
-Si no resuelve, probar `^4.0`. Si ninguna de las dos entra, las alternativas son
-Nova o Blade a mano. Tener en cuenta además que Filament trae su propio pipeline
-de assets: convive con el Vite del sitio público, pero son dos builds.
+El salto del medio es lo menos evidente del diseño y tiene un motivo:
+**un relation manager de Filament no puede anidar otro**. Como las clases cuelgan
+del módulo y el módulo del curso, hacen falta dos pantallas. Por eso existe
+`CourseModuleResource`, que:
+
+- **no aparece en la navegación** (`$shouldRegisterNavigation = false`)
+- **no tiene página de alta**: los módulos se crean desde el curso, que es donde
+  se conoce a cuál pertenecen
+- solo sirve para abrir un módulo y trabajar sus clases
+
+**Convenciones a respetar** al sumar recursos:
+
+| | |
+|---|---|
+| Generar, no escribir a mano | `php artisan make:filament-resource Foo --generate`. La API de v5 difiere bastante de la de v3 y el generador la acierta |
+| Revisar siempre lo generado | Los selects de relación salen mostrando el UUID, y los campos de contraseña se sobreescriben con `null` al editar |
+| Etiquetas y colores en el enum | Implementar `HasLabel` y `HasColor` (como `UserRole`) en vez de repetirlos en cada recurso |
+| `order_number` único por padre | La unicidad es `(padre_id, order_number)`; el formulario sugiere la posición siguiente |
+| Acciones masivas para lo repetitivo | Editar treinta clases de a una no es una interfaz; ver «Correr fechas» |
+
+**Cuidado con `x-icon`**: `blade-icons`, dependencia de Filament, lo registra
+globalmente y le gana a cualquier componente propio con ese nombre. El del
+proyecto es `<x-ui.icon>`.
 
 ### Impacto en el resto del plan
 
@@ -950,10 +1114,46 @@ de assets: convive con el Vite del sitio público, pero son dos builds.
 
 ## 12. PRÓXIMOS PASOS
 
-1. [x] **Plan arquitectónico**: actualizado a Laravel 12 + Blade (2026-08-11)
-2. [x] **Base del proyecto**: pipeline de assets, identidad visual, layout
-3. [x] **Procedimiento de deploy**: `docs/DEPLOY.md`
-4. [ ] **Primer despliegue** en `aamevi.demosdesarrollos.com.ar`
-5. [ ] **Migraciones de §2**: empezar por `users`, `students`, `teachers`
-6. [ ] **Fase 1**: autenticación con sesión + Google OAuth
-7. [ ] **Decidir el panel**: correr el `--dry-run` de Filament y confirmar (§11)
+Hecho hasta el 2026-08-11 — **14 migraciones, 14 modelos, 123 tests**:
+
+1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
+2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
+3. [x] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
+4. [x] Login, con el sitio entero detrás de sesión
+5. [x] Panel de administración con Filament (§11)
+6. [x] Dominio académico completo: cursos → módulos → clases → contenido
+7. [x] Inscripciones con aprobación y cupo
+8. [x] Evaluaciones: banco de preguntas, quiz de clase, examen de módulo por
+       porcentaje, intentos y corrección automática
+9. [x] Progresión: gateo de clases por inscripción, fecha y aprobación previa
+
+### La brecha
+
+**Todo lo anterior es administración y lógica. No hay una sola pantalla para el
+alumno.** `/cursos`, `/mis-cursos`, `/progreso` y `/certificados` siguen
+sirviendo `placeholder.blade.php`. Un alumno que inicia sesión hoy no ve nada de
+lo que se construyó.
+
+Cerrar esa brecha es lo único que separa el proyecto de ser usable:
+
+1. [ ] **Aula pública** — catálogo, detalle del curso con inscripción, y la
+       pantalla de clase con su contenido. `ProgressService` ya resuelve qué
+       puede ver cada alumno y por qué; falta la vista
+2. [ ] **Pantalla de quiz** — rendir, responder y ver el resultado.
+       `QuizService` ya resuelve el sorteo, la corrección y los reintentos
+3. [ ] **Revisión de intentos en el panel** — sin esto, un docente no puede
+       atender una nota reclamada, aunque el dato esté guardado
+4. [ ] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
+5. [ ] **Fase 4 en adelante** — tareas, notificaciones, certificados
+
+### Deuda pendiente
+
+| | |
+|---|---|
+| **Sanitizar el HTML** | Cuatro campos guardan texto enriquecido —descripción de curso, módulo y clase, contenido y enunciado de pregunta—. Al renderizarlos en el sitio público hay que sanitizarlos antes de `{!! !!}`, o cada uno es un vector de XSS. Hoy solo cargan administradores; el día que cargue un profesor, deja de ser teórico |
+| `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
+| `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
+| Registro público | Hoy es un marcador: las cuentas las crea la administración |
+| Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo ni `email_queue` |
+| Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
+| `docs/SISTEMA_DISENO.md` | Sus rutas siguen apuntando a `frontend/src/...` de la etapa React; los tokens que enumera sí son correctos |

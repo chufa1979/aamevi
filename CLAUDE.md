@@ -63,12 +63,39 @@ Emails are not sent inline — they're written to `email_queue` (typed by `email
 
 External services: Google Cloud Storage for uploads (videos, PDFs, submissions, certificate PDFs — DB stores URLs only), Google OAuth for social login, SendGrid/nodemailer for email, Google Meet links for live classes.
 
+## Two surfaces
+
+The app has a **public site** (Blade, `resources/views/`) and an **admin panel** (Filament, `app/Filament/`). They share models, session and access rules — not views or controllers. When adding a feature, decide which surface it belongs to first: course *administration* is Filament, the course *catalogue and classroom* are Blade.
+
+Everything is behind `auth`: `routes/web.php` splits into a `guest` group (login only) and an `auth` group (everything else). There is deliberately **no second login form** — the Filament panel does not expose `/admin/login`; admins sign in at `/login` like everyone else, so there is one rate-limited entry point to audit.
+
+## Admin panel (Filament 5)
+
+Resources live in `app/Filament/Resources/`, one folder each, with the form and table split into `Schemas/` and `Tables/` classes — that layout is what the v5 generator produces, so keep it.
+
+- **Generate, don't hand-write**: `php artisan make:filament-resource Foo --generate`. The v5 API differs substantially from v3 (`Schema` not `Form`, `Filament\Actions` unified, relation managers as separate classes).
+- **Always review what it generates.** Two recurring defects: relation selects render raw UUIDs, and password fields overwrite the stored hash with `null` on edit.
+- **Content navigation is two screens deep**: course → Modules tab → "Clases" action → module screen → Classes tab. A relation manager cannot nest another, which is why `CourseModuleResource` exists but is hidden from navigation and has no create page. See §11 of the plan.
+- **Labels and colours belong on the enum** (`HasLabel`, `HasColor`), as `UserRole` does — not repeated per resource.
+- **`x-icon` is taken** by blade-icons, a Filament dependency, and shadows any component of that name. The project's own is `<x-ui.icon>`.
+- Filament's assets sit outside the Vite build; `php artisan filament:assets` republishes them (already in `deploy.sh`).
+
+## Domain rules live in code, not in the schema
+
+Business rules are enforced in models and services, each covered by a test. **§3-bis of the plan documents all of them** — read it before touching enrollment, quiz or progression logic. The short version:
+
+- **State transitions are methods**, not `status` assignments. `CourseEnrollment::approve()/reject()/activate()/complete()` each validate the source state and throw `EnrollmentException`. Same idea for quizzes.
+- **Business exceptions throw, they don't return false.** Approving an already-rejected enrollment is a programming error and must fail loudly; the panel catches and turns it into a notification.
+- **Two services own the intricate parts**: `QuizService` (draw, grade, attempt limits) and `ProgressService` (who can open which class, and why not). Controllers and Filament actions call them — don't reimplement.
+- **`quiz_question_assignment` records which questions each student got.** The draw is per-student, so without it a disputed grade cannot be reconstructed. Questions are `RESTRICT` on delete for the same reason.
+
 ## Known gaps
 
-- **No migrations exist**: `database/migrations/` is empty, so `php artisan migrate` only creates the `migrations` table. The schema in `docs/PLAN_ARQUITECTONICO.md` §2 is unimplemented — start there.
-- **No seeders defined**: Create seeders in `database/seeders/` and run `php artisan db:seed`.
-- **No admin panel yet**: §11 of the plan specifies it (`/admin` and `/profesores`) and recommends Filament, but its compatibility with Laravel 12 under `platform.php = 8.3.11` is **unverified** — check with `composer require filament/filament:"^5.0" --dry-run` before committing to it.
-- **`.env`**: copy from `.env.example`, set `DB_*` to your local MySQL, and run `php artisan key:generate`.
+- **No student-facing screens.** All the domain logic is implemented and tested, but `/cursos`, `/mis-cursos`, `/progreso` and `/certificados` still render `placeholder.blade.php`. This is the single biggest gap — see §12 of the plan.
+- **Rich text is not sanitised yet.** Four fields store HTML from the editor. Blade escapes by default, so the risk appears the moment someone uses `{!! !!}` to render the formatting on the public site. Sanitise there.
+- **Tasks, notifications and certificates** are unimplemented — phases 4 to 6.
+- **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
+- **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.
 - **No CI**: `.github/` is gitignored.
 
 ## Formatting

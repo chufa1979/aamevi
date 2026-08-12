@@ -7,15 +7,33 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 
 ## Estado
 
-El proyecto está en desarrollo temprano.
+En desarrollo. Hay dos superficies funcionando sobre el mismo dominio de datos:
 
-**Implementado**: esqueleto Laravel, pipeline de assets (Vite + Tailwind), la
-identidad visual de [www.aamevi.ar](https://www.aamevi.ar) portada a componentes
-Blade, home y rutas de todas las secciones.
+**Sitio público** (Blade) — la plataforma es **privada**: sin sesión iniciada no
+se ve nada, ni el menú. El acceso es por `/login`, con limitador de intentos y
+bloqueo de cuentas desactivadas. La identidad visual de
+[www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
 
-**Pendiente**: todo el dominio. Las tablas, modelos y módulos descritos abajo
-están especificados en el plan arquitectónico pero **todavía no existen en el
-código**.
+**Panel de administración** (Filament, en `/admin`) — solo para el rol
+administrador. Gestiona:
+
+- **Usuarios**, con su ficha de alumno o profesor según el rol
+- **Cursos → módulos → clases**, con cronograma y corrimiento de fechas en lote
+- **Contenido de clase**: video con previsualización, PDF con subida y descarga,
+  texto y consignas con editor enriquecido
+- **Inscripciones**, con aprobación, rechazo y control de cupo
+- **Evaluaciones**: banco de preguntas por clase, quiz de clase, y examen de
+  módulo que sortea un porcentaje del banco combinado de todas sus clases
+
+La lógica del alumno también está implementada y probada —sorteo de preguntas,
+corrección automática, reintentos, y el desbloqueo de una clase al aprobar la
+anterior— pero **todavía no tiene pantallas**: las secciones del sitio siguen
+sirviendo un marcador.
+
+**Pendiente**: el aula pública, la pantalla de rendir un quiz, las tareas, las
+notificaciones y los certificados. El
+[plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué está
+hecho, y su §3-bis documenta las reglas de negocio implementadas.
 
 ---
 

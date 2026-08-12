@@ -106,10 +106,22 @@ DB_PORT=3306
 DB_DATABASE=<base>
 DB_USERNAME=<usuario>
 DB_PASSWORD=<password>
+
+CACHE_STORE=file
+SESSION_DRIVER=file
 ```
 
 `APP_DEBUG=false` no es opcional: en `true`, Laravel muestra el stack trace con
 variables de entorno ante cualquier error.
+
+⚠️ **`CACHE_STORE`, no `CACHE_DRIVER`.** Laravel 11 renombró esa variable, y la
+vieja se ignora en silencio: el store cae al default `database`, que necesita una
+tabla `cache` inexistente. El síntoma aparece recién cuando algo usa la caché
+—por ejemplo el limitador de intentos del login— y revienta con
+`no such table: cache`. Lo mismo con `BROADCAST_DRIVER`, hoy `BROADCAST_CONNECTION`.
+
+Si el `.env` del servidor se creó antes de agosto de 2026, tiene los nombres
+viejos y hay que corregirlos a mano.
 
 Los datos de la base salen del panel de LatinCloud. El `DB_HOST` que figura en
 el `.env` de desarrollo apunta a un servidor externo y **no** es necesariamente
@@ -141,6 +153,17 @@ php artisan view:cache
 
 ```bash
 cd ~/aamevi.demosdesarrollos.com.ar
+./deploy.sh
+```
+
+`deploy.sh` hace el ciclo completo: `git pull`, dependencias, build de assets,
+migraciones y regeneración de cachés. Carga `nvm` por su cuenta y aborta con un
+mensaje claro si la versión de Node no le sirve a Vite.
+
+A mano es lo mismo:
+
+```bash
+source ~/.nvm/nvm.sh
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
@@ -148,10 +171,25 @@ php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
-Si `nvm` no quedó cargado en la sesión, `source ~/.nvm/nvm.sh` antes de `npm`.
+**Regenerar las cachés no es opcional.** Con `config:cache` activo Laravel deja
+de leer `.env`, y con `route:cache` sigue sirviendo las rutas anteriores. No hay
+ningún error que avise: simplemente se despliega una versión que no es la que
+subiste. Si algo queda inconsistente, `php artisan optimize:clear` y volver a
+generarlas.
 
-Después de tocar `.env` hay que volver a correr `config:cache`: con la caché
-activa, Laravel deja de leer el archivo.
+### Qué correr según lo que cambió
+
+| Cambió | Alcanza con |
+|---|---|
+| Vistas Blade, controladores | `git pull` + `view:cache` |
+| Rutas | `git pull` + `route:cache` |
+| `resources/css` o `resources/js` | `git pull` + `npm run build` |
+| `composer.json` / `.lock` | + `composer install --no-dev --optimize-autoloader` |
+| `package.json` | + `npm ci` |
+| Migración nueva | + `php artisan migrate --force` |
+| `.env` o `config/` | + `php artisan config:cache` |
+
+En la duda, `./deploy.sh`: tarda unos segundos más y no deja nada a medias.
 
 ## Alternativa sin nvm
 

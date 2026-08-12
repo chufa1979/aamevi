@@ -7,7 +7,7 @@
                @if (! str_starts_with($item['href'], 'mailto:')) target="_blank" rel="noreferrer" @endif
                aria-label="{{ $item['label'] }}"
                class="block p-1 text-2xl transition-colors hover:text-primary">
-                <x-icon :name="$item['icon']" />
+                <x-ui.icon :name="$item['icon']" />
             </a>
         </li>
     @endforeach
