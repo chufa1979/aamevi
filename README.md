@@ -61,7 +61,7 @@ hecho, y su §3-bis documenta las reglas de negocio implementadas.
 | Framework | Laravel 12 (PHP 8.2+) |
 | Vistas | Blade, renderizado en servidor |
 | ORM | Eloquent, con UUIDs como clave primaria |
-| Base de datos | MySQL 8 (InnoDB, `utf8mb4_unicode_ci`) |
+| Base de datos | MySQL 8 / MariaDB (InnoDB, `utf8mb4_unicode_ci`) |
 | Estilos | Tailwind 4, configurado en CSS con `@theme` |
 | Build | Vite 8 (requiere Node ≥ 20.19) |
 | Autenticación | Sesión de Laravel; Sanctum disponible para una futura API |
@@ -122,7 +122,7 @@ aamevi/
 
 ## Puesta en marcha
 
-Requiere **PHP ≥ 8.2**, **Composer 2**, **Node ≥ 20.19** y **MySQL 8**.
+Requiere **PHP ≥ 8.2**, **Composer 2**, **Node ≥ 20.19** y **MySQL 8 o MariaDB**.
 
 ```bash
 git clone https://github.com/chufa1979/aamevi.git
@@ -133,9 +133,13 @@ npm install
 
 cp .env.example .env
 php artisan key:generate
-# configurar DB_* en .env
+```
 
+Antes de migrar hay que tener la base corriendo — ver la sección siguiente.
+
+```bash
 php artisan migrate
+php artisan db:seed
 ```
 
 Desarrollo con **dos procesos**, en dos terminales:
@@ -147,6 +151,116 @@ npm run dev            # servidor de Vite con recarga en caliente
 
 El detalle, los comandos habituales y los problemas frecuentes están en
 [`GETTING_STARTED.md`](./GETTING_STARTED.md).
+
+---
+
+## Base de datos local
+
+El servidor de producción corre **MariaDB**, que es compatible con MySQL 8 para
+todo lo que usa el proyecto. En macOS conviene instalarla por Homebrew.
+
+> **En Mac con chip Apple**: instalá desde el Homebrew nativo
+> (`/opt/homebrew`), no desde el de Intel (`/usr/local`). Si `brew --prefix`
+> devuelve `/opt/homebrew` pero `which mysql` apunta a `/usr/local/bin`, tenés
+> la versión x86 corriendo bajo Rosetta.
+
+### Instalar y arrancar
+
+```bash
+brew install mariadb
+brew services start mariadb      # arranca ahora y en cada login
+```
+
+Sin servicio en segundo plano, a mano:
+
+```bash
+/opt/homebrew/opt/mariadb/bin/mariadbd-safe --datadir=/opt/homebrew/var/mysql
+```
+
+Comandos del servicio:
+
+| | |
+|---|---|
+| Estado | `brew services list \| grep mariadb` |
+| Arrancar | `brew services start mariadb` |
+| Parar | `brew services stop mariadb` |
+| Reiniciar | `brew services restart mariadb` |
+| ¿Está escuchando? | `mariadb-admin ping` |
+
+### Crear la base y el usuario
+
+Una instalación nueva de Homebrew **no le pone contraseña a tu usuario del
+sistema**: entrás con `mariadb` a secas, por socket. `root`, en cambio, suele
+estar restringido y devuelve `ERROR 1698`.
+
+```bash
+mariadb -e "
+CREATE DATABASE IF NOT EXISTS aamevi_db
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'aamevi'@'127.0.0.1' IDENTIFIED BY 'aamevi';
+CREATE USER IF NOT EXISTS 'aamevi'@'localhost' IDENTIFIED BY 'aamevi';
+GRANT ALL PRIVILEGES ON aamevi_db.* TO 'aamevi'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON aamevi_db.* TO 'aamevi'@'localhost';
+FLUSH PRIVILEGES;"
+```
+
+Se crea el usuario **dos veces a propósito**: MySQL trata `localhost` (conexión
+por socket) y `127.0.0.1` (por TCP) como hosts distintos a la hora de dar
+permisos. Laravel se conecta por TCP, pero el cliente de consola usa el socket.
+
+### Configurar el `.env`
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=aamevi_db
+DB_USERNAME=aamevi
+DB_PASSWORD=aamevi
+```
+
+> ⚠️ **Revisá que `DB_HOST` no sea la IP del servidor.** Si apunta a producción,
+> `php artisan migrate:fresh` o `db:wipe` borran la base real. El `.env` de
+> desarrollo tiene que decir `127.0.0.1`.
+
+### Verificar
+
+```bash
+php artisan config:clear     # el .env no se relee si la config está cacheada
+php artisan db:show          # tiene que decir Host 127.0.0.1
+php artisan migrate:status   # ninguna pendiente
+```
+
+### Usuarios de prueba
+
+`php artisan db:seed` deja tres cuentas, todas con contraseña `password`:
+
+| Email | Rol | Entra a |
+|---|---|---|
+| `admin@aamevi.ar` | administrador | `/admin` y el sitio |
+| `profesor@aamevi.ar` | profesor | el sitio |
+| `alumno@aamevi.ar` | alumno | el sitio |
+
+El seeder es idempotente: se puede volver a correr sin chocar contra el `unique`
+de `email`.
+
+### Los tests no usan MySQL
+
+`phpunit.xml` fuerza **sqlite en memoria**, así que `php artisan test` corre sin
+levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
+`RefreshDatabase`, que dropea todas las tablas: si la conexión saliera del
+`.env`, un test correría contra el servidor que ahí figure.
+
+### Problemas frecuentes
+
+| Síntoma | Causa |
+|---|---|
+| `Table 'aamevi_db.users' doesn't exist` con un `Host` que es una IP | El `.env` apunta a producción — corregí `DB_HOST` |
+| `Connection refused` en `127.0.0.1:3306` | El servicio no está arrancado |
+| `Access denied for user 'aamevi'@'127.0.0.1'` | Falta el `GRANT` para ese host — ver arriba, son dos usuarios |
+| `ERROR 1698 (28000)` al hacer `mariadb -u root` | `root` usa autenticación por socket: entrá con `mariadb` sin `-u` |
+| Cambiás el `.env` y no toma efecto | Config cacheada: `php artisan config:clear` |
+| `Can't connect through socket '/tmp/mysql.sock'` | Servidor apagado, o quedó instalado el binario de otra arquitectura |
 
 ---
 
@@ -224,4 +338,4 @@ separadas. Con un monolito Blade cabe esperar algo menos de trabajo.
 
 ---
 
-**Última actualización**: 2026-08-11
+**Última actualización**: 2026-08-14
