@@ -14,8 +14,10 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Illuminate\Contracts\View\View;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use App\Filament\Tables\DragToReorder;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Tables\Columns\IconColumn;
@@ -55,11 +57,9 @@ class ManageModuleClasses extends ManageRelatedRecords
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make('order_number')
-                    ->label('Orden')
-                    ->numeric()
-                    ->minValue(1)
-                    ->required()
+                // El orden se cambia arrastrando en la tabla. Una clase nueva
+                // va al final del módulo.
+                Hidden::make('order_number')
                     ->default(fn (): int => $this->getOwnerRecord()->classes()->max('order_number') + 1),
 
                 DateTimePicker::make('activation_date')
@@ -180,14 +180,13 @@ class ManageModuleClasses extends ManageRelatedRecords
 
     public function table(Table $table): Table
     {
-        return $table
+        return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
                     ->label('#')
-                    ->alignCenter()
-                    ->sortable(),
+                    ->alignCenter(),
 
                 TextColumn::make('title')
                     ->label('Clase')

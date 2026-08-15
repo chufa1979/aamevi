@@ -11,6 +11,8 @@ use Filament\Actions\EditAction;
 use App\Filament\Forms\ModuleExam;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Hidden;
+use App\Filament\Tables\DragToReorder;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
 use App\Filament\Resources\Courses\CourseResource;
@@ -46,15 +48,10 @@ class ManageCourseContent extends ManageRelatedRecords
                 ->required()
                 ->maxLength(255),
 
-            TextInput::make('order_number')
-                ->label('Orden')
-                ->numeric()
-                ->minValue(1)
-                ->required()
-                // Sugiere la posición siguiente; el unique (course_id,
-                // order_number) rechaza los repetidos.
-                ->default(fn (): int => $this->getOwnerRecord()->modules()->max('order_number') + 1)
-                ->helperText('Define la secuencia dentro del curso.'),
+            // El orden se cambia arrastrando en la tabla, no escribiendo el
+            // número. Un módulo nuevo va al final.
+            Hidden::make('order_number')
+                ->default(fn (): int => $this->getOwnerRecord()->modules()->max('order_number') + 1),
 
             RichText::make('description')
                 ->label('Descripción')
@@ -66,14 +63,13 @@ class ManageCourseContent extends ManageRelatedRecords
 
     public function table(Table $table): Table
     {
-        return $table
+        return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
                     ->label('#')
-                    ->alignCenter()
-                    ->sortable(),
+                    ->alignCenter(),
 
                 TextColumn::make('title')
                     ->label('Módulo')

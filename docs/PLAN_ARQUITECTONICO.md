@@ -1118,6 +1118,22 @@ de un módulo y de una clase, y siguen **sin aparecer en la navegación**
 (`$shouldRegisterNavigation = false`) y **sin página de alta**: se crean desde su
 padre, que es donde se sabe a cuál pertenecen.
 
+**El orden se cambia arrastrando.** Módulos y clases se reordenan tirando de la
+fila; el `order_number` ya no se escribe a mano y un registro nuevo va al final.
+
+Eso choca de frente con el `unique (padre_id, order_number)`: Filament escribe
+todas las posiciones en un solo `UPDATE` con un `CASE`, y al asignarle el 1 a la
+fila que estaba segunda, la que estaba primera todavía lo tiene. `DragToReorder`
+resuelve el reordenamiento en dos fases —primero corre las filas afectadas por
+encima del máximo, después Filament escribe los valores definitivos sobre un
+rango libre—, lo que permite **conservar la restricción** en vez de aflojarla.
+Requiere `paginated(false)`, porque el reordenamiento solo recibe las filas
+visibles y arrastrar entre páginas no significa nada.
+
+El orden no es decorativo: es la cadena que decide qué clase habilita a cuál en
+`ProgressService::previousClass()`. Hay un test que lo verifica después de
+reordenar.
+
 **Las tres solapas que faltan** —Calificaciones, Comunicación y Consultas a mesa
 de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 
@@ -1128,7 +1144,7 @@ de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 | Generar, no escribir a mano | `php artisan make:filament-resource Foo --generate`. La API de v5 difiere bastante de la de v3 y el generador la acierta |
 | Revisar siempre lo generado | Los selects de relación salen mostrando el UUID, y los campos de contraseña se sobreescriben con `null` al editar |
 | Etiquetas y colores en el enum | Implementar `HasLabel` y `HasColor` (como `UserRole`) en vez de repetirlos en cada recurso |
-| `order_number` único por padre | La unicidad es `(padre_id, order_number)`; el formulario sugiere la posición siguiente |
+| `order_number` único por padre | La unicidad es `(padre_id, order_number)`. El orden se cambia **arrastrando**, no escribiendo el número: ver `App\Filament\Tables\DragToReorder` |
 | Acciones masivas para lo repetitivo | Editar treinta clases de a una no es una interfaz; ver «Correr fechas» |
 | Solapas, no acciones de fila | Para bajar un nivel, `getRecordSubNavigation()` con páginas `ManageRelatedRecords`. Una acción de fila que abre otra pantalla no deja rastro de dónde está uno |
 | Nada de una consulta por celda | Las pantallas que cruzan alumnos con clases piden los datos de una vez al servicio; ver `ProgressService::courseMatrix()` |
