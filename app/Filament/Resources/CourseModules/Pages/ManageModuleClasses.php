@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CourseModules\Pages;
 
+use Carbon\Carbon;
 use Filament\Tables\Table;
 use App\Models\CourseClass;
 use App\Models\ClassContent;
@@ -45,10 +46,6 @@ class ManageModuleClasses extends ManageRelatedRecords
 
     protected static ?string $breadcrumb = 'Clases';
 
-    protected static ?string $modelLabel = 'clase';
-
-    protected static ?string $pluralModelLabel = 'clases';
-
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -62,15 +59,32 @@ class ManageModuleClasses extends ManageRelatedRecords
                 // El orden se cambia arrastrando en la tabla. Una clase nueva
                 // va al final del módulo.
                 Hidden::make('order_number')
-                    ->default(fn (): int => $this->getOwnerRecord()->classes()->max('order_number') + 1),
+                    ->default(fn (): int => $this->getOwnerRecord()->nextClassOrder()),
 
+                /*
+                 * El cronograma avanza en el tiempo: una clase no puede
+                 * habilitarse antes que la que va delante suyo. El mismo día sí
+                 * —dos clases el mismo día son normales—, por eso el mínimo es
+                 * el comienzo de ese día y no la hora exacta.
+                 */
                 DateTimePicker::make('activation_date')
                     ->label('Se habilita el')
                     ->seconds(false)
                     ->displayFormat('d/m/Y H:i')
                     ->required()
-                    ->default(now())
-                    ->helperText('Antes de esta fecha, la clase no es visible para los alumnos.'),
+                    ->default(fn (): Carbon => $this->fechaMinima(null) ?? now())
+                    ->minDate(fn (?CourseClass $record): ?Carbon => $this->fechaMinima($record))
+                    ->validationMessages([
+                        'after_or_equal' => 'No puede ser anterior a la clase que va antes. Como muy temprano, el mismo día.',
+                    ])
+                    ->helperText(function (?CourseClass $record): string {
+                        $minima = $this->fechaMinima($record);
+
+                        return $minima === null
+                            ? 'Antes de esta fecha, la clase no es visible para los alumnos.'
+                            : 'Antes de esta fecha, la clase no es visible para los alumnos. La anterior se habilita el '
+                                .$minima->format('d/m/Y').'.';
+                    }),
 
                 Toggle::make('is_live_session')
                     ->label('Clase en vivo')
@@ -184,6 +198,10 @@ class ManageModuleClasses extends ManageRelatedRecords
     {
         return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('clase')
+            ->pluralModelLabel('clases')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
@@ -237,6 +255,20 @@ class ManageModuleClasses extends ManageRelatedRecords
                 ]),
             ])
             ->emptyStateHeading('Este módulo todavía no tiene clases');
+    }
+
+    /**
+     * Fecha más temprana admitida para esta clase.
+     *
+     * Al editar hay que mirar la clase anterior a la que se está tocando; al
+     * crear, la posición es el final del módulo, así que la referencia es la
+     * última clase cargada.
+     */
+    private function fechaMinima(?CourseClass $record): ?Carbon
+    {
+        $module = $this->getOwnerRecord();
+
+        return $module->earliestDateFor($record?->order_number ?? $module->nextClassOrder());
     }
 
     /** El estado del select puede llegar como enum o como su valor. */

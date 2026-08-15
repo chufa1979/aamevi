@@ -1134,6 +1134,19 @@ El orden no es decorativo: es la cadena que decide qué clase habilita a cuál e
 `ProgressService::previousClass()`. Hay un test que lo verifica después de
 reordenar.
 
+**El cronograma avanza en el tiempo.** Una clase no puede habilitarse antes que
+la que va delante suyo: cargarla con fecha anterior la dejaría disponible fuera
+de secuencia. El mismo día sí —dos clases el mismo día son normales—, así que la
+comparación es por día y no por hora. `CourseModule::earliestDateFor($orden)`
+resuelve el mínimo y el formulario lo aplica con `minDate()`, que da validación
+en el navegador y en el servidor. Vale también al editar, mirando la clase
+anterior a la que se toca: sin eso alcanzaría con crear la clase con fecha válida
+y después moverla hacia atrás.
+
+La acción masiva **«Correr fechas» no valida esto**: correr un subconjunto de
+clases hacia atrás puede dejar el módulo desordenado. Es deliberado —la acción
+existe para reprogramar en bloque— pero conviene saberlo.
+
 **Las tres solapas que faltan** —Calificaciones, Comunicación y Consultas a mesa
 de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 

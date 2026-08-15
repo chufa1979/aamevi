@@ -39,10 +39,6 @@ class ManageCourseContent extends ManageRelatedRecords
     // Sin esto el breadcrumb muestra el nombre de la relación, en inglés
     protected static ?string $breadcrumb = 'Contenidos';
 
-    protected static ?string $modelLabel = 'módulo';
-
-    protected static ?string $pluralModelLabel = 'módulos';
-
     public function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -68,6 +64,10 @@ class ManageCourseContent extends ManageRelatedRecords
     {
         return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('módulo')
+            ->pluralModelLabel('módulos')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')

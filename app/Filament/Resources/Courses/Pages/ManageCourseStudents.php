@@ -30,10 +30,6 @@ class ManageCourseStudents extends ManageRelatedRecords
 
     protected static ?string $breadcrumb = 'Alumnos';
 
-    protected static ?string $modelLabel = 'inscripción';
-
-    protected static ?string $pluralModelLabel = 'inscripciones';
-
     public function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -60,6 +56,10 @@ class ManageCourseStudents extends ManageRelatedRecords
     {
         return $table
             ->recordTitleAttribute('id')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('inscripción')
+            ->pluralModelLabel('inscripciones')
             ->defaultSort('enrollment_date', 'desc')
             ->columns([
                 TextColumn::make('student.user.full_name')

@@ -30,10 +30,6 @@ class ManageClassQuestions extends ManageRelatedRecords
 
     protected static ?string $breadcrumb = 'Preguntas';
 
-    protected static ?string $modelLabel = 'pregunta';
-
-    protected static ?string $pluralModelLabel = 'preguntas';
-
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -65,6 +61,10 @@ class ManageClassQuestions extends ManageRelatedRecords
     {
         return $table
             ->recordTitleAttribute('text')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('pregunta')
+            ->pluralModelLabel('preguntas')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
