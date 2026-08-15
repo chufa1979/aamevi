@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Carbon\Carbon;
 use App\Models\Quiz;
 use App\Models\User;
 use App\Models\Course;
@@ -12,50 +13,138 @@ use App\Models\Question;
 use App\Models\CourseClass;
 use App\Models\ClassContent;
 use App\Models\CourseModule;
+use App\Services\QuizService;
 use App\Models\QuestionOption;
 use App\Enums\ClassContentType;
 use App\Enums\EnrollmentStatus;
 use Illuminate\Database\Seeder;
 use App\Models\CourseEnrollment;
+use App\Services\ProgressService;
+use Illuminate\Support\Collection;
+use Database\Seeders\Data\CourseCatalog;
 
 /**
- * Contenido de ejemplo: tres cursos con módulos, clases, materiales de los
- * cuatro tipos, banco de preguntas, quiz de clase y examen de módulo.
+ * Cinco cursos completos, con alumnos cursando y avance simulado.
  *
- * Sirve para tener el panel y el aula con algo que mirar sin cargar todo a
- * mano. Es idempotente: cada registro se busca por su clave natural, así que
- * se puede volver a correr sin duplicar nada.
+ * El objetivo no es tener «algo» cargado sino que el panel se vea como se va a
+ * ver en uso: 28 módulos, 140 clases, 700 preguntas y veinte alumnos repartidos
+ * con distinto grado de avance. Recién con ese volumen se nota si una pantalla
+ * pagina bien, si la grilla de seguimiento es legible o si una consulta escala.
  *
- * Las fechas de activación se recalculan en cada corrida, relativas a hoy: si
- * no, el curso "en marcha" iría quedando viejo y la clase que demuestra el
- * candado terminaría abriéndose sola.
+ * **El cronograma va de julio a diciembre de 2026 a propósito.** Con la fecha
+ * de hoy en el medio, cada curso queda partido en clases ya dictadas y clases
+ * por venir, que es lo que hace visible la progresión: unas aparecen aprobadas
+ * o en curso, y las siguientes bloqueadas o todavía no habilitadas.
  *
- * Los videos apuntan a cortos de la Blender Foundation y los PDF a un archivo
- * de prueba del W3C. Son marcadores de posición que cargan de verdad, para
- * poder ver la previsualización funcionando; el material real se sube desde
- * el panel.
+ * El avance se simula con `QuizService` y `ProgressService`, no escribiendo las
+ * tablas a mano: así los intentos quedan con sus preguntas sorteadas y sus
+ * respuestas, y el avance respeta el mismo gateo que en producción. Un alumno
+ * no queda «aprobado» en una clase sin haber rendido.
+ *
+ * Es idempotente: cada registro se busca por su clave natural y el avance se
+ * saltea si ya está. Las fechas se recalculan en cada corrida.
+ *
+ * **El texto de las preguntas es de relleno.** Se arma combinando el título de
+ * la clase con cinco plantillas: alcanza para ver el sistema funcionando, pero
+ * no es material didáctico y hay que reemplazarlo.
  */
 class CourseSeeder extends Seeder
 {
+    /** El cronograma completo: todos los cursos empiezan y terminan acá dentro. */
+    private const INICIO = '2026-07-01';
+
+    private const FIN = '2026-12-20';
+
+    /** Marcadores de posición que cargan de verdad, para ver la previsualización. */
+    private const VIDEO_A = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
+
+    private const VIDEO_B = 'https://youtu.be/YE7VzlLtp-4';
+
+    private const PDF = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+
+    /**
+     * Plantillas de pregunta. Cada clase genera una de cada, sobre su propio
+     * título, así que no se repite ninguna en todo el sistema.
+     *
+     * @var array<int, array{texto: string, opciones: array<int, array{0: string, 1: bool}>}>
+     */
+    private const FORMAS = [
+        [
+            'texto' => 'En relación con «%s», ¿cuál de estas afirmaciones es correcta?',
+            'opciones' => [
+                ['Es un factor modificable mediante intervenciones sobre el estilo de vida.', true],
+                ['Depende exclusivamente de la carga genética del paciente.', false],
+                ['Sólo se aborda con tratamiento farmacológico.', false],
+                ['No cuenta con evidencia clínica que lo respalde.', false],
+            ],
+        ],
+        [
+            'texto' => '¿Qué conviene evaluar antes de intervenir sobre «%s»?',
+            'opciones' => [
+                ['El estado basal del paciente y los objetivos que se acuerden con él.', true],
+                ['Únicamente la edad.', false],
+                ['Nada en particular: la indicación es la misma para todos.', false],
+                ['El resultado de un solo estudio de laboratorio.', false],
+            ],
+        ],
+        [
+            'texto' => 'Al trabajar «%s» en el consultorio, ¿cuál es el primer paso?',
+            'opciones' => [
+                ['Acordar con el paciente una meta concreta y alcanzable.', true],
+                ['Entregar un folleto genérico y citarlo en seis meses.', false],
+                ['Derivar sin evaluar.', false],
+                ['Indicar suplementos de entrada.', false],
+            ],
+        ],
+        [
+            'texto' => 'Sobre «%s», la evidencia disponible muestra que…',
+            'opciones' => [
+                ['Los cambios sostenidos producen mejoras clínicas medibles.', true],
+                ['No hay diferencias respecto de no intervenir.', false],
+                ['Los efectos recién aparecen después de diez años.', false],
+                ['Sólo se aplica a pacientes jóvenes y sanos.', false],
+            ],
+        ],
+        [
+            'texto' => '¿Qué error es más frecuente al abordar «%s»?',
+            'opciones' => [
+                ['Indicar un cambio general sin adaptarlo a la vida del paciente.', true],
+                ['Registrar la línea de base antes de empezar.', false],
+                ['Acordar objetivos por escrito.', false],
+                ['Citar al paciente para seguimiento.', false],
+            ],
+        ],
+    ];
+
+    public function __construct(
+        private readonly QuizService $quizzes,
+        private readonly ProgressService $progreso,
+    ) {}
+
     public function run(): void
     {
-        foreach ($this->cursos() as $datos) {
-            $course = $this->crearCurso($datos);
+        $cursos = collect(CourseCatalog::all())
+            ->map(fn (array $datos, int $i): Course => $this->armarCurso($datos, $i));
 
-            foreach ($datos['modules'] as $i => $datosModulo) {
-                $this->crearModulo($course, $datosModulo, $i + 1);
-            }
+        $this->inscribir($cursos);
+        $this->simularAvance($cursos);
 
-            $this->inscribirAlumno($course, $datos['inscripcion']);
-        }
-
-        $this->command?->info('Cursos de ejemplo: '.Course::count().' cursos, '
-            .CourseModule::count().' módulos, '.CourseClass::count().' clases.');
+        $this->command?->info(sprintf(
+            'Contenido de ejemplo: %d cursos, %d módulos, %d clases, %d preguntas, %d inscripciones.',
+            Course::count(),
+            CourseModule::count(),
+            CourseClass::count(),
+            Question::count(),
+            CourseEnrollment::count(),
+        ));
     }
 
-    private function crearCurso(array $datos): Course
+    // ── Contenido ───────────────────────────────────────────────────────────
+
+    /** @param array<string, mixed> $datos */
+    private function armarCurso(array $datos, int $indice): Course
     {
-        return Course::updateOrCreate(
+        $course = Course::updateOrCreate(
             ['title' => $datos['title']],
             [
                 'description' => $datos['description'],
@@ -64,136 +153,174 @@ class CourseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-    }
 
-    private function crearModulo(Course $course, array $datos, int $orden): void
-    {
-        $module = CourseModule::updateOrCreate(
-            ['course_id' => $course->getKey(), 'order_number' => $orden],
-            ['title' => $datos['title'], 'description' => $datos['description']],
-        );
+        $fechas = $this->cronograma($datos, $indice);
+        $clase = 0;
 
-        foreach ($datos['classes'] as $i => $datosClase) {
-            $this->crearClase($module, $datosClase, $i + 1);
-        }
-
-        // El examen de módulo se crea al final, cuando el banco de preguntas de
-        // sus clases ya existe: sin preguntas, `isReady()` daría falso.
-        if (isset($datos['exam_percentage'])) {
-            Quiz::updateOrCreate(
-                ['module_id' => $module->getKey()],
-                [
-                    'title' => 'Examen del módulo: '.$datos['title'],
-                    'questions_percentage' => $datos['exam_percentage'],
-                    'passing_score' => 70,
-                    'max_attempts' => 2,
-                ],
+        foreach ($datos['modules'] as $orden => [$titulo, $titulosDeClase]) {
+            $module = CourseModule::updateOrCreate(
+                ['course_id' => $course->getKey(), 'order_number' => $orden + 1],
+                ['title' => $titulo, 'description' => '<p>Módulo '.($orden + 1).' de «'.$datos['title'].'».</p>'],
             );
+
+            foreach ($titulosDeClase as $posicion => $tituloClase) {
+                $this->armarClase($module, $tituloClase, $posicion + 1, $fechas[$clase], $clase);
+                $clase++;
+            }
+
+            $this->examenDeModulo($module, $orden);
         }
+
+        return $course->fresh();
     }
 
-    private function crearClase(CourseModule $module, array $datos, int $orden): void
+    /**
+     * Reparte las clases del curso entre INICIO y FIN.
+     *
+     * El espaciado sale de la cantidad de clases y no al revés: un curso de
+     * cuarenta clases y otro de veinte tienen que caer los dos dentro de la
+     * misma ventana, o uno terminaría el año siguiente.
+     *
+     * @param  array<string, mixed>  $datos
+     * @return array<int, Carbon>
+     */
+    private function cronograma(array $datos, int $indice): array
     {
+        $total = collect($datos['modules'])->sum(fn (array $m): int => count($m[1]));
+
+        // Cada curso arranca unos días después del anterior, para que no queden
+        // todos dictando el mismo día
+        $inicio = Carbon::parse(self::INICIO)->addDays($indice * 3)->setTime(19, 0);
+        $fin = Carbon::parse(self::FIN)->setTime(19, 0);
+
+        $paso = $total > 1 ? $inicio->diffInDays($fin) / ($total - 1) : 0;
+
+        return collect(range(0, $total - 1))
+            ->map(fn (int $i): Carbon => $inicio->copy()->addDays((int) round($i * $paso)))
+            ->all();
+    }
+
+    private function armarClase(CourseModule $module, string $titulo, int $orden, Carbon $fecha, int $global): void
+    {
+        // Una clase en vivo cada seis, con su enlace de Meet
+        $enVivo = $global % 6 === 5;
+
         $class = CourseClass::updateOrCreate(
             ['module_id' => $module->getKey(), 'order_number' => $orden],
             [
-                'title' => $datos['title'],
-                'description' => $datos['description'],
-                'activation_date' => now()->addDays($datos['days']),
-                'is_live_session' => isset($datos['live']),
-                'meet_link' => $datos['live']['meet'] ?? null,
-                'is_live_recording_available' => $datos['live']['recording'] ?? false,
+                'title' => $titulo,
+                'description' => '<p>'.$titulo.'.</p>',
+                'activation_date' => $fecha,
+                'is_live_session' => $enVivo,
+                'meet_link' => $enVivo ? 'https://meet.google.com/abc-defg-hij' : null,
+                'is_live_recording_available' => $enVivo && $fecha->isPast(),
             ],
         );
 
-        foreach ($datos['contents'] as $i => $contenido) {
+        $this->materiales($class, $titulo, $global);
+        $this->preguntas($class, $titulo);
+
+        Quiz::updateOrCreate(
+            ['class_id' => $class->getKey()],
+            [
+                'title' => 'Autoevaluación: '.$titulo,
+                'questions_per_student' => 3,
+                'passing_score' => 60,
+                'max_attempts' => 3,
+            ],
+        );
+    }
+
+    /** Cuatro combinaciones de material, rotando, para que no sean todas iguales. */
+    private function materiales(CourseClass $class, string $titulo, int $global): void
+    {
+        $combinaciones = [
+            [
+                [ClassContentType::Video, 'Clase grabada', self::VIDEO_A, null],
+                [ClassContentType::Text, 'Apunte de lectura', null, '<p>Puntos clave de <strong>'.$titulo.'</strong>.</p>'],
+            ],
+            [
+                [ClassContentType::Pdf, 'Material de lectura', self::PDF, null],
+                [ClassContentType::Text, 'Resumen', null, '<p>Síntesis de <em>'.$titulo.'</em>.</p>'],
+            ],
+            [
+                [ClassContentType::Video, 'Clase grabada', self::VIDEO_B, null],
+                [ClassContentType::Task, 'Trabajo práctico', null, '<p>Aplicá lo visto en «'.$titulo.'» a un caso propio y subí el archivo.</p>'],
+            ],
+            [
+                [ClassContentType::Video, 'Clase grabada', self::VIDEO_A, null],
+                [ClassContentType::Pdf, 'Guía de trabajo', self::PDF, null],
+                [ClassContentType::Text, 'Para seguir leyendo', null, '<p>Bibliografía ampliatoria.</p>'],
+            ],
+        ];
+
+        foreach ($combinaciones[$global % 4] as $i => [$tipo, $tituloMaterial, $url, $descripcion]) {
             ClassContent::updateOrCreate(
                 ['class_id' => $class->getKey(), 'order_number' => $i + 1],
                 [
-                    'type' => $contenido['type'],
-                    'title' => $contenido['title'],
-                    'description' => $contenido['description'] ?? null,
-                    'content_url' => $contenido['url'] ?? null,
-                ],
-            );
-        }
-
-        foreach ($datos['questions'] ?? [] as $i => $pregunta) {
-            $this->crearPregunta($class, $pregunta, $i + 1);
-        }
-
-        if (isset($datos['quiz'])) {
-            Quiz::updateOrCreate(
-                ['class_id' => $class->getKey()],
-                [
-                    'title' => 'Autoevaluación: '.$datos['title'],
-                    'questions_per_student' => $datos['quiz']['questions_per_student'],
-                    'passing_score' => $datos['quiz']['passing_score'],
-                    'max_attempts' => 3,
+                    'type' => $tipo,
+                    'title' => $tituloMaterial,
+                    'content_url' => $url,
+                    'description' => $descripcion,
                 ],
             );
         }
     }
 
-    private function crearPregunta(CourseClass $class, array $datos, int $orden): void
+    /** Cinco preguntas por clase, una por plantilla, sobre el título de la clase. */
+    private function preguntas(CourseClass $class, string $titulo): void
     {
-        $question = Question::updateOrCreate(
-            ['class_id' => $class->getKey(), 'order_number' => $orden],
-            ['text' => $datos['text'], 'is_active' => true],
-        );
-
-        foreach ($datos['options'] as $i => [$texto, $correcta]) {
-            QuestionOption::updateOrCreate(
-                ['question_id' => $question->getKey(), 'order_number' => $i + 1],
-                ['option_text' => $texto, 'is_correct' => $correcta],
+        foreach (self::FORMAS as $i => $forma) {
+            $question = Question::updateOrCreate(
+                ['class_id' => $class->getKey(), 'order_number' => $i + 1],
+                ['text' => '<p>'.sprintf($forma['texto'], $titulo).'</p>', 'is_active' => true],
             );
+
+            foreach ($forma['opciones'] as $j => [$texto, $correcta]) {
+                QuestionOption::updateOrCreate(
+                    ['question_id' => $question->getKey(), 'order_number' => $j + 1],
+                    ['option_text' => $texto, 'is_correct' => $correcta],
+                );
+            }
         }
     }
 
     /**
-     * Inscribe al alumno de prueba con el estado pedido.
+     * Examen del módulo, con porcentaje variable.
      *
-     * La aprobación pasa por `approve()` y no por un `update` del status: es la
-     * misma transición que hace el panel, y así el ejemplo queda con fecha de
-     * aprobación y docente aprobador como cualquier inscripción real.
+     * El cuarto de cada cinco queda sin examen: el examen es opcional, y si
+     * todos lo tuvieran no se vería la diferencia en la solapa Exámenes.
      */
-    private function inscribirAlumno(Course $course, ?string $estado): void
+    private function examenDeModulo(CourseModule $module, int $orden): void
     {
-        if ($estado === null) {
+        if ($orden % 5 === 3) {
             return;
         }
 
-        $student = Student::find(User::where('email', 'alumno@aamevi.ar')->value('id'));
-
-        if ($student === null) {
-            return;
-        }
-
-        // `status` se pasa explícito aunque la columna tenga default: el modelo
-        // que devuelve firstOrCreate al crear no lee de vuelta los defaults de
-        // la base, y sin esto `isPending()` daría falso sobre una fila nueva.
-        $enrollment = CourseEnrollment::firstOrCreate(
-            ['course_id' => $course->getKey(), 'student_id' => $student->getKey()],
+        Quiz::updateOrCreate(
+            ['module_id' => $module->getKey()],
             [
-                'enrollment_date' => now()->subDays(30),
-                'status' => EnrollmentStatus::Pending,
+                'title' => 'Examen del módulo: '.$module->title,
+                'questions_percentage' => [30, 40, 50][$orden % 3],
+                'passing_score' => 70,
+                'max_attempts' => 2,
             ],
         );
-
-        if ($estado === 'approved' && $enrollment->isPending()) {
-            $enrollment->approve($course->teacher);
-        }
     }
+
+    // ── Personas ────────────────────────────────────────────────────────────
 
     /** El docente con ese email, creándolo si hace falta. */
     private function docente(string $email): Teacher
     {
+        $esInvitada = $email === 'profesora@aamevi.ar';
+
         $user = User::firstOrCreate(
             ['email' => $email],
             [
                 'password' => 'password',
-                'first_name' => 'Docente',
-                'last_name' => 'Invitada',
+                'first_name' => $esInvitada ? 'Docente' : 'Profesor',
+                'last_name' => $esInvitada ? 'Invitada' : 'De Prueba',
                 'role' => UserRole::Teacher,
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -206,220 +333,134 @@ class CourseSeeder extends Seeder
         );
     }
 
-    /** Marcadores de posición que cargan de verdad. Ver el comentario de clase. */
-    private const VIDEO_A = 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
-
-    private const VIDEO_B = 'https://youtu.be/YE7VzlLtp-4';
-
-    private const PDF = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-
-    private function cursos(): array
+    /**
+     * Reparte los alumnos entre los cursos.
+     *
+     * Cada alumno entra en dos o tres cursos y las inscripciones quedan en
+     * estados distintos: la mayoría aprobadas, algunas pendientes de resolver y
+     * una rechazada, para que la solapa Alumnos del curso tenga qué mostrar.
+     *
+     * @param  Collection<int, Course>  $cursos
+     */
+    private function inscribir($cursos): void
     {
-        return [
-            [
-                'title' => 'Fundamentos de la Medicina del Estilo de Vida',
-                'description' => '<p>Introducción a los <strong>seis pilares</strong> de la medicina del estilo de vida y a la evidencia que los respalda.</p><ul><li>Alimentación</li><li>Actividad física</li><li>Sueño reparador</li><li>Manejo del estrés</li><li>Vínculos sociales</li><li>Evitar sustancias tóxicas</li></ul>',
-                'max_students' => 40,
-                'teacher' => 'profesor@aamevi.ar',
-                'inscripcion' => 'approved',
-                'modules' => [
+        $alumnos = Student::with('user')
+            ->get()
+            ->sortBy(fn (Student $s): string => $s->user?->email ?? '')
+            ->values();
+
+        foreach ($alumnos as $i => $student) {
+            // Dos cursos para todos, un tercero para uno de cada tres
+            $cantidad = $i % 3 === 0 ? 3 : 2;
+
+            foreach (range(0, $cantidad - 1) as $n) {
+                $course = $cursos[($i + $n * 2) % $cursos->count()];
+
+                $enrollment = CourseEnrollment::firstOrCreate(
+                    ['course_id' => $course->getKey(), 'student_id' => $student->getKey()],
                     [
-                        'title' => 'Los seis pilares',
-                        'description' => '<p>Qué es la disciplina, de dónde viene y qué resultados muestra.</p>',
-                        'exam_percentage' => 40,
-                        'classes' => [
-                            [
-                                'title' => '¿Qué es la medicina del estilo de vida?',
-                                'description' => '<p>Definición, alcance y diferencias con la medicina preventiva clásica.</p>',
-                                'days' => -30,
-                                'contents' => [
-                                    ['type' => ClassContentType::Video, 'title' => 'Clase grabada: presentación', 'url' => self::VIDEO_A, 'description' => 'Recorrido general por los seis pilares.'],
-                                    ['type' => ClassContentType::Text, 'title' => 'Apunte de lectura', 'description' => '<p>La medicina del estilo de vida usa <em>intervenciones sobre el comportamiento</em> como tratamiento de primera línea en enfermedades crónicas.</p>'],
-                                ],
-                                'quiz' => ['questions_per_student' => 2, 'passing_score' => 60],
-                                'questions' => [
-                                    [
-                                        'text' => '<p>¿Cuántos pilares tiene la medicina del estilo de vida?</p>',
-                                        'options' => [['Cuatro', false], ['Seis', true], ['Ocho', false], ['Diez', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>¿Cuál de estos <strong>no</strong> es uno de los pilares?</p>',
-                                        'options' => [['Sueño reparador', false], ['Vínculos sociales', false], ['Suplementación vitamínica', true], ['Actividad física', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>En esta disciplina, la intervención sobre el comportamiento se considera…</p>',
-                                        'options' => [['Un complemento opcional', false], ['Tratamiento de primera línea', true], ['Un recurso de última instancia', false]],
-                                    ],
-                                ],
-                            ],
-                            [
-                                'title' => 'Evidencia y resultados clínicos',
-                                'description' => '<p>Qué dicen los estudios sobre reversión de enfermedad cardiovascular y diabetes tipo 2.</p>',
-                                'days' => -23,
-                                'contents' => [
-                                    ['type' => ClassContentType::Pdf, 'title' => 'Revisión bibliográfica (PDF)', 'url' => self::PDF, 'description' => 'Material de lectura obligatoria.'],
-                                    ['type' => ClassContentType::Text, 'title' => 'Puntos clave', 'description' => '<p>Prestar atención a los <strong>tamaños de muestra</strong> y a la duración del seguimiento.</p>'],
-                                ],
-                                'quiz' => ['questions_per_student' => 2, 'passing_score' => 70],
-                                'questions' => [
-                                    [
-                                        'text' => '<p>¿Qué variable conviene mirar primero al evaluar un estudio de intervención?</p>',
-                                        'options' => [['El color de los gráficos', false], ['El tamaño de muestra y el seguimiento', true], ['La cantidad de autores', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>La diabetes tipo 2, con intervención intensiva sobre el estilo de vida, puede…</p>',
-                                        'options' => [['Entrar en remisión en parte de los casos', true], ['Curarse siempre en un mes', false], ['No modificarse en absoluto', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>¿Qué es un estudio longitudinal?</p>',
-                                        'options' => [['El que sigue a los participantes en el tiempo', true], ['El que mide una sola vez', false], ['El que no tiene grupo control', false]],
-                                    ],
-                                ],
-                            ],
-                            [
-                                'title' => 'Entrevista motivacional en el consultorio',
-                                'description' => '<p>Cómo acompañar un cambio de hábitos sin caer en la prescripción vacía.</p>',
-                                'days' => -16,
-                                'contents' => [
-                                    ['type' => ClassContentType::Video, 'title' => 'Demostración de entrevista', 'url' => self::VIDEO_B],
-                                    ['type' => ClassContentType::Task, 'title' => 'Trabajo práctico 1', 'description' => '<p>Registrá una entrevista simulada de 10 minutos y subí el archivo. Fecha de entrega: dos semanas.</p>'],
-                                ],
-                            ],
-                        ],
+                        'enrollment_date' => Carbon::parse(self::INICIO)->subDays(30 - $i),
+                        // El default de la columna no llega al modelo recién
+                        // creado, y sin esto isPending() daría falso
+                        'status' => EnrollmentStatus::Pending,
                     ],
-                    [
-                        'title' => 'La nutrición como pilar',
-                        'description' => '<p>Patrones alimentarios con respaldo y cómo llevarlos a una indicación concreta.</p>',
-                        'exam_percentage' => 50,
-                        'classes' => [
-                            [
-                                'title' => 'Patrones alimentarios basados en plantas',
-                                'description' => '<p>Qué muestran las poblaciones con mayor longevidad.</p>',
-                                'days' => -9,
-                                'contents' => [
-                                    ['type' => ClassContentType::Video, 'title' => 'Clase grabada', 'url' => self::VIDEO_A],
-                                    ['type' => ClassContentType::Pdf, 'title' => 'Tabla de equivalencias (PDF)', 'url' => self::PDF],
-                                ],
-                                'quiz' => ['questions_per_student' => 2, 'passing_score' => 70],
-                                'questions' => [
-                                    [
-                                        'text' => '<p>Un patrón alimentario basado en plantas <strong>no</strong> implica necesariamente…</p>',
-                                        'options' => [['Ser vegetariano estricto', true], ['Aumentar el consumo de fibra', false], ['Priorizar alimentos mínimamente procesados', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>¿Qué nutriente requiere atención especial en dietas veganas?</p>',
-                                        'options' => [['Vitamina B12', true], ['Vitamina C', false], ['Potasio', false]],
-                                    ],
-                                ],
-                            ],
-                            [
-                                'title' => 'Prescripción nutricional en el consultorio',
-                                'description' => '<p>De la recomendación general a la indicación escrita.</p>',
-                                'days' => -2,
-                                'contents' => [
-                                    ['type' => ClassContentType::Text, 'title' => 'Modelo de indicación', 'description' => '<p>Una indicación útil es <strong>específica, medible y acordada</strong> con el paciente.</p>'],
-                                    ['type' => ClassContentType::Task, 'title' => 'Trabajo práctico 2', 'description' => '<p>Redactá una indicación nutricional para un caso clínico a elección.</p>'],
-                                ],
-                            ],
-                            [
-                                // Futura y dentro del curso en el que el alumno está inscripto:
-                                // es la que deja ver el candado por fecha de activación
-                                'title' => 'Casos clínicos integradores',
-                                'description' => '<p>Cierre del módulo con discusión de casos.</p>',
-                                'days' => 7,
-                                'contents' => [
-                                    ['type' => ClassContentType::Pdf, 'title' => 'Casos para preparar (PDF)', 'url' => self::PDF],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [
-                'title' => 'Actividad física y prescripción del ejercicio',
-                'description' => '<p>Cómo pasar de "haga ejercicio" a una <strong>prescripción con dosis</strong>: tipo, frecuencia, intensidad y progresión.</p>',
-                'max_students' => 25,
-                'teacher' => 'profesor@aamevi.ar',
-                'inscripcion' => 'pending',
-                'modules' => [
-                    [
-                        'title' => 'Fisiología del movimiento',
-                        'description' => '<p>Qué pasa en el cuerpo, y cómo se traduce en una indicación.</p>',
-                        'exam_percentage' => 60,
-                        'classes' => [
-                            [
-                                'title' => 'Adaptaciones al entrenamiento',
-                                'description' => '<p>Sistema cardiovascular, músculo y hueso.</p>',
-                                'days' => -14,
-                                'contents' => [
-                                    ['type' => ClassContentType::Video, 'title' => 'Clase grabada', 'url' => self::VIDEO_B],
-                                    ['type' => ClassContentType::Pdf, 'title' => 'Guía de dosificación (PDF)', 'url' => self::PDF],
-                                ],
-                                'quiz' => ['questions_per_student' => 2, 'passing_score' => 70],
-                                'questions' => [
-                                    [
-                                        'text' => '<p>¿Cuál es la recomendación semanal habitual de actividad aeróbica moderada en adultos?</p>',
-                                        'options' => [['150 minutos', true], ['30 minutos', false], ['600 minutos', false]],
-                                    ],
-                                    [
-                                        'text' => '<p>El entrenamiento de fuerza en adultos mayores impacta sobre todo en…</p>',
-                                        'options' => [['Masa muscular y densidad ósea', true], ['Agudeza visual', false], ['Capacidad pulmonar total', false]],
-                                    ],
-                                ],
-                            ],
-                            [
-                                'title' => 'Taller en vivo: armado de un plan',
-                                'description' => '<p>Encuentro sincrónico. Traer un caso propio.</p>',
-                                'days' => -7,
-                                'live' => ['meet' => 'https://meet.google.com/abc-defg-hij', 'recording' => true],
-                                'contents' => [
-                                    ['type' => ClassContentType::Text, 'title' => 'Cómo prepararse', 'description' => '<p>Revisar la guía de dosificación de la clase anterior antes del encuentro.</p>'],
-                                    ['type' => ClassContentType::Video, 'title' => 'Grabación del taller', 'url' => self::VIDEO_A],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [
-                'title' => 'Sueño, estrés y vínculos',
-                'description' => '<p>Los tres pilares que menos se indican y más pesan en el resultado.</p>',
-                'max_students' => 30,
-                'teacher' => 'profesora@aamevi.ar',
-                'inscripcion' => null,
-                'modules' => [
-                    [
-                        'title' => 'Higiene del sueño',
-                        'description' => '<p>Evaluación y abordaje del sueño en la consulta.</p>',
-                        'classes' => [
-                            [
-                                'title' => 'Arquitectura del sueño',
-                                'description' => '<p>Fases, ciclos y qué mide cada instrumento.</p>',
-                                'days' => -5,
-                                'contents' => [
-                                    ['type' => ClassContentType::Video, 'title' => 'Clase grabada', 'url' => self::VIDEO_B],
-                                ],
-                                'quiz' => ['questions_per_student' => 1, 'passing_score' => 70],
-                                'questions' => [
-                                    [
-                                        'text' => '<p>¿Cuánto dura aproximadamente un ciclo de sueño completo?</p>',
-                                        'options' => [['90 minutos', true], ['20 minutos', false], ['4 horas', false]],
-                                    ],
-                                ],
-                            ],
-                            [
-                                // Deliberadamente futura: es la que muestra el candado por fecha
-                                'title' => 'Insomnio: abordaje no farmacológico',
-                                'description' => '<p>Terapia cognitivo-conductual para el insomnio.</p>',
-                                'days' => 10,
-                                'contents' => [
-                                    ['type' => ClassContentType::Pdf, 'title' => 'Protocolo (PDF)', 'url' => self::PDF],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-        ];
+                );
+
+                if (! $enrollment->isPending()) {
+                    continue;
+                }
+
+                match (true) {
+                    // Una de cada once queda pendiente y una rechazada
+                    $i % 11 === 7 => null,
+                    $i % 11 === 9 => $enrollment->reject($course->teacher),
+                    default => $enrollment->approve($course->teacher),
+                };
+            }
+        }
+    }
+
+    // ── Avance ──────────────────────────────────────────────────────────────
+
+    /**
+     * Simula lo que hicieron los alumnos hasta hoy.
+     *
+     * Cada alumno tiene un ritmo distinto —al día, atrasado, recién empezando o
+     * sin entrar nunca—, porque una grilla donde todos van igual no muestra
+     * nada. Sólo se tocan las clases cuya fecha ya pasó: las futuras tienen que
+     * quedar sin avance para que se vean como «no habilitada».
+     *
+     * @param  Collection<int, Course>  $cursos
+     */
+    private function simularAvance($cursos): void
+    {
+        foreach ($cursos as $course) {
+            $inscripciones = $course->enrollments()
+                ->whereIn('status', [EnrollmentStatus::Approved, EnrollmentStatus::Active])
+                ->with('student')
+                ->get()
+                ->values();
+
+            foreach ($inscripciones as $i => $enrollment) {
+                $student = $enrollment->student;
+
+                if ($student === null) {
+                    continue;
+                }
+
+                // 100 %, 70 %, 40 %, 20 % y nada
+                $ritmo = [1.0, 0.7, 0.4, 0.2, 0.0][$i % 5];
+
+                $this->avanzar($course, $student, $ritmo);
+            }
+        }
+    }
+
+    private function avanzar(Course $course, Student $student, float $ritmo): void
+    {
+        $dictadas = $course->modules()
+            ->with(['classes' => fn ($q) => $q->where('activation_date', '<=', now())])
+            ->get()
+            ->flatMap->classes;
+
+        if ($dictadas->isEmpty() || $ritmo === 0.0) {
+            return;
+        }
+
+        $hasta = (int) floor($dictadas->count() * $ritmo);
+
+        foreach ($dictadas->values() as $posicion => $class) {
+            if ($posicion >= $hasta) {
+                // La siguiente queda abierta pero sin terminar: es el estado
+                // «en curso» de la grilla de seguimiento
+                if ($posicion === $hasta) {
+                    $this->progreso->start($student, $class);
+                }
+
+                return;
+            }
+
+            $this->aprobar($student, $class);
+        }
+    }
+
+    /** Rinde la autoevaluación de la clase respondiendo bien, y la da por vista. */
+    private function aprobar(Student $student, CourseClass $class): void
+    {
+        if ($this->progreso->hasCompleted($student, $class)) {
+            return;
+        }
+
+        $quiz = $class->quiz;
+
+        if ($quiz !== null && ! $this->quizzes->hasPassed($quiz, $student)) {
+            $attempt = $this->quizzes->start($quiz, $student);
+
+            $this->quizzes->submit($attempt, $attempt->questions->mapWithKeys(
+                fn (Question $q): array => [$q->getKey() => $q->options->firstWhere('is_correct', true)?->getKey()],
+            )->all());
+        }
+
+        $this->progreso->complete($student, $class);
     }
 }

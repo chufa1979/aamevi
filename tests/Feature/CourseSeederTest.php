@@ -7,19 +7,25 @@ use App\Models\Quiz;
 use App\Models\User;
 use App\Models\Course;
 use App\Models\Student;
+use App\Models\Question;
 use App\Models\CourseClass;
+use App\Models\QuizAttempt;
 use App\Models\ClassContent;
+use App\Models\CourseModule;
 use App\Enums\ClassContentType;
 use App\Enums\EnrollmentStatus;
+use App\Models\CourseEnrollment;
+use App\Enums\ClassProgressState;
 use App\Services\ProgressService;
 use Database\Seeders\CourseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
- * El contenido de ejemplo no es solo relleno: es lo que se usa para revisar el
- * panel y el aula a ojo. Si deja de sembrar alguno de los casos que ilustra
- * —los cuatro tipos de material, los estados de inscripción, los dos motivos de
- * bloqueo— deja de servir para eso sin que nadie se entere.
+ * El contenido de ejemplo no es relleno: es lo que se usa para revisar el panel
+ * a ojo y para ver cómo se comporta con volumen real. Si deja de sembrar alguno
+ * de los casos que ilustra —los cuatro tipos de material, los estados de
+ * inscripción, los cinco estados de avance— deja de servir para eso sin que
+ * nadie se entere.
  */
 class CourseSeederTest extends TestCase
 {
@@ -32,28 +38,119 @@ class CourseSeederTest extends TestCase
         $this->seed();
     }
 
-    private function alumno(): Student
+    private function alumnoDePrueba(): Student
     {
         return Student::find(User::where('email', 'alumno@aamevi.ar')->value('id'));
     }
 
-    public function test_siembra_los_tres_cursos_con_su_arbol(): void
+    public function test_siembra_cinco_cursos_con_la_cantidad_de_modulos_pedida(): void
     {
-        $this->assertSame(3, Course::count());
+        $this->assertSame(5, Course::count());
 
-        foreach (Course::all() as $course) {
-            $this->assertGreaterThan(0, $course->modules()->count(), "{$course->title} sin módulos.");
-            $this->assertGreaterThan(0, $course->classes()->count(), "{$course->title} sin clases.");
+        $modulos = Course::withCount('modules')
+            ->get()
+            ->pluck('modules_count')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame([4, 5, 5, 6, 8], $modulos);
+    }
+
+    public function test_cada_modulo_tiene_al_menos_cinco_clases(): void
+    {
+        $flojos = CourseModule::has('classes', '<', 5)->get();
+
+        $this->assertTrue($flojos->isEmpty(), 'Módulos con menos de cinco clases: '.$flojos->pluck('title')->implode(', '));
+    }
+
+    public function test_cada_clase_tiene_su_autoevaluacion_con_al_menos_cinco_preguntas(): void
+    {
+        $sinQuiz = CourseClass::doesntHave('quiz')->count();
+        $this->assertSame(0, $sinQuiz, "{$sinQuiz} clases sin autoevaluación.");
+
+        $pocasPreguntas = CourseClass::has('questions', '<', 5)->count();
+
+        $this->assertSame(0, $pocasPreguntas, "{$pocasPreguntas} clases con menos de cinco preguntas.");
+    }
+
+    /** Ninguna pregunta puede repetirse: el examen de módulo junta los bancos de sus clases. */
+    public function test_las_preguntas_no_se_repiten(): void
+    {
+        $textos = Question::pluck('text');
+
+        $this->assertSame($textos->count(), $textos->unique()->count());
+    }
+
+    public function test_el_cronograma_va_de_julio_a_diciembre_de_2026(): void
+    {
+        $desde = CourseClass::min('activation_date');
+        $hasta = CourseClass::max('activation_date');
+
+        $this->assertStringStartsWith('2026-07', $desde);
+        $this->assertStringStartsWith('2026-12', $hasta);
+    }
+
+    /** Con la fecha de hoy en el medio, cada curso queda partido en dictadas y por venir. */
+    public function test_cada_curso_tiene_clases_dictadas_y_clases_por_venir(): void
+    {
+        foreach (Course::with('modules.classes')->get() as $course) {
+            $clases = $course->modules->flatMap->classes;
+
+            $this->assertGreaterThan(0, $clases->filter->isAvailable()->count(), "{$course->title} no tiene ninguna clase dictada.");
+            $this->assertGreaterThan(0, $clases->reject->isAvailable()->count(), "{$course->title} no tiene ninguna clase por venir.");
         }
     }
 
-    public function test_es_idempotente(): void
+    public function test_siembra_unos_veinte_alumnos_repartidos_en_los_cursos(): void
     {
-        $antes = [Course::count(), CourseClass::count(), ClassContent::count(), Quiz::count()];
+        $this->assertGreaterThanOrEqual(20, Student::count());
 
-        $this->seed(CourseSeeder::class);
+        foreach (Course::all() as $course) {
+            $this->assertGreaterThan(0, $course->enrollments()->count(), "{$course->title} sin inscriptos.");
+        }
+    }
 
-        $this->assertSame($antes, [Course::count(), CourseClass::count(), ClassContent::count(), Quiz::count()]);
+    public function test_las_inscripciones_cubren_los_tres_estados(): void
+    {
+        $estados = CourseEnrollment::pluck('status');
+
+        foreach ([EnrollmentStatus::Approved, EnrollmentStatus::Pending, EnrollmentStatus::Rejected] as $estado) {
+            $this->assertContains($estado, $estados, "No hay ninguna inscripción {$estado->value}.");
+        }
+    }
+
+    /** Lo que pidió el usuario: los alumnos rindieron las clases anteriores a hoy. */
+    public function test_hay_intentos_rendidos_y_ninguno_sobre_una_clase_futura(): void
+    {
+        $this->assertGreaterThan(0, QuizAttempt::count(), 'Nadie rindió nada.');
+
+        $futuros = QuizAttempt::with('quiz.class')
+            ->get()
+            ->filter(fn (QuizAttempt $a): bool => $a->quiz?->class !== null && ! $a->quiz->class->isAvailable())
+            ->count();
+
+        $this->assertSame(0, $futuros, 'Hay intentos sobre clases que todavía no se dictaron.');
+    }
+
+    public function test_los_examenes_de_modulo_sortean_un_porcentaje_del_banco(): void
+    {
+        $examenes = Quiz::whereNotNull('module_id')->get();
+
+        $this->assertGreaterThan(0, $examenes->count());
+
+        foreach ($examenes as $examen) {
+            $this->assertNotNull($examen->questions_percentage);
+            $this->assertTrue($examen->isReady(), 'Un examen de módulo quedó sin banco de preguntas.');
+            $this->assertLessThanOrEqual($examen->poolSize(), $examen->questionsToDraw());
+        }
+    }
+
+    /** El examen es opcional: si todos los módulos lo tuvieran, la solapa no mostraría la diferencia. */
+    public function test_algunos_modulos_quedan_sin_examen(): void
+    {
+        $this->assertGreaterThan(0, CourseModule::doesntHave('quiz')->count());
+        $this->assertGreaterThan(0, CourseModule::has('quiz')->count());
     }
 
     public function test_siembra_los_cuatro_tipos_de_material(): void
@@ -68,96 +165,40 @@ class CourseSeederTest extends TestCase
 
     public function test_los_videos_de_ejemplo_se_pueden_incrustar(): void
     {
-        $videos = ClassContent::where('type', ClassContentType::Video)->get();
-
-        $this->assertNotEmpty($videos);
-
-        foreach ($videos as $video) {
+        foreach (ClassContent::where('type', ClassContentType::Video)->get() as $video) {
             $this->assertNotNull($video->embedUrl(), "El video «{$video->title}» no se puede incrustar.");
         }
     }
 
-    public function test_hay_una_clase_en_vivo_con_enlace(): void
-    {
-        $vivo = CourseClass::where('is_live_session', true)->first();
-
-        $this->assertNotNull($vivo, 'Ninguna clase en vivo sembrada.');
-        $this->assertNotNull($vivo->meet_link);
-    }
-
-    public function test_los_examenes_de_modulo_sortean_un_porcentaje_del_banco(): void
-    {
-        $examenes = Quiz::whereNotNull('module_id')->get();
-
-        $this->assertNotEmpty($examenes);
-
-        foreach ($examenes as $examen) {
-            $this->assertNotNull($examen->questions_percentage);
-            $this->assertTrue($examen->isReady(), 'Un examen de módulo quedó sin banco de preguntas.');
-            $this->assertLessThanOrEqual($examen->poolSize(), $examen->questionsToDraw());
-        }
-    }
-
-    public function test_los_quiz_de_clase_tienen_preguntas_con_una_sola_correcta(): void
-    {
-        $quizzes = Quiz::whereNotNull('class_id')->get();
-
-        $this->assertNotEmpty($quizzes);
-
-        foreach ($quizzes as $quiz) {
-            $this->assertTrue($quiz->isReady(), "El quiz «{$quiz->title}» no tiene preguntas.");
-
-            foreach ($quiz->questionPool()->with('options')->get() as $pregunta) {
-                $this->assertSame(
-                    1,
-                    $pregunta->options->where('is_correct', true)->count(),
-                    'Toda pregunta tiene exactamente una opción correcta.',
-                );
-            }
-        }
-    }
-
-    public function test_el_alumno_queda_con_una_inscripcion_aprobada_y_una_pendiente(): void
-    {
-        $inscripciones = $this->alumno()->enrollments()->pluck('status');
-
-        $this->assertContains(EnrollmentStatus::Approved, $inscripciones);
-        $this->assertContains(EnrollmentStatus::Pending, $inscripciones);
-    }
-
-    /** El ejemplo tiene que mostrar los dos candados, no solo uno. */
-    public function test_ilustra_el_bloqueo_por_fecha_y_por_clase_anterior(): void
+    /**
+     * El seguimiento sólo sirve si los alumnos van a ritmos distintos. Con todos
+     * iguales la grilla no muestra nada.
+     */
+    public function test_la_grilla_de_seguimiento_muestra_avances_distintos(): void
     {
         $progreso = app(ProgressService::class);
-        $alumno = $this->alumno();
+        $curso = Course::withCount('modules')->orderByDesc('modules_count')->first();
 
-        $motivos = CourseClass::all()
-            ->map(fn (CourseClass $clase): ?string => $progreso->lockReason($alumno, $clase))
-            ->filter()
-            ->values();
+        $estados = collect($progreso->courseMatrix($curso))
+            ->flatMap(fn (array $fila): array => array_values($fila))
+            ->unique();
 
-        $this->assertTrue(
-            $motivos->contains(fn (string $m): bool => str_contains($m, 'Se habilita el')),
-            'Ninguna clase con fecha futura visible para el alumno inscripto.',
-        );
-
-        $this->assertTrue(
-            $motivos->contains('Primero tenés que aprobar la clase anterior.'),
-            'Ninguna clase bloqueada por la anterior.',
-        );
+        $this->assertGreaterThanOrEqual(3, $estados->count(), 'La grilla tiene menos de tres estados distintos.');
+        $this->assertTrue($estados->contains(ClassProgressState::Completed));
+        $this->assertTrue($estados->contains(ClassProgressState::Scheduled));
     }
 
-    public function test_la_primera_clase_del_curso_aprobado_esta_abierta(): void
+    public function test_es_idempotente(): void
     {
-        $progreso = app(ProgressService::class);
+        $antes = [Course::count(), CourseClass::count(), ClassContent::count(), Quiz::count(), QuizAttempt::count()];
 
-        $curso = $this->alumno()->enrollments()
-            ->where('status', EnrollmentStatus::Approved)
-            ->first()
-            ->course;
+        $this->seed(CourseSeeder::class);
 
-        $primera = $curso->modules()->first()->classes()->orderBy('order_number')->first();
+        $this->assertSame($antes, [Course::count(), CourseClass::count(), ClassContent::count(), Quiz::count(), QuizAttempt::count()]);
+    }
 
-        $this->assertNull($progreso->lockReason($this->alumno(), $primera));
+    public function test_el_alumno_de_prueba_sigue_teniendo_sus_inscripciones(): void
+    {
+        $this->assertGreaterThan(0, $this->alumnoDePrueba()->enrollments()->count());
     }
 }

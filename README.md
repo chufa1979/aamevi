@@ -250,30 +250,47 @@ php artisan migrate:status   # ninguna pendiente
 | `admin@aamevi.ar` | administrador | `/admin` y el sitio |
 | `profesor@aamevi.ar` | profesor | el sitio |
 | `alumno@aamevi.ar` | alumno | el sitio |
+| `alumno01@aamevi.ar` … `alumno20@aamevi.ar` | alumnos | el sitio |
 
 ### Contenido de ejemplo
 
-`db:seed` también carga **tres cursos** con su árbol completo, para no tener que
-dar de alta todo a mano al revisar el panel o el aula:
+`db:seed` carga un programa completo, para que el panel se vea como se va a ver
+en uso y no con dos cursos de juguete:
 
-| Curso | Estructura | El alumno de prueba |
+| Curso | Módulos | Clases |
 |---|---|---|
-| Fundamentos de la Medicina del Estilo de Vida | 2 módulos, 6 clases | inscripto y **aprobado** |
-| Actividad física y prescripción del ejercicio | 1 módulo, 2 clases, una **en vivo** con Meet | inscripción **pendiente** |
-| Sueño, estrés y vínculos | 1 módulo, 2 clases | sin inscripción |
+| Fundamentos de la Medicina del Estilo de Vida | 5 | 25 |
+| Nutrición basada en plantas y prescripción alimentaria | 8 | 40 |
+| Actividad física y prescripción del ejercicio | 6 | 30 |
+| Sueño, estrés y salud mental | 4 | 20 |
+| Vínculos, comunidad y cambio de comportamiento | 5 | 25 |
 
-Incluye los cuatro tipos de material (video, PDF, texto y tarea), banco de
-preguntas, quiz de clase y examen de módulo por porcentaje. Está armado para que
-se vean los tres motivos de bloqueo del aula: clase cerrada **por fecha**, por
-**no haber aprobado la anterior**, y por **no estar inscripto**.
+En total **28 módulos, 140 clases y 700 preguntas**, más 20 alumnos repartidos
+en 49 inscripciones. Cada clase tiene su autoevaluación con cinco preguntas y
+los cuatro tipos de material (video, PDF, texto y tarea); la mayoría de los
+módulos tiene examen, y algunos no —el examen es opcional y así se ve la
+diferencia—.
+
+**El cronograma va de julio a diciembre de 2026 a propósito.** Con la fecha de
+hoy en el medio, cada curso queda partido en clases ya dictadas y clases por
+venir, que es lo que hace visible la progresión.
+
+Los alumnos avanzan a **ritmos distintos** —al día, atrasados, recién empezando
+o sin entrar nunca—, porque una grilla de seguimiento donde todos van igual no
+muestra nada. El avance se simula con `QuizService` y `ProgressService`, no
+escribiendo las tablas a mano: los intentos quedan con sus preguntas sorteadas y
+sus respuestas, y nadie figura aprobado sin haber rendido.
+
+Las inscripciones cubren los tres estados —aprobada, pendiente y rechazada— para
+que la solapa *Alumnos del curso* tenga qué mostrar.
 
 Los videos apuntan a cortos de la Blender Foundation y los PDF a un archivo de
 prueba del W3C: son marcadores de posición, pero cargan de verdad, así que la
-previsualización se ve funcionando.
+previsualización se ve funcionando. **El texto de las preguntas es de relleno**
+—se arma combinando el título de la clase con cinco plantillas— y hay que
+reemplazarlo por material real.
 
-Ambos seeders son idempotentes: se pueden volver a correr sin duplicar nada ni
-chocar contra el `unique` de `email`. Las fechas de activación se recalculan
-relativas a hoy en cada corrida.
+Los tres seeders son idempotentes: se pueden volver a correr sin duplicar nada.
 
 ### Los tests no usan MySQL
 

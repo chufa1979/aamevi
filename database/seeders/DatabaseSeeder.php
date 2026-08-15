@@ -76,6 +76,9 @@ class DatabaseSeeder extends Seeder
 
         $this->command?->info("Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email} (contraseña: password)");
 
-        $this->call(CourseSeeder::class);
+        $this->call([
+            StudentSeeder::class,
+            CourseSeeder::class,
+        ]);
     }
 }
