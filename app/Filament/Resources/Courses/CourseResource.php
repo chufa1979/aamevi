@@ -18,6 +18,7 @@ use App\Filament\Resources\Courses\Pages\CourseGrades;
 use App\Filament\Resources\Courses\Pages\CreateCourse;
 use App\Filament\Resources\Courses\Schemas\CourseForm;
 use App\Filament\Resources\Courses\Tables\CoursesTable;
+use App\Filament\Resources\Courses\Pages\CourseAttempts;
 use App\Filament\Resources\Courses\Pages\CourseSchedule;
 use App\Filament\Resources\Courses\Pages\CourseTracking;
 use App\Filament\Resources\Courses\Pages\ManageCourseContent;
@@ -76,6 +77,7 @@ class CourseResource extends Resource
             CourseSchedule::class,
             ManageCourseContent::class,
             CourseExams::class,
+            CourseAttempts::class,
             CourseGrades::class,
             ManageCourseStudents::class,
             CourseTracking::class,
@@ -91,6 +93,7 @@ class CourseResource extends Resource
             'schedule' => CourseSchedule::route('/{record}/planificacion'),
             'content' => ManageCourseContent::route('/{record}/contenidos'),
             'exams' => CourseExams::route('/{record}/examenes'),
+            'attempts' => CourseAttempts::route('/{record}/intentos'),
             'grades' => CourseGrades::route('/{record}/calificaciones'),
             'students' => ManageCourseStudents::route('/{record}/alumnos'),
             'tracking' => CourseTracking::route('/{record}/seguimiento'),
