@@ -10,6 +10,10 @@ class EditCourse extends EditRecord
 {
     protected static string $resource = CourseResource::class;
 
+    protected static ?string $navigationLabel = 'Info general';
+
+    protected static ?string $title = 'Información general';
+
     protected function getHeaderActions(): array
     {
         return [

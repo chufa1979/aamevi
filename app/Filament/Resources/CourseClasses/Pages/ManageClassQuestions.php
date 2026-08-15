@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\CourseClasses\RelationManagers;
+namespace App\Filament\Resources\CourseClasses\Pages;
 
 use App\Models\Question;
 use Filament\Tables\Table;
@@ -14,13 +14,19 @@ use App\Filament\Forms\QuestionOptions;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Pages\ManageRelatedRecords;
+use App\Filament\Resources\CourseClasses\CourseClassResource;
 
-class QuestionsRelationManager extends RelationManager
+/** Banco de preguntas de la clase. Alimenta su autoevaluación y el examen del módulo. */
+class ManageClassQuestions extends ManageRelatedRecords
 {
+    protected static string $resource = CourseClassResource::class;
+
     protected static string $relationship = 'questions';
 
-    protected static ?string $title = 'Preguntas';
+    protected static ?string $navigationLabel = 'Banco de preguntas';
+
+    protected static ?string $title = 'Banco de preguntas de la clase';
 
     protected static ?string $modelLabel = 'pregunta';
 
@@ -96,6 +102,6 @@ class QuestionsRelationManager extends RelationManager
                 DeleteAction::make(),
             ])
             ->emptyStateHeading('Esta clase todavía no tiene preguntas')
-            ->emptyStateDescription('Las preguntas alimentan tanto el quiz de la clase como el examen del módulo.');
+            ->emptyStateDescription('Las preguntas alimentan tanto la autoevaluación de la clase como el examen del módulo.');
     }
 }

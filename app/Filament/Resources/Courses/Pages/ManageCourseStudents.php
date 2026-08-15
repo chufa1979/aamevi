@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Courses\RelationManagers;
+namespace App\Filament\Resources\Courses\Pages;
 
 use App\Models\Student;
 use Filament\Tables\Table;
@@ -14,13 +14,19 @@ use App\Exceptions\EnrollmentException;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Resources\Courses\CourseResource;
+use Filament\Resources\Pages\ManageRelatedRecords;
 
-class EnrollmentsRelationManager extends RelationManager
+/** Los alumnos inscriptos al curso, con la aprobación de las solicitudes. */
+class ManageCourseStudents extends ManageRelatedRecords
 {
+    protected static string $resource = CourseResource::class;
+
     protected static string $relationship = 'enrollments';
 
-    protected static ?string $title = 'Inscripciones';
+    protected static ?string $navigationLabel = 'Alumnos del curso';
+
+    protected static ?string $title = 'Alumnos del curso';
 
     protected static ?string $modelLabel = 'inscripción';
 

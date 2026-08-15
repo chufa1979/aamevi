@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\CourseClass;
 use App\Enums\EnrollmentStatus;
 use App\Models\StudentProgress;
+use App\Enums\ClassProgressState;
 
 /**
  * Quién puede ver qué, y qué lleva completado.
@@ -117,6 +118,66 @@ class ProgressService
         $this->start($student, $class)->update(['completed_at' => now()]);
 
         return true;
+    }
+
+    /**
+     * Estado de cada clase del curso para cada alumno inscripto.
+     *
+     * Es lo mismo que preguntar `hasCompleted()` y `canAccess()` celda por
+     * celda, pero resuelto con tres consultas en total en vez de tres por
+     * celda: con 40 alumnos y 20 clases, la versión ingenua son 2400.
+     *
+     * Las tres condiciones se evalúan en el mismo orden que `lockReason()`, y
+     * un test comprueba que la grilla y `canAccess()` no se contradigan.
+     *
+     * @return array<string, array<string, ClassProgressState>> indexado por alumno y clase
+     */
+    public function courseMatrix(Course $course): array
+    {
+        $alumnos = $course->enrollments()
+            ->whereIn('status', [
+                EnrollmentStatus::Approved,
+                EnrollmentStatus::Active,
+                EnrollmentStatus::Completed,
+            ])
+            ->pluck('student_id');
+
+        $modules = $course->modules()->with('classes')->get();
+        $clases = $modules->flatMap->classes;
+
+        $avances = StudentProgress::query()
+            ->whereIn('student_id', $alumnos)
+            ->whereIn('class_id', $clases->pluck('id'))
+            ->get()
+            ->groupBy('student_id');
+
+        $grilla = [];
+
+        foreach ($alumnos as $alumno) {
+            $propios = ($avances[$alumno] ?? collect())->keyBy('class_id');
+
+            foreach ($modules as $module) {
+                // El gateo es por módulo: cada uno arranca abierto en su primera clase
+                $anteriorAprobada = true;
+
+                foreach ($module->classes as $class) {
+                    $avance = $propios->get($class->getKey());
+
+                    $estado = match (true) {
+                        $avance?->isCompleted() ?? false => ClassProgressState::Completed,
+                        ! $class->isAvailable() => ClassProgressState::Scheduled,
+                        ! $anteriorAprobada => ClassProgressState::Locked,
+                        $avance !== null => ClassProgressState::InProgress,
+                        default => ClassProgressState::Available,
+                    };
+
+                    $grilla[$alumno][$class->getKey()] = $estado;
+                    $anteriorAprobada = $estado === ClassProgressState::Completed;
+                }
+            }
+        }
+
+        return $grilla;
     }
 
     /** Porcentaje del curso completado por el alumno. */

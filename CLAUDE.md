@@ -75,7 +75,10 @@ Resources live in `app/Filament/Resources/`, one folder each, with the form and 
 
 - **Generate, don't hand-write**: `php artisan make:filament-resource Foo --generate`. The v5 API differs substantially from v3 (`Schema` not `Form`, `Filament\Actions` unified, relation managers as separate classes).
 - **Always review what it generates.** Two recurring defects: relation selects render raw UUIDs, and password fields overwrite the stored hash with `null` on edit.
-- **Content navigation is two screens deep**: course → Modules tab → "Clases" action → module screen → Classes tab. A relation manager cannot nest another, which is why `CourseModuleResource` exists but is hidden from navigation and has no create page. See §11 of the plan.
+- **Navigation is grouped and tabbed**, mirroring the FID admin analysed in §13 of the plan. Four sidebar groups — `Cursos`, `Alumnos`, `Evaluación`, `Sistema` — declared in `AdminPanelProvider::navigationGroups()`, not via per-resource `$navigationSort`. Icons belong on the *group*: Filament refuses to render them on both group and items.
+- **A course opens into tabs** via `getRecordSubNavigation()` with `SubNavigationPosition::Top`: Info general · Planificación · Contenidos · Exámenes · Alumnos del curso · Seguimiento alumnos. Modules and classes have their own tabs one level down.
+- **Use `ManageRelatedRecords` pages, not relation managers**, for anything that needs to nest further. A relation manager cannot nest another, but a page can carry its own sub-navigation — that is what makes course → module → class navigable. `CourseModuleResource` and `CourseClassResource` stay hidden from navigation and have no create page: their records are created from their parent.
+- **Screens that cross students with classes must not query per cell.** Ask the service once — see `ProgressService::courseMatrix()`, which resolves the whole grid in three queries and has a test pinning it to `canAccess()`.
 - **Labels and colours belong on the enum** (`HasLabel`, `HasColor`), as `UserRole` does — not repeated per resource.
 - **`x-icon` is taken** by blade-icons, a Filament dependency, and shadows any component of that name. The project's own is `<x-ui.icon>`.
 - Filament's assets sit outside the Vite build; `php artisan filament:assets` republishes them (already in `deploy.sh`).
@@ -93,6 +96,7 @@ Business rules are enforced in models and services, each covered by a test. **§
 
 - **No student-facing screens.** All the domain logic is implemented and tested, but `/cursos`, `/mis-cursos`, `/progreso` and `/certificados` still render `placeholder.blade.php`. This is the single biggest gap — see §12 of the plan.
 - **Rich text is not sanitised yet.** Four fields store HTML from the editor. Blade escapes by default, so the risk appears the moment someone uses `{!! !!}` to render the formatting on the public site. Sanitise there.
+- **Three course tabs are designed but not built**: Calificaciones, Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. A task is currently only a statement — the student submits nothing.
 - **Tasks, notifications and certificates** are unimplemented — phases 4 to 6.
 - **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
 - **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.

@@ -10,6 +10,10 @@ class EditCourseClass extends EditRecord
 {
     protected static string $resource = CourseClassResource::class;
 
+    protected static ?string $navigationLabel = 'Autoevaluación';
+
+    protected static ?string $title = 'Autoevaluación de la clase';
+
     protected function getHeaderActions(): array
     {
         return [

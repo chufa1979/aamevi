@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\CourseModules\RelationManagers;
+namespace App\Filament\Resources\CourseModules\Pages;
 
 use Filament\Tables\Table;
 use App\Models\CourseClass;
@@ -9,7 +9,6 @@ use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Enums\ClassContentType;
 use App\Filament\Forms\RichText;
-use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -22,20 +21,25 @@ use Filament\Forms\Components\Repeater;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
+use App\Filament\Actions\ShiftClassDates;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
-use Illuminate\Database\Eloquent\Collection;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseClasses\CourseClassResource;
+use App\Filament\Resources\CourseModules\CourseModuleResource;
 
-class ClassesRelationManager extends RelationManager
+/** Las clases del módulo, con su contenido. */
+class ManageModuleClasses extends ManageRelatedRecords
 {
+    protected static string $resource = CourseModuleResource::class;
+
     protected static string $relationship = 'classes';
 
-    protected static ?string $title = 'Clases';
+    protected static ?string $navigationLabel = 'Clases';
+
+    protected static ?string $title = 'Clases del módulo';
 
     protected static ?string $modelLabel = 'clase';
 
@@ -88,8 +92,7 @@ class ClassesRelationManager extends RelationManager
 
                 /*
                  * El contenido se edita acá adentro y no en otra pantalla: sería
-                 * un tercer nivel de navegación (curso → módulo → clase →
-                 * contenido) para editar cuatro campos.
+                 * un nivel más de navegación para editar cuatro campos.
                  */
                 Repeater::make('contents')
                     ->label('Contenido de la clase')
@@ -203,6 +206,11 @@ class ClassesRelationManager extends RelationManager
                     ->counts('contents')
                     ->alignCenter(),
 
+                TextColumn::make('questions_count')
+                    ->label('Preguntas')
+                    ->counts('questions')
+                    ->alignCenter(),
+
                 IconColumn::make('is_live_session')
                     ->label('En vivo')
                     ->boolean(),
@@ -211,10 +219,10 @@ class ClassesRelationManager extends RelationManager
                 CreateAction::make()->label('Agregar clase')->modalWidth('4xl'),
             ])
             ->recordActions([
-                // El banco de preguntas se administra en la pantalla de la
-                // clase: un relation manager no puede anidar otro.
+                // La autoevaluación y el banco de preguntas se administran en la
+                // pantalla de la clase, que tiene sus propias solapas.
                 Action::make('questions')
-                    ->label('Preguntas')
+                    ->label('Evaluación')
                     ->icon('heroicon-o-question-mark-circle')
                     ->url(fn (CourseClass $record): string => CourseClassResource::getUrl('edit', ['record' => $record])),
 
@@ -223,7 +231,7 @@ class ClassesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    self::correrFechas(),
+                    ShiftClassDates::make(),
                     DeleteBulkAction::make(),
                 ]),
             ])
@@ -265,39 +273,5 @@ class ClassesRelationManager extends RelationManager
         unset($data['content_file']);
 
         return $data;
-    }
-
-    /**
-     * Correr el cronograma en bloque. Reprogramar un módulo entero clase por
-     * clase es la tarea que más rápido se vuelve insoportable para un docente.
-     */
-    private static function correrFechas(): BulkAction
-    {
-        return BulkAction::make('shiftDates')
-            ->label('Correr fechas')
-            ->icon('heroicon-o-calendar-days')
-            ->schema([
-                TextInput::make('days')
-                    ->label('Días')
-                    ->numeric()
-                    ->required()
-                    ->default(7)
-                    ->helperText('Podés usar un número negativo para adelantarlas.'),
-            ])
-            ->action(function (Collection $records, array $data): void {
-                $days = (int) $data['days'];
-
-                foreach ($records as $record) {
-                    $record->update([
-                        'activation_date' => $record->activation_date->addDays($days),
-                    ]);
-                }
-
-                Notification::make()
-                    ->title(count($records).' clase(s) reprogramada(s)')
-                    ->success()
-                    ->send();
-            })
-            ->deselectRecordsAfterCompletion();
     }
 }

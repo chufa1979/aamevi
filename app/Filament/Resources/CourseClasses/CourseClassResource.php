@@ -6,24 +6,28 @@ use Filament\Tables\Table;
 use App\Models\CourseClass;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Resources\Pages\Page;
 use Filament\Forms\Components\Toggle;
+use Filament\Navigation\NavigationItem;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Pages\Enums\SubNavigationPosition;
 use App\Filament\Resources\CourseClasses\Pages\EditCourseClass;
 use App\Filament\Resources\CourseClasses\Pages\ListCourseClasses;
-use App\Filament\Resources\CourseClasses\RelationManagers\QuestionsRelationManager;
+use App\Filament\Resources\CourseClasses\Pages\ManageClassQuestions;
 
 /**
- * Pantalla propia de la clase, para administrar su evaluación y su banco de
- * preguntas. Igual que CourseModuleResource, existe solo porque un relation
- * manager no puede anidar otro: no aparece en la navegación ni permite crear
- * clases sueltas — eso se hace desde el módulo.
+ * Pantalla de la clase, con su autoevaluación y su banco de preguntas en
+ * solapas. Las clases se crean desde el módulo, así que este recurso no aparece
+ * en la navegación ni permite crear sueltas.
  */
 class CourseClassResource extends Resource
 {
     protected static ?string $model = CourseClass::class;
+
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     protected static ?string $modelLabel = 'clase';
 
@@ -41,8 +45,8 @@ class CourseClassResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Quiz de la clase')
-                ->description('Se rinde al terminar la clase, con preguntas de su propio banco.')
+            Section::make('Autoevaluación')
+                ->description('Se rinde al terminar la clase, con preguntas sorteadas de su propio banco. Aprobarla habilita la clase siguiente.')
                 ->relationship('quiz')
                 ->columns(3)
                 ->components([
@@ -90,11 +94,13 @@ class CourseClassResource extends Resource
         ]);
     }
 
-    public static function getRelations(): array
+    /** @return array<NavigationItem> */
+    public static function getRecordSubNavigation(Page $page): array
     {
-        return [
-            QuestionsRelationManager::class,
-        ];
+        return $page->generateNavigationItems([
+            EditCourseClass::class,
+            ManageClassQuestions::class,
+        ]);
     }
 
     public static function getPages(): array
@@ -102,6 +108,7 @@ class CourseClassResource extends Resource
         return [
             'index' => ListCourseClasses::route('/'),
             'edit' => EditCourseClass::route('/{record}/edit'),
+            'questions' => ManageClassQuestions::route('/{record}/preguntas'),
         ];
     }
 }

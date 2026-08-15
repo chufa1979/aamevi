@@ -15,25 +15,35 @@ bloqueo de cuentas desactivadas. La identidad visual de
 [www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
 
 **Panel de administración** (Filament, en `/admin`) — solo para el rol
-administrador. Gestiona:
+administrador. El menú tiene cuatro grupos: **Cursos**, **Alumnos**,
+**Evaluación** y **Sistema**; y cada curso se abre en solapas:
 
-- **Usuarios**, con su ficha de alumno o profesor según el rol
-- **Cursos → módulos → clases**, con cronograma y corrimiento de fechas en lote
-- **Contenido de clase**: video con previsualización, PDF con subida y descarga,
-  texto y consignas con editor enriquecido
-- **Inscripciones**, con aprobación, rechazo y control de cupo
-- **Evaluaciones**: banco de preguntas por clase, quiz de clase, y examen de
-  módulo que sortea un porcentaje del banco combinado de todas sus clases
+| Solapa | Qué hace |
+|---|---|
+| Info general | Título, descripción, docente y cupo |
+| Planificación | Cronograma completo del curso, con corrimiento de fechas en lote |
+| Contenidos | Módulos → clases → material: video con previsualización, PDF con subida y descarga, texto y consignas |
+| Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
+| Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
+| Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
+
+Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
+sortea preguntas de su propio banco, y el **examen de módulo**, que sortea un
+porcentaje del banco combinado de todas sus clases y es opcional.
+
+Faltan tres solapas —Calificaciones, Comunicación y Consultas a mesa de ayuda—
+diseñadas en §13 del plan arquitectónico.
 
 La lógica del alumno también está implementada y probada —sorteo de preguntas,
 corrección automática, reintentos, y el desbloqueo de una clase al aprobar la
 anterior— pero **todavía no tiene pantallas**: las secciones del sitio siguen
 sirviendo un marcador.
 
-**Pendiente**: el aula pública, la pantalla de rendir un quiz, las tareas, las
-notificaciones y los certificados. El
+**Pendiente**: el aula pública, la pantalla de rendir un quiz, las
+calificaciones, las notificaciones y los certificados. El
 [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué está
-hecho, y su §3-bis documenta las reglas de negocio implementadas.
+hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
+análisis de un LMS en producción del que salió la organización del panel.
 
 ---
 

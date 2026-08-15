@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\UserRole;
 use Filament\Schemas\Schema;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Textarea;
@@ -15,7 +16,13 @@ use Filament\Schemas\Components\Utilities\Get;
 
 class UserForm
 {
-    public static function configure(Schema $schema): Schema
+    /**
+     * @param  UserRole|null  $fixedRole  fija el rol y esconde el selector, para
+     *                                    las pantallas que dan de alta un rol
+     *                                    concreto —Alumnos, por ejemplo— en vez
+     *                                    de un usuario cualquiera
+     */
+    public static function configure(Schema $schema, ?UserRole $fixedRole = null): Schema
     {
         return $schema
             ->components([
@@ -39,14 +46,16 @@ class UserForm
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
-                        Select::make('role')
-                            ->label('Rol')
-                            ->options(UserRole::class)
-                            ->required()
-                            ->native(false)
-                            // live() para que las fichas de abajo aparezcan al
-                            // elegir el rol, sin recargar
-                            ->live(),
+                        $fixedRole === null
+                            ? Select::make('role')
+                                ->label('Rol')
+                                ->options(UserRole::class)
+                                ->required()
+                                ->native(false)
+                                // live() para que las fichas de abajo aparezcan al
+                                // elegir el rol, sin recargar
+                                ->live()
+                            : Hidden::make('role')->default($fixedRole),
                     ]),
 
                 Section::make('Acceso')
@@ -82,7 +91,7 @@ class UserForm
                  */
                 Section::make('Ficha de alumno')
                     ->relationship('student')
-                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Student))
+                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Student, $fixedRole))
                     ->columns(2)
                     ->components([
                         TextInput::make('dni')
@@ -116,7 +125,7 @@ class UserForm
 
                 Section::make('Ficha de profesor')
                     ->relationship('teacher')
-                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Teacher))
+                    ->visible(fn (Get $get): bool => self::roleIs($get, UserRole::Teacher, $fixedRole))
                     ->components([
                         TextInput::make('specialization')
                             ->label('Especialización')
@@ -130,8 +139,12 @@ class UserForm
     }
 
     /** El estado del select puede llegar como enum o como su valor. */
-    private static function roleIs(Get $get, UserRole $role): bool
+    private static function roleIs(Get $get, UserRole $role, ?UserRole $fixedRole = null): bool
     {
+        if ($fixedRole !== null) {
+            return $fixedRole === $role;
+        }
+
         $state = $get('role');
 
         return $state === $role || $state === $role->value;

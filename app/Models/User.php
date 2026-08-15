@@ -12,6 +12,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -58,6 +59,18 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     public function teacher(): HasOne
     {
         return $this->hasOne(Teacher::class, 'id');
+    }
+
+    /**
+     * Inscripciones del alumno, sin pasar por la ficha.
+     *
+     * `course_enrollments.student_id` apunta a `students.id`, que es la misma
+     * clave que `users.id`. Tenerla acá permite contar inscripciones en el
+     * listado con un `withCount` en vez de una consulta por fila.
+     */
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(CourseEnrollment::class, 'student_id');
     }
 
     protected function fullName(): Attribute

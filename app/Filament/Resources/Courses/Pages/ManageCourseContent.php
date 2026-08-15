@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Courses\RelationManagers;
+namespace App\Filament\Resources\Courses\Pages;
 
 use Filament\Tables\Table;
 use App\Models\CourseModule;
@@ -13,14 +13,26 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Resources\Courses\CourseResource;
+use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseModules\CourseModuleResource;
 
-class ModulesRelationManager extends RelationManager
+/**
+ * Los módulos del curso, como solapa propia.
+ *
+ * Es una página y no un relation manager para que pueda tener sub-navegación
+ * hacia abajo: un relation manager no puede anidar otro, y de las clases todavía
+ * cuelgan el contenido y el banco de preguntas.
+ */
+class ManageCourseContent extends ManageRelatedRecords
 {
+    protected static string $resource = CourseResource::class;
+
     protected static string $relationship = 'modules';
 
-    protected static ?string $title = 'Módulos';
+    protected static ?string $navigationLabel = 'Contenidos';
+
+    protected static ?string $title = 'Contenidos del curso';
 
     protected static ?string $modelLabel = 'módulo';
 
@@ -77,12 +89,10 @@ class ModulesRelationManager extends RelationManager
                 CreateAction::make()->label('Agregar módulo'),
             ])
             ->recordActions([
-                // Las clases se administran en la pantalla del módulo: un
-                // relation manager no puede anidar otro.
                 Action::make('classes')
                     ->label('Clases')
                     ->icon('heroicon-o-academic-cap')
-                    ->url(fn (CourseModule $record): string => CourseModuleResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn (CourseModule $record): string => CourseModuleResource::getUrl('classes', ['record' => $record])),
 
                 EditAction::make(),
                 DeleteAction::make(),
