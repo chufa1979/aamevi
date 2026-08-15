@@ -118,6 +118,20 @@ class CourseNavigationTest extends TestCase
             ->assertSee('Seguimiento alumnos');
     }
 
+    /**
+     * Los retoques de estilo del panel viven en un CSS aparte, publicado por
+     * `filament:assets`. Si deja de registrarse, las solapas vuelven a quedar
+     * angostas y no lo nota ningún otro test.
+     */
+    public function test_la_hoja_de_estilos_del_panel_esta_enlazada(): void
+    {
+        $course = Course::factory()->create();
+
+        $this->get(CourseResource::getUrl('edit', ['record' => $course]))
+            ->assertSuccessful()
+            ->assertSee('aamevi-admin.css', escape: false);
+    }
+
     public function test_el_modulo_tiene_sus_solapas(): void
     {
         $module = CourseModule::factory()->create();

@@ -56,6 +56,9 @@ _ide_helper_models.php
 /public/hot
 
 # Assets publicados por Filament: los regenera `php artisan filament:assets`
+# `css/app` es el nuestro, registrado en AppServiceProvider; la fuente vive en
+# resources/css/filament/
+/public/css/app
 /public/css/filament
 /public/js/filament
 /public/fonts/filament
