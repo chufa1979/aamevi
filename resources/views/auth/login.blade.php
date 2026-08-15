@@ -4,10 +4,10 @@
 
 @section('content')
     <h1 class="mb-1 text-2xl font-normal">Iniciar sesión</h1>
-    <p class="mb-6 text-sm text-ink/70">Ingresá con tu cuenta para acceder a la plataforma.</p>
+    <p class="mb-6 text-sm text-subtle">Ingresá con tu cuenta para acceder a la plataforma.</p>
 
     @if ($errors->any())
-        <div class="mb-5 border-l-4 border-error bg-white p-3 text-sm text-error" role="alert">
+        <div class="mb-5 border-l-4 border-error bg-card p-3 text-sm text-error" role="alert">
             @foreach ($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
@@ -15,12 +15,12 @@
     @endif
 
     @if (session('status'))
-        <div class="mb-5 border-l-4 border-primary bg-white p-3 text-sm" role="status">
+        <div class="mb-5 border-l-4 border-primary bg-card p-3 text-sm" role="status">
             {{ session('status') }}
         </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}" class="bg-white p-6">
+    <form method="POST" action="{{ route('login') }}" class="bg-card p-6">
         @csrf
 
         <div class="mb-4">

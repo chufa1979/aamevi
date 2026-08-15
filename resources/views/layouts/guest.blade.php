@@ -7,7 +7,8 @@
     <meta name="theme-color" content="#00b8b3">
     <link rel="icon" type="image/png" href="/favicon.png">
     <title>@yield('title', 'Acceso') — AAMEVi</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials.preferences-head')
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/preferences.js'])
 </head>
 {{--
     Layout de las pantallas de acceso. A diferencia de `layouts.app`, no incluye
@@ -15,13 +16,16 @@
     de la plataforma.
 --}}
 <body class="flex min-h-screen flex-col">
-    <div class="border-b-[6px] border-primary bg-surface py-6">
-        <div class="container-site-sm flex justify-center">
-            <img src="/images/aamevi.svg" alt="AAMEVi" class="w-[220px] max-w-full">
+    <a href="#contenido" class="skip-link">Saltar al contenido</a>
+
+    <div class="border-b-[6px] border-primary bg-canvas py-6">
+        <div class="container-site-sm flex items-center justify-between gap-4">
+            <x-brand-logo width="220px" />
+            <x-preferences />
         </div>
     </div>
 
-    <main class="grow">
+    <main id="contenido" class="grow">
         <div class="container-site-sm flex justify-center py-10 md:py-16">
             <div class="w-full max-w-md">
                 @yield('content')

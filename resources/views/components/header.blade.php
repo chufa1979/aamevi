@@ -1,12 +1,12 @@
 {{-- El borde inferior verde de 6px es la firma visual del sitio institucional --}}
-<header class="border-b-[6px] border-primary bg-surface pt-5 pb-5 lg:pt-0">
+<header class="border-b-[6px] border-primary bg-canvas pt-5 pb-5 lg:pt-0">
     <div class="container-site flex flex-wrap items-center justify-between lg:items-end">
         <a href="/" class="w-[200px] xl:w-[250px]" aria-label="AAMEVi — Inicio">
-            <img src="/images/aamevi.svg" alt="AAMEVi" class="max-w-full">
+            <x-brand-logo />
         </a>
 
         <button type="button" data-menu-toggle
-                class="p-2 text-2xl text-ink lg:hidden"
+                class="p-2 text-2xl lg:hidden"
                 aria-expanded="false" aria-controls="main-menu" aria-label="Abrir menú">
             <x-ui.icon name="menu" data-icon-open />
             <x-ui.icon name="close" data-icon-close class="hidden" />
@@ -54,7 +54,7 @@
 
         <form action="/buscar" method="GET" role="search"
               class="mt-5 flex w-full items-center justify-center lg:mt-0 lg:w-auto">
-            <button type="submit" class="px-2 text-ink" aria-label="Buscar">
+            <button type="submit" class="px-2" aria-label="Buscar">
                 <x-ui.icon name="search" />
             </button>
             {{-- Radio asimétrico y bordes parciales: detalle propio del sitio madre --}}

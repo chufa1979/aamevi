@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\Student;
 use App\Models\CourseClass;
+use App\Models\CourseModule;
 use App\Enums\EnrollmentStatus;
 use App\Models\StudentProgress;
 use App\Enums\ClassProgressState;
@@ -118,6 +119,56 @@ class ProgressService
         $this->start($student, $class)->update(['completed_at' => now()]);
 
         return true;
+    }
+
+    /**
+     * ¿Puede rendir el examen del módulo?
+     *
+     * El examen evalúa el módulo entero, así que se habilita recién cuando el
+     * alumno aprobó todas sus clases. Rendirlo antes sería preguntarle sobre
+     * material que todavía no vio: el banco combina las preguntas de todas las
+     * clases, incluidas las que no cursó.
+     */
+    public function canTakeModuleExam(Student $student, CourseModule $module): bool
+    {
+        return $this->moduleExamLockReason($student, $module) === null;
+    }
+
+    /** Motivo por el que el examen del módulo está cerrado, o null si se puede rendir. */
+    public function moduleExamLockReason(Student $student, CourseModule $module): ?string
+    {
+        if (! $this->isEnrolled($student, $module->course)) {
+            return 'No estás inscripto en este curso.';
+        }
+
+        $quiz = $module->quiz;
+
+        if ($quiz === null) {
+            return 'Este módulo no tiene examen.';
+        }
+
+        if (! $quiz->isReady()) {
+            return 'El examen todavía no tiene preguntas cargadas.';
+        }
+
+        $pendientes = $module->classes()->count() - $this->completedInModule($student, $module);
+
+        if ($pendientes > 0) {
+            return $pendientes === 1
+                ? 'Te falta aprobar una clase del módulo.'
+                : "Te faltan aprobar {$pendientes} clases del módulo.";
+        }
+
+        return null;
+    }
+
+    /** Cuántas clases del módulo tiene aprobadas. */
+    public function completedInModule(Student $student, CourseModule $module): int
+    {
+        return StudentProgress::where('student_id', $student->getKey())
+            ->whereNotNull('completed_at')
+            ->whereIn('class_id', $module->classes()->select('classes.id'))
+            ->count();
     }
 
     /**
