@@ -115,12 +115,18 @@ class UserModelTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'admin@aamevi.ar', 'role' => 'admin']);
         $this->assertDatabaseHas('users', ['email' => 'profesor@aamevi.ar', 'role' => 'teacher']);
         $this->assertDatabaseHas('users', ['email' => 'alumno@aamevi.ar', 'role' => 'student']);
-        $this->assertDatabaseCount('teachers', 1);
-        $this->assertDatabaseCount('students', 1);
 
-        // Idempotente: correrlo dos veces no duplica ni falla
+        // Los dos roles con extensión 1:1 tienen su ficha
+        $this->assertNotNull(Teacher::find(User::where('email', 'profesor@aamevi.ar')->value('id')));
+        $this->assertNotNull(Student::find(User::where('email', 'alumno@aamevi.ar')->value('id')));
+
+        // Idempotente: correrlo dos veces no duplica ni falla. Se compara contra
+        // el total de la primera corrida y no contra un número fijo, porque el
+        // seeder de cursos suma sus propios usuarios.
+        $usuarios = User::count();
+
         $this->seed();
 
-        $this->assertDatabaseCount('users', 3);
+        $this->assertSame($usuarios, User::count());
     }
 }

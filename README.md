@@ -241,8 +241,29 @@ php artisan migrate:status   # ninguna pendiente
 | `profesor@aamevi.ar` | profesor | el sitio |
 | `alumno@aamevi.ar` | alumno | el sitio |
 
-El seeder es idempotente: se puede volver a correr sin chocar contra el `unique`
-de `email`.
+### Contenido de ejemplo
+
+`db:seed` también carga **tres cursos** con su árbol completo, para no tener que
+dar de alta todo a mano al revisar el panel o el aula:
+
+| Curso | Estructura | El alumno de prueba |
+|---|---|---|
+| Fundamentos de la Medicina del Estilo de Vida | 2 módulos, 6 clases | inscripto y **aprobado** |
+| Actividad física y prescripción del ejercicio | 1 módulo, 2 clases, una **en vivo** con Meet | inscripción **pendiente** |
+| Sueño, estrés y vínculos | 1 módulo, 2 clases | sin inscripción |
+
+Incluye los cuatro tipos de material (video, PDF, texto y tarea), banco de
+preguntas, quiz de clase y examen de módulo por porcentaje. Está armado para que
+se vean los tres motivos de bloqueo del aula: clase cerrada **por fecha**, por
+**no haber aprobado la anterior**, y por **no estar inscripto**.
+
+Los videos apuntan a cortos de la Blender Foundation y los PDF a un archivo de
+prueba del W3C: son marcadores de posición, pero cargan de verdad, así que la
+previsualización se ve funcionando.
+
+Ambos seeders son idempotentes: se pueden volver a correr sin duplicar nada ni
+chocar contra el `unique` de `email`. Las fechas de activación se recalculan
+relativas a hoy en cada corrida.
 
 ### Los tests no usan MySQL
 
