@@ -43,7 +43,7 @@
             @foreach ($attempt->answers as $answer)
                 <li class="card p-4">
                     <div class="flex items-start gap-2">
-                        <x-ui.icon :name="$answer->is_correct ? 'aprobada' : 'bloqueada'"
+                        <x-ui.icon :name="$answer->is_correct ? 'aprobada' : 'incorrecta'"
                                    @class([
                                        'mt-1 h-4 w-4 shrink-0',
                                        'text-primary-800' => $answer->is_correct,

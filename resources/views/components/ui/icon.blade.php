@@ -106,6 +106,13 @@
             <path d="M8 11V8a4 4 0 0 1 8 0v3" />
             @break
 
+        {{-- Respuesta errada. No es el candado: ahí no hay nada bloqueado --}}
+        @case('incorrecta')
+            <circle cx="12" cy="12" r="9" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            @break
+
         @case('agendada')
             <circle cx="12" cy="12" r="9" />
             <polyline points="12,7 12,12 15.5,14" />
