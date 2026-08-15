@@ -514,10 +514,14 @@ class CourseSeeder extends Seeder
                 continue;
             }
 
+            $desaprobada = $suerte === 3;
+
             $submission->update([
-                'grade' => [6, 7, 8, 9][$suerte % 4],
-                'status' => $suerte === 3 ? SubmissionStatus::Rejected : SubmissionStatus::Approved,
-                'feedback' => $suerte === 3
+                // La nota tiene que acompañar al resultado: una desaprobada con
+                // un nueve deja el ejemplo sin sentido
+                'grade' => $desaprobada ? [3, 4, 5][$i % 3] : [6, 7, 8, 9][$suerte % 4],
+                'status' => $desaprobada ? SubmissionStatus::Rejected : SubmissionStatus::Approved,
+                'feedback' => $desaprobada
                     ? 'Faltó desarrollar la indicación por escrito. Volvé a entregarlo.'
                     : 'Buen desarrollo del caso.',
                 'graded_by' => $class->module->course->teacher_id,

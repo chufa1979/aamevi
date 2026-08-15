@@ -85,10 +85,18 @@ class TaskSubmission extends Model
         return $this->isGraded() && $this->isPublished();
     }
 
-    /** ¿Puede volver a entregar después de ésta? */
+    /**
+     * ¿Puede volver a entregar después de ésta?
+     *
+     * Hace falta que la desaprobación esté **publicada**, no sólo puesta. Si
+     * alcanzara con desaprobarla, el formulario de reentrega aparecería mientras
+     * la pantalla dice «en corrección»: se contradice, y de paso delata una
+     * decisión que el docente todavía no comunicó. Mientras no se publique, para
+     * el alumno no pasó nada.
+     */
     public function allowsResubmission(): bool
     {
-        return $this->status === SubmissionStatus::Rejected;
+        return $this->status === SubmissionStatus::Rejected && $this->isPublished();
     }
 
     public function url(): ?string

@@ -98,6 +98,24 @@ class TaskSubmissionTest extends TestCase
         $this->assertFalse($this->entregas->canSubmit($student, $tarea));
     }
 
+    /**
+     * Desaprobar no alcanza: hasta que no se publica, el alumno no se enteró.
+     *
+     * Sin esto el formulario de reentrega aparecía mientras la pantalla decía
+     * «en corrección» — se contradecía y delataba la decisión del docente.
+     */
+    public function test_desaprobar_sin_publicar_no_habilita_la_reentrega(): void
+    {
+        $student = Student::factory()->create();
+        $tarea = $this->tarea();
+
+        $primera = $this->entregas->submit($student, $tarea, $this->archivo());
+        $this->entregas->grade($primera, Teacher::factory()->create(), 4, false, 'Rehacelo.');
+
+        $this->assertFalse($this->entregas->canSubmit($student, $tarea));
+        $this->assertFalse($primera->fresh()->isVisibleToStudent());
+    }
+
     public function test_se_puede_volver_a_entregar_si_la_desaprueban(): void
     {
         $student = Student::factory()->create();
@@ -106,6 +124,7 @@ class TaskSubmissionTest extends TestCase
 
         $primera = $this->entregas->submit($student, $tarea, $this->archivo());
         $this->entregas->grade($primera, $teacher, 4, false, 'Rehacelo.');
+        $this->entregas->publish($primera);
 
         $this->assertTrue($this->entregas->canSubmit($student, $tarea));
 
