@@ -9,6 +9,7 @@ use App\Models\CourseModule;
 use App\Enums\EnrollmentStatus;
 use App\Models\StudentProgress;
 use App\Enums\ClassProgressState;
+use Illuminate\Support\Collection;
 
 /**
  * Quién puede ver qué, y qué lleva completado.
@@ -55,11 +56,11 @@ class ProgressService
         }
 
         if (! $class->isAvailable()) {
-            return 'Se habilita el '.$class->activation_date->format('d/m/Y').'.';
+            return ClassProgressState::Scheduled->describe($class);
         }
 
         if (! $this->previousIsCompleted($student, $class)) {
-            return 'Primero tenés que aprobar la clase anterior.';
+            return ClassProgressState::Locked->describe($class);
         }
 
         return null;
@@ -77,6 +78,20 @@ class ProgressService
         return CourseClass::where('module_id', $class->module_id)
             ->where('order_number', '<', $class->order_number)
             ->orderByDesc('order_number')
+            ->first();
+    }
+
+    /**
+     * La clase siguiente del mismo módulo, o null si es la última.
+     *
+     * Es para el botón «continuar» del aula: sin él, terminar una clase deja al
+     * alumno en una pantalla sin salida más que volver al temario.
+     */
+    public function nextClass(CourseClass $class): ?CourseClass
+    {
+        return CourseClass::where('module_id', $class->module_id)
+            ->where('order_number', '>', $class->order_number)
+            ->orderBy('order_number')
             ->first();
     }
 
@@ -205,30 +220,71 @@ class ProgressService
         $grilla = [];
 
         foreach ($alumnos as $alumno) {
-            $propios = ($avances[$alumno] ?? collect())->keyBy('class_id');
-
-            foreach ($modules as $module) {
-                // El gateo es por módulo: cada uno arranca abierto en su primera clase
-                $anteriorAprobada = true;
-
-                foreach ($module->classes as $class) {
-                    $avance = $propios->get($class->getKey());
-
-                    $estado = match (true) {
-                        $avance?->isCompleted() ?? false => ClassProgressState::Completed,
-                        ! $class->isAvailable() => ClassProgressState::Scheduled,
-                        ! $anteriorAprobada => ClassProgressState::Locked,
-                        $avance !== null => ClassProgressState::InProgress,
-                        default => ClassProgressState::Available,
-                    };
-
-                    $grilla[$alumno][$class->getKey()] = $estado;
-                    $anteriorAprobada = $estado === ClassProgressState::Completed;
-                }
-            }
+            $grilla[$alumno] = $this->estados($modules, ($avances[$alumno] ?? collect())->keyBy('class_id'));
         }
 
         return $grilla;
+    }
+
+    /**
+     * Lo mismo que `courseMatrix()` pero para un solo alumno.
+     *
+     * Es lo que usa el temario del aula: preguntar clase por clase con
+     * `canAccess()` serían tres consultas por fila, y un curso de cuarenta
+     * clases son ciento veinte para dibujar una lista.
+     *
+     * @return array<string, ClassProgressState> indexado por clase
+     */
+    public function classStates(Student $student, Course $course): array
+    {
+        $modules = $course->modules()->with('classes')->get();
+
+        $propios = StudentProgress::query()
+            ->where('student_id', $student->getKey())
+            ->whereIn('class_id', $modules->flatMap->classes->pluck('id'))
+            ->get()
+            ->keyBy('class_id');
+
+        return $this->estados($modules, $propios);
+    }
+
+    /**
+     * El recorrido en sí: módulo por módulo, clase por clase, arrastrando si la
+     * anterior quedó aprobada.
+     *
+     * No consulta nada — recibe los avances ya cargados. Tenerlo separado es lo
+     * que permite que la grilla del panel y el temario del alumno apliquen
+     * exactamente la misma regla sin repetirla.
+     *
+     * @param  Collection<int, CourseModule>  $modules
+     * @param  Collection<string, StudentProgress>  $propios
+     * @return array<string, ClassProgressState>
+     */
+    private function estados($modules, $propios): array
+    {
+        $estados = [];
+
+        foreach ($modules as $module) {
+            // El gateo es por módulo: cada uno arranca abierto en su primera clase
+            $anteriorAprobada = true;
+
+            foreach ($module->classes as $class) {
+                $avance = $propios->get($class->getKey());
+
+                $estado = match (true) {
+                    $avance?->isCompleted() ?? false => ClassProgressState::Completed,
+                    ! $class->isAvailable() => ClassProgressState::Scheduled,
+                    ! $anteriorAprobada => ClassProgressState::Locked,
+                    $avance !== null => ClassProgressState::InProgress,
+                    default => ClassProgressState::Available,
+                };
+
+                $estados[$class->getKey()] = $estado;
+                $anteriorAprobada = $estado === ClassProgressState::Completed;
+            }
+        }
+
+        return $estados;
     }
 
     /** Porcentaje del curso completado por el alumno. */

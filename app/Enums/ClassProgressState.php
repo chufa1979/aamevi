@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Models\CourseClass;
 use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
@@ -67,5 +68,23 @@ enum ClassProgressState: string implements HasColor, HasIcon, HasLabel
     public function isOpen(): bool
     {
         return in_array($this, [self::Completed, self::InProgress, self::Available], true);
+    }
+
+    /**
+     * La explicación que se le muestra al alumno, en su clase concreta.
+     *
+     * Los textos de los dos estados cerrados son los mismos que devuelve
+     * `ProgressService::lockReason()`, que delega acá: si estuvieran escritos en
+     * los dos lados, tarde o temprano dirían cosas distintas.
+     */
+    public function describe(CourseClass $class): string
+    {
+        return match ($this) {
+            self::Completed => 'Aprobada.',
+            self::InProgress => 'La empezaste y todavía no la aprobaste.',
+            self::Available => 'Disponible para cursar.',
+            self::Scheduled => 'Se habilita el '.$class->activation_date->format('d/m/Y').'.',
+            self::Locked => 'Primero tenés que aprobar la clase anterior.',
+        };
     }
 }
