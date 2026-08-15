@@ -7,6 +7,7 @@ use App\Http\Controllers\Classroom\CatalogController;
 use App\Http\Controllers\Classroom\ProgressController;
 use App\Http\Controllers\Classroom\ClassroomController;
 use App\Http\Controllers\Classroom\MyCoursesController;
+use App\Http\Controllers\Classroom\SubmissionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
@@ -46,6 +47,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('clases/{class}', [ClassroomController::class, 'show'])->name('classroom.class');
         Route::post('clases/{class}/completar', [ClassroomController::class, 'complete'])->name('classroom.class.complete');
+
+        Route::post('tareas/{content}/entregar', [SubmissionController::class, 'store'])->name('classroom.submit');
 
         Route::get('evaluaciones/{quiz}', [QuizController::class, 'show'])->name('classroom.quiz');
         Route::post('evaluaciones/{quiz}', [QuizController::class, 'submit'])->name('classroom.quiz.submit');

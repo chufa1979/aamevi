@@ -51,7 +51,10 @@
 
         <div class="mt-6 space-y-5">
             @foreach ($class->contents as $content)
-                <x-classroom.content-block :content="$content" />
+                <x-classroom.content-block
+                    :content="$content"
+                    :entrega="$tareas[$content->id]['entrega'] ?? null"
+                    :puede-entregar="$tareas[$content->id]['puedeEntregar'] ?? false" />
             @endforeach
         </div>
     @endif
@@ -90,7 +93,11 @@
         @else
             <p class="mt-2 text-sm">Esta clase no tiene autoevaluación.</p>
 
-            @if ($completada)
+            @if (! $completada && $pendiente)
+                {{-- Lo que le falta, dicho con todas las letras: un botón que no
+                     hace nada es peor que no tener botón --}}
+                <p class="mt-2 text-sm text-subtle">{{ $pendiente }}</p>
+            @elseif ($completada)
                 <div class="mt-4">
                     @if ($siguiente)
                         <x-button href="{{ route('classroom.class', $siguiente) }}">Ir a la clase siguiente</x-button>
@@ -98,7 +105,9 @@
                         <x-button href="{{ route('classroom.course', $course) }}" variant="ghost">Volver al temario</x-button>
                     @endif
                 </div>
-            @else
+            @endif
+
+            @if (! $completada && ! $pendiente)
                 <form method="POST" action="{{ route('classroom.class.complete', $class) }}" class="mt-4">
                     @csrf
                     <x-button type="submit">Marcar la clase como vista</x-button>

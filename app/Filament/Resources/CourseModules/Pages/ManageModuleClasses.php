@@ -190,6 +190,16 @@ class ManageModuleClasses extends ManageRelatedRecords
                             ->dehydrated()
                             ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Text)
                                 || self::tipoEs($get, ClassContentType::Task)),
+
+                        // Sin fecha, la tarea se puede entregar siempre
+                        DateTimePicker::make('due_date')
+                            ->label('Se entrega hasta')
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->columnSpanFull()
+                            ->dehydrated()
+                            ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Task))
+                            ->helperText('Opcional. Vencida la fecha, el alumno ya no puede entregar.'),
                     ]),
             ]);
     }
@@ -302,6 +312,10 @@ class ManageModuleClasses extends ManageRelatedRecords
         $data['description'] = in_array($type, [ClassContentType::Text, ClassContentType::Task], true)
             ? ($data['description'] ?? null)
             : null;
+
+        // La fecha de entrega sólo tiene sentido en las tareas: dejarla colgada
+        // en un video haría que `isPastDue()` diga cualquier cosa
+        $data['due_date'] = $type === ClassContentType::Task ? ($data['due_date'] ?? null) : null;
 
         unset($data['content_file']);
 

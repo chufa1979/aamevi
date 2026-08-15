@@ -1,4 +1,4 @@
-@props(['content'])
+@props(['content', 'entrega' => null, 'puedeEntregar' => false])
 
 {{--
     Un ítem de material de la clase, mostrado *dentro* de la página.
@@ -80,5 +80,9 @@
             @default
                 <x-rich-text :html="$content->description" class="text-sm" />
         @endswitch
+
+        @if ($content->isTask())
+            <x-classroom.task-panel :content="$content" :entrega="$entrega" :puede-entregar="$puedeEntregar" />
+        @endif
     </div>
 </article>

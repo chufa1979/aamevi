@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Classroom;
 
 use Illuminate\View\View;
 use App\Models\CourseClass;
+use App\Models\ClassContent;
 use Illuminate\Http\Request;
 use App\Services\QuizService;
 use App\Services\ProgressService;
+use App\Services\SubmissionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 
@@ -18,6 +20,7 @@ class ClassroomController extends Controller
         CourseClass $class,
         ProgressService $progreso,
         QuizService $quizzes,
+        SubmissionService $entregas,
     ): View {
         $student = $request->user()->student;
 
@@ -37,6 +40,17 @@ class ClassroomController extends Controller
 
         $quiz = $class->quiz;
 
+        /*
+         * El estado de cada tarea se resuelve acá y no en la vista: son dos
+         * consultas por tarea y una plantilla no es lugar para eso.
+         */
+        $tareas = $class->contents
+            ->filter(fn (ClassContent $c): bool => $c->isTask())
+            ->mapWithKeys(fn (ClassContent $c): array => [$c->getKey() => [
+                'entrega' => $entregas->latestOf($student, $c),
+                'puedeEntregar' => $entregas->canSubmit($student, $c),
+            ]]);
+
         return view('classroom.class', [
             'class' => $class,
             'course' => $class->module->course,
@@ -46,6 +60,9 @@ class ClassroomController extends Controller
             'aprobado' => $quiz !== null && $quizzes->hasPassed($quiz, $student),
             'intentosRestantes' => $quiz !== null ? $quizzes->attemptsLeft($quiz, $student) : 0,
             'siguiente' => $progreso->nextClass($class),
+            'tareas' => $tareas,
+            // Qué le falta para cerrar la clase, si le falta algo
+            'pendiente' => $progreso->completionBlocker($student, $class),
         ]);
     }
 

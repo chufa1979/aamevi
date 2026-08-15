@@ -15,12 +15,15 @@ use App\Models\ClassContent;
 use App\Models\CourseModule;
 use App\Services\QuizService;
 use App\Models\QuestionOption;
+use App\Models\TaskSubmission;
 use App\Enums\ClassContentType;
 use App\Enums\EnrollmentStatus;
+use App\Enums\SubmissionStatus;
 use Illuminate\Database\Seeder;
 use App\Models\CourseEnrollment;
 use App\Services\ProgressService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Database\Seeders\Data\CourseCatalog;
 
 /**
@@ -61,6 +64,12 @@ class CourseSeeder extends Seeder
     private const VIDEO_B = 'https://youtu.be/YE7VzlLtp-4';
 
     private const PDF = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+
+    /** PDF válido de una página en blanco, para que las entregas se puedan abrir. */
+    private const PDF_MINIMO = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        ."2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+        ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\n"
+        ."trailer<</Root 1 0 R>>\n%%EOF\n";
 
     /**
      * Plantillas de pregunta. Cada clase genera una de cada, sobre su propio
@@ -411,15 +420,15 @@ class CourseSeeder extends Seeder
                 // 100 %, 70 %, 40 %, 20 % y nada
                 $ritmo = [1.0, 0.7, 0.4, 0.2, 0.0][$i % 5];
 
-                $this->avanzar($course, $student, $ritmo);
+                $this->avanzar($course, $student, $ritmo, $i);
             }
         }
     }
 
-    private function avanzar(Course $course, Student $student, float $ritmo): void
+    private function avanzar(Course $course, Student $student, float $ritmo, int $indice): void
     {
         $dictadas = $course->modules()
-            ->with(['classes' => fn ($q) => $q->where('activation_date', '<=', now())])
+            ->with(['classes' => fn ($q) => $q->where('activation_date', '<=', now()), 'classes.contents', 'classes.module.course'])
             ->get()
             ->flatMap->classes;
 
@@ -440,12 +449,18 @@ class CourseSeeder extends Seeder
                 return;
             }
 
-            $this->aprobar($student, $class);
+            $this->aprobar($student, $class, $indice + $posicion);
         }
     }
 
-    /** Rinde la autoevaluación de la clase respondiendo bien, y la da por vista. */
-    private function aprobar(Student $student, CourseClass $class): void
+    /**
+     * Rinde la autoevaluación de la clase, entrega sus tareas, y la da por vista.
+     *
+     * Las tareas van sí o sí: desde que la entrega entró en el gateo, una clase
+     * con trabajo práctico sin entregar no se completa, y el alumno quedaría con
+     * huecos en el medio de su avance.
+     */
+    private function aprobar(Student $student, CourseClass $class, int $indice): void
     {
         if ($this->progreso->hasCompleted($student, $class)) {
             return;
@@ -461,6 +476,71 @@ class CourseSeeder extends Seeder
             )->all());
         }
 
+        $this->entregarTareas($student, $class, $indice);
+
         $this->progreso->complete($student, $class);
+    }
+
+    /**
+     * Entrega las tareas de la clase, con distinta suerte.
+     *
+     * Una de cada tres queda sin corregir, y de las corregidas una parte sin
+     * publicar: son los tres estados que tiene que poder mostrar la solapa
+     * Calificaciones, y si todas terminaran iguales no se vería la diferencia.
+     */
+    private function entregarTareas(Student $student, CourseClass $class, int $indice): void
+    {
+        $tareas = $class->contents->where('type', ClassContentType::Task);
+
+        foreach ($tareas as $i => $tarea) {
+            if (TaskSubmission::where('content_id', $tarea->getKey())->where('student_id', $student->getKey())->exists()) {
+                continue;
+            }
+
+            $suerte = ($indice + $i) % 6;
+
+            $submission = TaskSubmission::create([
+                'content_id' => $tarea->getKey(),
+                'student_id' => $student->getKey(),
+                'attempt_number' => 1,
+                'file_path' => $this->archivoDeEjemplo(),
+                'file_name' => 'trabajo-practico.pdf',
+                'submitted_at' => $class->activation_date->copy()->addDays(3),
+                'status' => SubmissionStatus::Pending,
+            ]);
+
+            // 0 y 1: sin corregir · 2 y 3: corregida sin publicar · 4 y 5: publicada
+            if ($suerte < 2) {
+                continue;
+            }
+
+            $submission->update([
+                'grade' => [6, 7, 8, 9][$suerte % 4],
+                'status' => $suerte === 3 ? SubmissionStatus::Rejected : SubmissionStatus::Approved,
+                'feedback' => $suerte === 3
+                    ? 'Faltó desarrollar la indicación por escrito. Volvé a entregarlo.'
+                    : 'Buen desarrollo del caso.',
+                'graded_by' => $class->module->course->teacher_id,
+                'graded_at' => $class->activation_date->copy()->addDays(6),
+                'published_at' => $suerte >= 4 ? $class->activation_date->copy()->addDays(7) : null,
+            ]);
+        }
+    }
+
+    /**
+     * Un PDF mínimo, real, compartido por todas las entregas de ejemplo.
+     *
+     * Sin esto el enlace de descarga del panel daría 404 y parecería un error
+     * del sistema en lugar de datos de prueba. Se escribe una sola vez.
+     */
+    private function archivoDeEjemplo(): string
+    {
+        $ruta = 'submissions/ejemplo.pdf';
+
+        if (! Storage::disk('public')->exists($ruta)) {
+            Storage::disk('public')->put($ruta, self::PDF_MINIMO);
+        }
+
+        return $ruta;
     }
 }

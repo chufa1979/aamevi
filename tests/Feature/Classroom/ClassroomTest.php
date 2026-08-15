@@ -10,10 +10,15 @@ use App\Enums\UserRole;
 use App\Models\Student;
 use App\Models\Question;
 use App\Models\CourseClass;
+use App\Models\ClassContent;
 use App\Models\CourseModule;
 use App\Services\QuizService;
+use App\Models\TaskSubmission;
 use App\Models\CourseEnrollment;
 use App\Services\ProgressService;
+use Illuminate\Http\UploadedFile;
+use App\Services\SubmissionService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -425,6 +430,131 @@ class ClassroomTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('course_enrollments', 1);
+    }
+
+    // ── Entrega de tareas ───────────────────────────────────────────────────
+
+    /** Una clase con tarea, sin autoevaluación, ya habilitada. */
+    private function claseConTarea(): array
+    {
+        $course = Course::factory()->create();
+        $module = CourseModule::factory()->for($course)->create(['order_number' => 1]);
+
+        $class = CourseClass::factory()->for($module, 'module')->create([
+            'order_number' => 1,
+            'activation_date' => now()->subDay(),
+        ]);
+
+        $tarea = ClassContent::factory()->task()->for($class, 'class')->create(['title' => 'Trabajo práctico 1']);
+
+        return [$course, $class->fresh(), $tarea];
+    }
+
+    public function test_el_alumno_entrega_su_archivo(): void
+    {
+        Storage::fake('public');
+
+        [$course, $class, $tarea] = $this->claseConTarea();
+        $student = $this->inscripto($course);
+
+        $this->entrar($student)
+            ->post(route('classroom.submit', $tarea), [
+                'archivo' => UploadedFile::fake()->create('tp.pdf', 100, 'application/pdf'),
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('task_submissions', [
+            'content_id' => $tarea->id,
+            'student_id' => $student->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_no_se_puede_entregar_a_una_clase_ajena(): void
+    {
+        Storage::fake('public');
+
+        [, , $tarea] = $this->claseConTarea();
+        $ajeno = Student::factory()->create();
+
+        $this->entrar($ajeno)
+            ->post(route('classroom.submit', $tarea), [
+                'archivo' => UploadedFile::fake()->create('tp.pdf', 100, 'application/pdf'),
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('task_submissions', 0);
+    }
+
+    public function test_el_archivo_es_obligatorio_y_tiene_formato(): void
+    {
+        Storage::fake('public');
+
+        [$course, , $tarea] = $this->claseConTarea();
+        $student = $this->inscripto($course);
+
+        $this->entrar($student)
+            ->post(route('classroom.submit', $tarea), [])
+            ->assertSessionHasErrors('archivo');
+
+        $this->post(route('classroom.submit', $tarea), [
+            'archivo' => UploadedFile::fake()->create('foto.jpg', 50, 'image/jpeg'),
+        ])->assertSessionHasErrors('archivo');
+    }
+
+    /** La regla que decidimos: sin entregar, la clase no se cierra. */
+    public function test_el_aula_dice_que_falta_entregar_en_vez_de_ofrecer_el_boton(): void
+    {
+        [$course, $class] = $this->claseConTarea();
+        $student = $this->inscripto($course);
+
+        $this->entrar($student)
+            ->get(route('classroom.class', $class))
+            ->assertSuccessful()
+            ->assertSee('Te falta entregar «Trabajo práctico 1».')
+            ->assertDontSee('Marcar la clase como vista');
+    }
+
+    public function test_despues_de_entregar_aparece_el_boton_de_cerrar_la_clase(): void
+    {
+        Storage::fake('public');
+
+        [$course, $class, $tarea] = $this->claseConTarea();
+        $student = $this->inscripto($course);
+
+        app(SubmissionService::class)
+            ->submit($student, $tarea, UploadedFile::fake()->create('tp.pdf', 100, 'application/pdf'));
+
+        $this->entrar($student)
+            ->get(route('classroom.class', $class))
+            ->assertSuccessful()
+            ->assertSee('Marcar la clase como vista');
+    }
+
+    /** Lo que separa corregir de publicar, visto desde el alumno. */
+    public function test_el_alumno_no_ve_la_nota_hasta_que_se_publique(): void
+    {
+        Storage::fake('public');
+
+        [$course, $class, $tarea] = $this->claseConTarea();
+        $student = $this->inscripto($course);
+
+        $entrega = TaskSubmission::factory()->approved(9)->create([
+            'content_id' => $tarea->id,
+            'student_id' => $student->id,
+        ]);
+
+        $this->entrar($student)
+            ->get(route('classroom.class', $class))
+            ->assertSuccessful()
+            ->assertSee('En corrección')
+            ->assertDontSee('Nota:');
+
+        $entrega->update(['published_at' => now()]);
+
+        $this->get(route('classroom.class', $class))
+            ->assertSee('Nota:')
+            ->assertSee('Buen trabajo.');
     }
 
     // ── Evaluaciones del curso ──────────────────────────────────────────────

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Database\Factories\ClassContentFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -29,6 +30,7 @@ class ClassContent extends Model
         'description',
         'content_url',
         'content_file',
+        'due_date',
         'order_number',
     ];
 
@@ -39,6 +41,7 @@ class ClassContent extends Model
     {
         return [
             'type' => ClassContentType::class,
+            'due_date' => 'datetime',
             'order_number' => 'integer',
         ];
     }
@@ -46,6 +49,23 @@ class ClassContent extends Model
     public function class(): BelongsTo
     {
         return $this->belongsTo(CourseClass::class, 'class_id');
+    }
+
+    /** Entregas de los alumnos, si es una tarea. */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(TaskSubmission::class, 'content_id');
+    }
+
+    public function isTask(): bool
+    {
+        return $this->type === ClassContentType::Task;
+    }
+
+    /** Una tarea sin fecha se puede entregar siempre. */
+    public function isPastDue(): bool
+    {
+        return $this->due_date !== null && $this->due_date->isPast();
     }
 
     /**

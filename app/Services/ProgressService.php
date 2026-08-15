@@ -20,7 +20,10 @@ use Illuminate\Support\Collection;
  */
 class ProgressService
 {
-    public function __construct(private readonly QuizService $quizzes) {}
+    public function __construct(
+        private readonly QuizService $quizzes,
+        private readonly SubmissionService $submissions,
+    ) {}
 
     /** ¿El alumno está cursando este curso? */
     public function isEnrolled(Student $student, Course $course): bool
@@ -122,8 +125,10 @@ class ProgressService
     /**
      * Da la clase por completada.
      *
-     * Si tiene quiz, exige haberlo aprobado: marcarla completa sin aprobar
-     * saltearía la evaluación, que es justo lo que la progresión protege.
+     * Dos condiciones. Si tiene evaluación, exige haberla aprobado: marcarla
+     * completa sin aprobar saltearía justo lo que la progresión protege. Y si
+     * tiene tareas, exige haberlas entregado — **entregado, no aprobado**:
+     * pedir la corrección dejaría al alumno detenido esperando a otra persona.
      */
     public function complete(Student $student, CourseClass $class): bool
     {
@@ -131,9 +136,36 @@ class ProgressService
             return false;
         }
 
+        if ($this->submissions->pendingFor($student, $class)->isNotEmpty()) {
+            return false;
+        }
+
         $this->start($student, $class)->update(['completed_at' => now()]);
 
         return true;
+    }
+
+    /**
+     * Por qué no se puede dar por completada, o null si se puede.
+     *
+     * Es para el aula: «no podés cerrar la clase» a secas no le dice al alumno
+     * qué le falta.
+     */
+    public function completionBlocker(Student $student, CourseClass $class): ?string
+    {
+        if ($class->quiz && ! $this->quizzes->hasPassed($class->quiz, $student)) {
+            return 'Primero tenés que aprobar la autoevaluación.';
+        }
+
+        $pendientes = $this->submissions->pendingFor($student, $class);
+
+        if ($pendientes->isNotEmpty()) {
+            return $pendientes->count() === 1
+                ? 'Te falta entregar «'.$pendientes->first()->title.'».'
+                : 'Te faltan entregar '.$pendientes->count().' tareas de esta clase.';
+        }
+
+        return null;
     }
 
     /**

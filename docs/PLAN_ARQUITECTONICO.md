@@ -1284,17 +1284,40 @@ diseñadas.
 
 ### Diseño de las tres solapas que faltan
 
-**Calificaciones y entrega de tareas.** Hoy `ClassContentType::Task` es solo un
-enunciado: el alumno no entrega nada. Hacen falta dos tablas —la entrega del
-alumno (archivo, fecha) y su corrección (nota, devolución, publicada)—.
+**Calificaciones y entrega de tareas — implementado el 2026-08-15.**
+`ClassContentType::Task` era solo un enunciado; ahora el alumno entrega un
+archivo y el docente lo corrige.
 
-De FID se conserva una idea que acá no existe y es buena: **la publicación es un
-paso aparte de la corrección**. El docente corrige cuando puede y publica cuando
-terminó con todo el curso, en vez de que los alumnos vean las notas apareciendo
-de a una. Lo que **no** se adopta es el aprobado/desaprobado manual: el quiz y el
-examen se corrigen y aprueban solos contra `passing_score`, que ya está
-implementado y probado. La corrección manual queda solo donde no hay alternativa,
-que son las entregas de archivo.
+Cuatro decisiones fijan el comportamiento:
+
+| | |
+|---|---|
+| La entrega **hace falta** para completar la clase | Pero no que esté aprobada: exigir la corrección dejaría al alumno detenido esperando a otra persona |
+| Nota de **1 a 10** más aprobado/desaprobado | La nota informa, el resultado decide |
+| **Publicar es un paso aparte de corregir** | El docente corrige a lo largo de la semana y suelta la tanda cuando terminó. Es lo mejor que tenía FID y acá no existía |
+| **Reentrega sólo si la desaprueban** | Evita que el docente corrija tres versiones del mismo trabajo |
+
+Lo que **no** se adoptó de FID es el aprobado/desaprobado manual en las
+evaluaciones: el quiz y el examen se corrigen y aprueban solos contra
+`passing_score`. La corrección manual queda sólo donde no hay alternativa, que
+son las entregas de archivo.
+
+**Modelo**: `class_content.due_date` —opcional; sin fecha se entrega siempre— y
+`task_submissions`, **una fila por entrega**. La reentrega no pisa la anterior:
+si el docente desaprueba y el alumno vuelve a entregar, la corrección original
+tiene que seguir existiendo, igual que con `student_quiz_attempts`.
+
+Las reglas viven en `SubmissionService`, con las transiciones como métodos que
+validan y lanzan `SubmissionException`. `ProgressService::complete()` consulta
+las tareas pendientes, y `completionBlocker()` dice cuál falta en vez de un «no
+se puede» a secas.
+
+**El límite de subida es el punto flojo.** El sistema declara 10 MB pero PHP
+puede cortar mucho antes —medido en desarrollo: `upload_max_filesize` en 2 MB—, y
+cuando eso pasa el archivo no llega a Laravel: se pierde el cuerpo entero de la
+petición, incluido el token CSRF. `HandleOversizedUpload` traduce ese caso a un
+mensaje entendible en lugar de un 419, pero es un parche: hay que subir el
+límite en el servidor. Ver `docs/DEPLOY.md`.
 
 **Comunicaciones.** Tablón de anuncios por curso: título, texto enriquecido,
 destinatario (todo el curso o un alumno) y visibilidad. En FID **no manda
@@ -1305,6 +1328,37 @@ en §2 pero todavía sin migración.
 que se corrigen en el diseño: el hilo es de una sola respuesta, el listado **no
 filtra por curso** aunque viva dentro del menú del curso, y la notificación va a
 una casilla personal quemada en el código.
+
+### Entrega de tareas y calificaciones — implementado
+
+`ClassContentType::Task` era sólo un enunciado. Ahora el alumno entrega un
+archivo y el docente lo corrige.
+
+**Cuatro decisiones que fijan el comportamiento:**
+
+| | |
+|---|---|
+| La entrega **hace falta** para completar la clase | Pero no que esté aprobada: exigir la corrección dejaría al alumno detenido esperando a otra persona |
+| Nota de **1 a 10** más aprobado/desaprobado | La nota informa, el resultado decide |
+| **Publicar es un paso aparte de corregir** | El docente corrige a lo largo de la semana y suelta la tanda cuando terminó. Es lo mejor que tenía FID |
+| **Reentrega sólo si la desaprueban** | Evita que el docente corrija tres versiones del mismo trabajo |
+
+**Modelo**: `class_content.due_date` —opcional, sin fecha se entrega siempre— y
+`task_submissions`, **una fila por entrega**. La reentrega no pisa la anterior:
+si el docente desaprueba y el alumno vuelve a entregar, la corrección original
+tiene que seguir existiendo, igual que con `student_quiz_attempts`.
+
+**Las reglas están en `SubmissionService`**, con las transiciones como métodos
+que validan y lanzan `SubmissionException`. `ProgressService::complete()` ahora
+consulta las tareas pendientes, y `completionBlocker()` dice cuál falta en lugar
+de un «no se puede» a secas.
+
+**El límite de subida es el punto flojo.** El sistema declara 10 MB pero PHP en
+el servidor puede cortar mucho antes —medido en desarrollo: `upload_max_filesize`
+en 2 MB—, y cuando eso pasa el archivo no llega a Laravel: se pierde el cuerpo
+entero de la petición, incluido el token CSRF. `HandleOversizedUpload` traduce
+ese caso a un mensaje entendible en vez de un 419, pero es un parche: hay que
+subir el límite en el servidor. Ver `docs/DEPLOY.md`.
 
 ### Dos apuntes más
 
