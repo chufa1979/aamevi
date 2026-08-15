@@ -11,11 +11,9 @@ use App\Models\CourseClass;
 use App\Models\CourseModule;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Filament\Resources\Courses\Pages\EditCourse;
 use App\Filament\Resources\Courses\Pages\CreateCourse;
-use App\Filament\Resources\CourseModules\Pages\EditCourseModule;
-use App\Filament\Resources\Courses\RelationManagers\ModulesRelationManager;
-use App\Filament\Resources\CourseModules\RelationManagers\ClassesRelationManager;
+use App\Filament\Resources\Courses\Pages\ManageCourseContent;
+use App\Filament\Resources\CourseModules\Pages\ManageModuleClasses;
 
 class CourseResourceTest extends TestCase
 {
@@ -86,10 +84,7 @@ class CourseResourceTest extends TestCase
     {
         $course = Course::factory()->create();
 
-        Livewire::test(ModulesRelationManager::class, [
-            'ownerRecord' => $course,
-            'pageClass' => EditCourse::class,
-        ])
+        Livewire::test(ManageCourseContent::class, ['record' => $course->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Módulo con formato',
                 'order_number' => 1,
@@ -106,10 +101,7 @@ class CourseResourceTest extends TestCase
     {
         $course = Course::factory()->create();
 
-        Livewire::test(ModulesRelationManager::class, [
-            'ownerRecord' => $course,
-            'pageClass' => EditCourse::class,
-        ])
+        Livewire::test(ManageCourseContent::class, ['record' => $course->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Módulo 1 — Fundamentos',
                 'order_number' => 1,
@@ -127,10 +119,7 @@ class CourseResourceTest extends TestCase
     {
         $module = CourseModule::factory()->create();
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $module->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Clase 1 — Introducción',
                 'order_number' => 1,
@@ -161,10 +150,7 @@ class CourseResourceTest extends TestCase
         $antesPrimera = $primera->activation_date->copy();
         $antesSegunda = $segunda->activation_date->copy();
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $module->getKey()])
             ->selectTableRecords([$primera->id, $segunda->id])
             ->callAction(
                 TestAction::make('shiftDates')->table()->bulk(),

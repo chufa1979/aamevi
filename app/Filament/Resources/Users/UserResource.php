@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources\Users;
 
-use BackedEnum;
 use App\Models\User;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
@@ -19,15 +17,14 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
-
+    // Sin icono propio: lo lleva el grupo, ver AdminPanelProvider
     protected static ?string $navigationLabel = 'Usuarios';
 
     protected static ?string $modelLabel = 'usuario';
 
     protected static ?string $pluralModelLabel = 'usuarios';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Personas';
+    protected static string|\UnitEnum|null $navigationGroup = 'Sistema';
 
     protected static ?int $navigationSort = 1;
 

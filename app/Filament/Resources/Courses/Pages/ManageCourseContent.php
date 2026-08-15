@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Courses\RelationManagers;
+namespace App\Filament\Resources\Courses\Pages;
 
 use Filament\Tables\Table;
 use App\Models\CourseModule;
@@ -11,20 +11,33 @@ use Filament\Actions\EditAction;
 use App\Filament\Forms\ModuleExam;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Hidden;
+use App\Filament\Tables\DragToReorder;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\RelationManagers\RelationManager;
+use App\Filament\Resources\Courses\CourseResource;
+use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseModules\CourseModuleResource;
 
-class ModulesRelationManager extends RelationManager
+/**
+ * Los módulos del curso, como solapa propia.
+ *
+ * Es una página y no un relation manager para que pueda tener sub-navegación
+ * hacia abajo: un relation manager no puede anidar otro, y de las clases todavía
+ * cuelgan el contenido y el banco de preguntas.
+ */
+class ManageCourseContent extends ManageRelatedRecords
 {
+    protected static string $resource = CourseResource::class;
+
     protected static string $relationship = 'modules';
 
-    protected static ?string $title = 'Módulos';
+    protected static ?string $navigationLabel = 'Contenidos';
 
-    protected static ?string $modelLabel = 'módulo';
+    protected static ?string $title = 'Contenidos del curso';
 
-    protected static ?string $pluralModelLabel = 'módulos';
+    // Sin esto el breadcrumb muestra el nombre de la relación, en inglés
+    protected static ?string $breadcrumb = 'Contenidos';
 
     public function form(Schema $schema): Schema
     {
@@ -34,15 +47,10 @@ class ModulesRelationManager extends RelationManager
                 ->required()
                 ->maxLength(255),
 
-            TextInput::make('order_number')
-                ->label('Orden')
-                ->numeric()
-                ->minValue(1)
-                ->required()
-                // Sugiere la posición siguiente; el unique (course_id,
-                // order_number) rechaza los repetidos.
-                ->default(fn (): int => $this->getOwnerRecord()->modules()->max('order_number') + 1)
-                ->helperText('Define la secuencia dentro del curso.'),
+            // El orden se cambia arrastrando en la tabla, no escribiendo el
+            // número. Un módulo nuevo va al final.
+            Hidden::make('order_number')
+                ->default(fn (): int => $this->getOwnerRecord()->modules()->max('order_number') + 1),
 
             RichText::make('description')
                 ->label('Descripción')
@@ -54,14 +62,17 @@ class ModulesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('módulo')
+            ->pluralModelLabel('módulos')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
                     ->label('#')
-                    ->alignCenter()
-                    ->sortable(),
+                    ->alignCenter(),
 
                 TextColumn::make('title')
                     ->label('Módulo')
@@ -77,12 +88,10 @@ class ModulesRelationManager extends RelationManager
                 CreateAction::make()->label('Agregar módulo'),
             ])
             ->recordActions([
-                // Las clases se administran en la pantalla del módulo: un
-                // relation manager no puede anidar otro.
                 Action::make('classes')
                     ->label('Clases')
                     ->icon('heroicon-o-academic-cap')
-                    ->url(fn (CourseModule $record): string => CourseModuleResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn (CourseModule $record): string => CourseModuleResource::getUrl('classes', ['record' => $record])),
 
                 EditAction::make(),
                 DeleteAction::make(),

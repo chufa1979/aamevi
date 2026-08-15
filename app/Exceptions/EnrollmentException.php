@@ -28,4 +28,18 @@ class EnrollmentException extends DomainException
             "El curso «{$course->title}» alcanzó su cupo de {$course->max_students} alumnos."
         );
     }
+
+    public static function alreadyEnrolled(Course $course): self
+    {
+        return new self(
+            "Ya tenés una solicitud o una inscripción en «{$course->title}»."
+        );
+    }
+
+    public static function courseIsClosed(Course $course): self
+    {
+        return new self(
+            "El curso «{$course->title}» no está abierto a inscripciones."
+        );
+    }
 }

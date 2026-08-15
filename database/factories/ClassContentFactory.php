@@ -50,4 +50,10 @@ class ClassContentFactory extends Factory
             'content_url' => null,
         ]);
     }
+
+    /** Tarea con fecha de entrega ya vencida. */
+    public function overdue(): static
+    {
+        return $this->task()->state(['due_date' => now()->subWeek()]);
+    }
 }

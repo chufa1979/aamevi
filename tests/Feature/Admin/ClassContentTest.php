@@ -11,8 +11,7 @@ use App\Models\CourseModule;
 use App\Enums\ClassContentType;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Filament\Resources\CourseModules\Pages\EditCourseModule;
-use App\Filament\Resources\CourseModules\RelationManagers\ClassesRelationManager;
+use App\Filament\Resources\CourseModules\Pages\ManageModuleClasses;
 
 class ClassContentTest extends TestCase
 {
@@ -29,10 +28,7 @@ class ClassContentTest extends TestCase
     {
         $module = CourseModule::factory()->create();
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $module->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Clase 1',
                 'order_number' => 1,
@@ -65,10 +61,7 @@ class ClassContentTest extends TestCase
     {
         $module = CourseModule::factory()->create();
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $module->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Clase ordenada',
                 'order_number' => 1,
@@ -96,10 +89,7 @@ class ClassContentTest extends TestCase
         $module = CourseModule::factory()->create();
         $html = '<p>Consigna con <strong>negrita</strong> y una <em>lista</em>:</p><ul><li>Uno</li><li>Dos</li></ul>';
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $module->getKey()])
             ->callAction(TestAction::make('create')->table(), data: [
                 'title' => 'Clase con tarea',
                 'order_number' => 1,
@@ -140,10 +130,7 @@ class ClassContentTest extends TestCase
 
         $this->assertNotNull($video->content_url);
 
-        Livewire::test(ClassesRelationManager::class, [
-            'ownerRecord' => $class->module,
-            'pageClass' => EditCourseModule::class,
-        ])
+        Livewire::test(ManageModuleClasses::class, ['record' => $class->module_id])
             ->callAction(TestAction::make('edit')->table($class), data: [
                 'title' => $class->title,
                 'order_number' => $class->order_number,

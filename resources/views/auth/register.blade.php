@@ -9,9 +9,9 @@
 --}}
 @section('content')
     <h1 class="mb-1 text-2xl font-normal">Crear cuenta</h1>
-    <p class="mb-6 text-sm text-ink/70">El registro todavía no está habilitado.</p>
+    <p class="mb-6 text-sm text-subtle">El registro todavía no está habilitado.</p>
 
-    <div class="bg-white p-6 text-sm leading-relaxed">
+    <div class="bg-card p-6 text-sm leading-relaxed">
         <p>
             Por el momento las cuentas las da de alta la administración de AAMEVi.
             Escribinos a

@@ -7,6 +7,8 @@ use Filament\PanelProvider;
 use Filament\Pages\Dashboard;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
+use Filament\Support\Icons\Heroicon;
+use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\FilamentInfoWidget;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
@@ -43,6 +45,21 @@ class AdminPanelProvider extends PanelProvider
              */
             ->colors([
                 'primary' => Color::hex('#00b8b3'),
+            ])
+            /*
+             * El orden de los grupos se fija acá y no en cada recurso: repartido
+             * en constantes `$navigationSort` sueltas, agregar un recurso obliga
+             * a renumerar los demás para meterlo en el medio.
+             *
+             * La secuencia sigue el trabajo del docente: primero el material,
+             * después quiénes lo cursan, después la evaluación, y al final la
+             * administración de cuentas.
+             */
+            ->navigationGroups([
+                NavigationGroup::make('Cursos')->icon(Heroicon::OutlinedBookOpen),
+                NavigationGroup::make('Alumnos')->icon(Heroicon::OutlinedAcademicCap),
+                NavigationGroup::make('Evaluación')->icon(Heroicon::OutlinedClipboardDocumentCheck),
+                NavigationGroup::make('Sistema')->icon(Heroicon::OutlinedCog6Tooth),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

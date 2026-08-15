@@ -18,6 +18,34 @@ Relevadas por SSH el 2026-08-11:
 | Home | `/www/demosdesarrollos` |
 | Docroot | `~/aamevi.demosdesarrollos.com.ar/public` (verificado) |
 
+### El límite de subida hay que revisarlo
+
+Los valores de PHP que gobiernan las subidas —el PDF de una clase y, sobre todo,
+la entrega de un trabajo práctico— **no son los que el sistema declara**. Medidos
+en el entorno de desarrollo:
+
+```
+upload_max_filesize = 2M      ← el panel ofrece 20 MB para los PDF de clase
+post_max_size       = 8M      ← el aula ofrece 10 MB para las entregas
+```
+
+**Hay que verificarlos en el servidor y subirlos**, con un `php.ini` propio o
+`.user.ini` en el docroot:
+
+```ini
+upload_max_filesize = 12M
+post_max_size = 16M
+```
+
+`post_max_size` tiene que ser mayor que `upload_max_filesize`: además del
+archivo viaja el resto del formulario.
+
+Mientras no se haga, un archivo grande **no llega a Laravel**: PHP vacía el
+cuerpo de la petición antes, y con él se van los campos y el token CSRF. El
+middleware `HandleOversizedUpload` detecta ese caso y muestra «el archivo es
+demasiado grande» en lugar del 419 «página expirada» que saldría si no,
+pero es un parche: el archivo se sigue perdiendo.
+
 Dos consecuencias que explican decisiones del proyecto:
 
 1. **El CLI es 8.3, no 8.4.** Artisan corre ahí (migraciones, cachés, colas), así
@@ -208,6 +236,9 @@ que cambie algo de `resources/css` o `resources/js`.
 
 ## Pendiente
 
+- **Límite de subida**: verificar `upload_max_filesize` y `post_max_size` en el
+  servidor y subirlos (ver arriba). Hasta que se haga, las entregas de más de
+  2 MB se pierden.
 - **Clave SSH**: hoy el acceso es por contraseña. `ssh-copy-id -i ~/.ssh/id_ed25519.pub`
   y después deshabilitar la contraseña.
 - **HTTPS**: verificar que el certificado del dominio esté activo y que haya

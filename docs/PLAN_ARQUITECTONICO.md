@@ -1059,8 +1059,34 @@ Dos consecuencias operativas:
 - `blade-icons`, que viene con Filament, registra un componente global `x-icon`
   que le ganaba al nuestro. El componente propio pasó a ser `<x-ui.icon>`.
 
-El panel de `/profesores` queda pendiente: es un segundo panel de Filament con
-los recursos acotados a los cursos del docente.
+### El panel de `/profesores`
+
+Es un segundo panel de Filament que **reusa los recursos de `/admin`** en lugar
+de duplicarlos: un curso se administra igual lo dicte quien lo dicte, y dos
+copias del árbol curso → módulo → clase se habrían separado en cuanto se tocara
+una. `TeacherPanelProvider` declara los recursos uno por uno —cursos, módulos,
+clases y banco de preguntas— para que sumar mañana un recurso de administración
+no aparezca solo acá.
+
+Lo que separa a un docente de otro no es el panel sino dos cosas que valen
+entren por donde entren:
+
+- **`Course::scopeVisibleTo(User)`** recorta las consultas. Módulos, clases y
+  preguntas cuelgan de esa misma regla a través de su curso. Como Filament
+  resuelve los registros por la consulta del recurso, escribir a mano la URL del
+  curso ajeno devuelve 404, no la pantalla.
+- **Las policies** (`CoursePolicy` y `CoursePartPolicy`) deciden qué se puede
+  hacer. El alta y la baja de cursos son del administrador: si un docente pudiera
+  crearlos tendría que elegir docente, y si pudiera borrarlos se llevaría puestas
+  las inscripciones.
+
+En el formulario del curso, «Docente», «Cupo» y «Curso activo» se muestran
+deshabilitados para el docente. Deshabilitados y no ocultos porque Filament no
+manda al servidor el valor de un campo deshabilitado: esconderlo en la pantalla
+no habría alcanzado.
+
+Afuera quedan las cuentas de usuario. Un docente ve a sus alumnos desde la solapa
+del curso, que es donde significan algo.
 
 ### Cómo está organizado el panel
 
@@ -1068,25 +1094,87 @@ Los recursos viven en `app/Filament/Resources/`, uno por carpeta, con el
 formulario y la tabla en clases aparte (`Schemas/` y `Tables/`). Esa división la
 impone el generador de Filament 5; conviene respetarla.
 
-**Navegación del contenido** — se baja un nivel por pantalla:
+**Menú lateral** — cuatro grupos, en el orden en que se trabaja:
 
 ```
-Cursos  →  [abrir un curso]  →  pestaña Módulos
-                                     │
-                                     └── acción «Clases»  →  pantalla del módulo
-                                                                  │
-                                                                  └── pestaña Clases
+Cursos      ▸ Todos · Crear nuevo
+Alumnos     ▸ Todos · Crear nuevo
+Evaluación  ▸ Banco de preguntas
+Sistema     ▸ Usuarios
 ```
 
-El salto del medio es lo menos evidente del diseño y tiene un motivo:
-**un relation manager de Filament no puede anidar otro**. Como las clases cuelgan
-del módulo y el módulo del curso, hacen falta dos pantallas. Por eso existe
-`CourseModuleResource`, que:
+El orden y los iconos de los grupos se fijan con `->navigationGroups()` en
+`AdminPanelProvider`, no repartidos en constantes `$navigationSort` por recurso:
+así, agregar un recurso en el medio no obliga a renumerar los demás. **Los
+iconos van en el grupo y no en los ítems** — Filament rechaza que estén en los
+dos a la vez.
 
-- **no aparece en la navegación** (`$shouldRegisterNavigation = false`)
-- **no tiene página de alta**: los módulos se crean desde el curso, que es donde
-  se conoce a cuál pertenecen
-- solo sirve para abrir un módulo y trabajar sus clases
+El par «Todos / Crear nuevo» sale del trait
+`App\Filament\Concerns\ListAndCreateNavigation`, que sobreescribe
+`getNavigationItems()` para devolver dos entradas en vez de una.
+
+`StudentResource` trabaja sobre **`User`** y no sobre `Student`, filtrando por
+rol: la ficha comparte la clave con el usuario, así que dar de alta un alumno es
+siempre crear los dos, y `UserForm` ya resuelve ese par. Se lo reutiliza con el
+rol fijo. `UserResource`, bajo Sistema, sigue sirviendo para dar de alta
+cualquier rol.
+
+**Navegación del contenido** — el curso abre en solapas:
+
+```
+Cursos → [abrir un curso]
+   │
+   ├── Info general        Planificación      Contenidos
+   ├── Exámenes            Alumnos del curso  Seguimiento alumnos
+   │
+   └── Contenidos → [abrir un módulo] → Datos y examen · Clases
+                                            │
+                                            └── [abrir una clase] → Autoevaluación · Banco de preguntas
+```
+
+Las solapas se registran con `getRecordSubNavigation()` y
+`SubNavigationPosition::Top`. La pieza que lo hace posible es
+**`ManageRelatedRecords`**, que convierte un relation manager en una página
+propia del recurso: un relation manager no puede anidar otro, pero una página sí
+puede tener su propia sub-navegación. Eso es lo que permite bajar los tres
+niveles sin perder el rastro de dónde está uno.
+
+`CourseModuleResource` y `CourseClassResource` siguen existiendo como pantallas
+de un módulo y de una clase, y siguen **sin aparecer en la navegación**
+(`$shouldRegisterNavigation = false`) y **sin página de alta**: se crean desde su
+padre, que es donde se sabe a cuál pertenecen.
+
+**El orden se cambia arrastrando.** Módulos y clases se reordenan tirando de la
+fila; el `order_number` ya no se escribe a mano y un registro nuevo va al final.
+
+Eso choca de frente con el `unique (padre_id, order_number)`: Filament escribe
+todas las posiciones en un solo `UPDATE` con un `CASE`, y al asignarle el 1 a la
+fila que estaba segunda, la que estaba primera todavía lo tiene. `DragToReorder`
+resuelve el reordenamiento en dos fases —primero corre las filas afectadas por
+encima del máximo, después Filament escribe los valores definitivos sobre un
+rango libre—, lo que permite **conservar la restricción** en vez de aflojarla.
+Requiere `paginated(false)`, porque el reordenamiento solo recibe las filas
+visibles y arrastrar entre páginas no significa nada.
+
+El orden no es decorativo: es la cadena que decide qué clase habilita a cuál en
+`ProgressService::previousClass()`. Hay un test que lo verifica después de
+reordenar.
+
+**El cronograma avanza en el tiempo.** Una clase no puede habilitarse antes que
+la que va delante suyo: cargarla con fecha anterior la dejaría disponible fuera
+de secuencia. El mismo día sí —dos clases el mismo día son normales—, así que la
+comparación es por día y no por hora. `CourseModule::earliestDateFor($orden)`
+resuelve el mínimo y el formulario lo aplica con `minDate()`, que da validación
+en el navegador y en el servidor. Vale también al editar, mirando la clase
+anterior a la que se toca: sin eso alcanzaría con crear la clase con fecha válida
+y después moverla hacia atrás.
+
+La acción masiva **«Correr fechas» no valida esto**: correr un subconjunto de
+clases hacia atrás puede dejar el módulo desordenado. Es deliberado —la acción
+existe para reprogramar en bloque— pero conviene saberlo.
+
+**Las tres solapas que faltan** —Calificaciones, Comunicación y Consultas a mesa
+de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 
 **Convenciones a respetar** al sumar recursos:
 
@@ -1095,8 +1183,10 @@ del módulo y el módulo del curso, hacen falta dos pantallas. Por eso existe
 | Generar, no escribir a mano | `php artisan make:filament-resource Foo --generate`. La API de v5 difiere bastante de la de v3 y el generador la acierta |
 | Revisar siempre lo generado | Los selects de relación salen mostrando el UUID, y los campos de contraseña se sobreescriben con `null` al editar |
 | Etiquetas y colores en el enum | Implementar `HasLabel` y `HasColor` (como `UserRole`) en vez de repetirlos en cada recurso |
-| `order_number` único por padre | La unicidad es `(padre_id, order_number)`; el formulario sugiere la posición siguiente |
+| `order_number` único por padre | La unicidad es `(padre_id, order_number)`. El orden se cambia **arrastrando**, no escribiendo el número: ver `App\Filament\Tables\DragToReorder` |
 | Acciones masivas para lo repetitivo | Editar treinta clases de a una no es una interfaz; ver «Correr fechas» |
+| Solapas, no acciones de fila | Para bajar un nivel, `getRecordSubNavigation()` con páginas `ManageRelatedRecords`. Una acción de fila que abre otra pantalla no deja rastro de dónde está uno |
+| Nada de una consulta por celda | Las pantallas que cruzan alumnos con clases piden los datos de una vez al servicio; ver `ProgressService::courseMatrix()` |
 
 **Cuidado con `x-icon`**: `blade-icons`, dependencia de Filament, lo registra
 globalmente y le gana a cualquier componente propio con ese nombre. El del
@@ -1114,7 +1204,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-11 — **14 migraciones, 14 modelos, 123 tests**:
+Hecho hasta el 2026-08-14 — **14 migraciones, 14 modelos, 168 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1126,6 +1216,8 @@ Hecho hasta el 2026-08-11 — **14 migraciones, 14 modelos, 123 tests**:
 8. [x] Evaluaciones: banco de preguntas, quiz de clase, examen de módulo por
        porcentaje, intentos y corrección automática
 9. [x] Progresión: gateo de clases por inscripción, fecha y aprobación previa
+10. [x] Panel reorganizado en solapas por curso, siguiendo el análisis de §13:
+        planificación, contenidos, exámenes, alumnos y seguimiento
 
 ### La brecha
 
@@ -1141,19 +1233,164 @@ Cerrar esa brecha es lo único que separa el proyecto de ser usable:
        puede ver cada alumno y por qué; falta la vista
 2. [ ] **Pantalla de quiz** — rendir, responder y ver el resultado.
        `QuizService` ya resuelve el sorteo, la corrección y los reintentos
-3. [ ] **Revisión de intentos en el panel** — sin esto, un docente no puede
-       atender una nota reclamada, aunque el dato esté guardado
-4. [ ] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
-5. [ ] **Fase 4 en adelante** — tareas, notificaciones, certificados
+3. [x] **Revisión de intentos en el panel** — la solapa «Intentos» del curso
+       muestra qué preguntas le tocaron a cada alumno y qué respondió
+4. [x] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
+5. [ ] **Calificaciones y entrega de tareas** — la solapa que más se usa en un
+       LMS real, según los volúmenes de §13
+6. [ ] **Fase 4 en adelante** — notificaciones, certificados
+7. [ ] **Comunicaciones y consultas** — diseñadas en §13, últimas en la cola:
+       en FID casi no se usan
 
 ### Deuda pendiente
 
 | | |
 |---|---|
-| **Sanitizar el HTML** | Cuatro campos guardan texto enriquecido —descripción de curso, módulo y clase, contenido y enunciado de pregunta—. Al renderizarlos en el sitio público hay que sanitizarlos antes de `{!! !!}`, o cada uno es un vector de XSS. Hoy solo cargan administradores; el día que cargue un profesor, deja de ser teórico |
+| ~~**Sanitizar el HTML**~~ | Resuelto: `App\Support\Html::sanitize()` limpia al mostrar, y el único `{!! !!}` del proyecto vive dentro de `<x-rich-text>`. Dejó de ser teórico al abrir `/profesores`: ya no cargan contenido sólo administradores |
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
 | `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
 | Registro público | Hoy es un marcador: las cuentas las crea la administración |
 | Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo ni `email_queue` |
 | Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
 | `docs/SISTEMA_DISENO.md` | Sus rutas siguen apuntando a `frontend/src/...` de la etapa React; los tokens que enumera sí son correctos |
+
+---
+
+## 13. LO APRENDIDO DE UN LMS EN PRODUCCIÓN
+
+En agosto de 2026 se revisó el código y la base de **FID**
+(`cursoselearning.com.ar/fid`), un LMS en PHP procedural que lleva años
+operando cursos de yoga. No es un sistema a imitar —no tiene framework, ni
+claves foráneas, ni tests—, pero **es la única fuente disponible sobre qué usan
+de verdad los docentes**, y de ahí salió la organización en solapas de §11.
+
+### Qué resolvió mejor cada uno
+
+Sobre clases y evaluación, que es el corazón del sistema, este proyecto ya está
+por delante:
+
+| | FID | AAMEVi |
+|---|---|---|
+| Estructura | `aula_planificacion`: una tabla plana con filas `modulo`, `clase` y `examen` mezcladas | `courses → modules → classes`, con FK reales |
+| Vínculo contenido↔clase | `(curso, numero)`, enteros sin FK; borrar una clase **renumera** las demás | `class_id` con `ON DELETE CASCADE` |
+| Banco de preguntas | 30 columnas fijas (`pregunta1..5` × `respuesta1a..1e`): tope duro de 5 por clase | tablas `questions` y `question_options`, sin tope |
+| Sorteo del examen | `ORDER BY RAND() DESC LIMIT 1,10`. El `OFFSET 1` es un bug: con una sola clase seleccionada, el examen sale vacío | `questionsToDraw()`, porcentaje configurable y acotado al banco |
+| Trazabilidad | guarda el **texto** de la pregunta y la respuesta, no el id | `quiz_question_assignment` registra qué preguntas le tocaron a cada alumno |
+| Aprobación | el docente marca aprobado/desaprobado a mano | automática contra `passing_score`, con `max_attempts` |
+| Reintentos | existen solo si el docente marca «desaprobado», que además **borra las respuestas** | contador real de intentos |
+| Progresión | ninguna: la autoevaluación no bloquea nada | `ProgressService` gatea por inscripción, fecha y clase anterior |
+
+Lo que FID sí tiene y acá faltaba **no es modelo de datos: es organización**. Sus
+nueve solapas cubren el ciclo docente completo; este panel tenía dos pantallas.
+
+Un detalle de terminología que conviene no arrastrar: la pantalla de exámenes de
+FID dice *«preguntas tomadas de los módulos seleccionados»*, pero en la base
+selecciona **clases**. La nomenclatura de acá —módulo compuesto por clases, cada
+clase con su autoevaluación, y el examen de módulo sorteando del banco
+combinado— es la correcta.
+
+### Qué se usa de verdad
+
+Los volcados de la base, sobre dos cursos y varios años de operación:
+
+| Tabla | Filas |
+|---|---|
+| `aula_calificaciones_examen_alumno` | 1752 |
+| `seguimiento` (bitácora de accesos) | 1181 |
+| `aula_autoevaluacion_alumno` | 276 |
+| `aula_actividad_adicional` (material) | 238 |
+| `aula_calificaciones_actividad` | 138 |
+| `aula_calificaciones_examen` | 100 |
+| `aula_consulta_mesa` | **3** |
+| `aula_comunicaciones` | **1** |
+
+Evaluación y calificaciones concentran todo el uso. **Comunicaciones y consultas
+están prácticamente sin usar**, así que van al final de la cola aunque estén
+diseñadas.
+
+### Diseño de las tres solapas que faltan
+
+**Calificaciones y entrega de tareas — implementado el 2026-08-15.**
+`ClassContentType::Task` era solo un enunciado; ahora el alumno entrega un
+archivo y el docente lo corrige.
+
+Cuatro decisiones fijan el comportamiento:
+
+| | |
+|---|---|
+| La entrega **hace falta** para completar la clase | Pero no que esté aprobada: exigir la corrección dejaría al alumno detenido esperando a otra persona |
+| Nota de **1 a 10** más aprobado/desaprobado | La nota informa, el resultado decide |
+| **Publicar es un paso aparte de corregir** | El docente corrige a lo largo de la semana y suelta la tanda cuando terminó. Es lo mejor que tenía FID y acá no existía |
+| **Reentrega sólo si la desaprueban** | Evita que el docente corrija tres versiones del mismo trabajo |
+
+Lo que **no** se adoptó de FID es el aprobado/desaprobado manual en las
+evaluaciones: el quiz y el examen se corrigen y aprueban solos contra
+`passing_score`. La corrección manual queda sólo donde no hay alternativa, que
+son las entregas de archivo.
+
+**Modelo**: `class_content.due_date` —opcional; sin fecha se entrega siempre— y
+`task_submissions`, **una fila por entrega**. La reentrega no pisa la anterior:
+si el docente desaprueba y el alumno vuelve a entregar, la corrección original
+tiene que seguir existiendo, igual que con `student_quiz_attempts`.
+
+Las reglas viven en `SubmissionService`, con las transiciones como métodos que
+validan y lanzan `SubmissionException`. `ProgressService::complete()` consulta
+las tareas pendientes, y `completionBlocker()` dice cuál falta en vez de un «no
+se puede» a secas.
+
+**El límite de subida es el punto flojo.** El sistema declara 10 MB pero PHP
+puede cortar mucho antes —medido en desarrollo: `upload_max_filesize` en 2 MB—, y
+cuando eso pasa el archivo no llega a Laravel: se pierde el cuerpo entero de la
+petición, incluido el token CSRF. `HandleOversizedUpload` traduce ese caso a un
+mensaje entendible en lugar de un 419, pero es un parche: hay que subir el
+límite en el servidor. Ver `docs/DEPLOY.md`.
+
+**Comunicaciones.** Tablón de anuncios por curso: título, texto enriquecido,
+destinatario (todo el curso o un alumno) y visibilidad. En FID **no manda
+emails**, pese al nombre del módulo; acá se engancha a `email_queue`, que ya está
+en §2 pero todavía sin migración.
+
+**Consultas a mesa de ayuda.** Ticket con estado y respuesta. Tres cosas de FID
+que se corrigen en el diseño: el hilo es de una sola respuesta, el listado **no
+filtra por curso** aunque viva dentro del menú del curso, y la notificación va a
+una casilla personal quemada en el código.
+
+### Entrega de tareas y calificaciones — implementado
+
+`ClassContentType::Task` era sólo un enunciado. Ahora el alumno entrega un
+archivo y el docente lo corrige.
+
+**Cuatro decisiones que fijan el comportamiento:**
+
+| | |
+|---|---|
+| La entrega **hace falta** para completar la clase | Pero no que esté aprobada: exigir la corrección dejaría al alumno detenido esperando a otra persona |
+| Nota de **1 a 10** más aprobado/desaprobado | La nota informa, el resultado decide |
+| **Publicar es un paso aparte de corregir** | El docente corrige a lo largo de la semana y suelta la tanda cuando terminó. Es lo mejor que tenía FID |
+| **Reentrega sólo si la desaprueban** | Evita que el docente corrija tres versiones del mismo trabajo |
+
+**Modelo**: `class_content.due_date` —opcional, sin fecha se entrega siempre— y
+`task_submissions`, **una fila por entrega**. La reentrega no pisa la anterior:
+si el docente desaprueba y el alumno vuelve a entregar, la corrección original
+tiene que seguir existiendo, igual que con `student_quiz_attempts`.
+
+**Las reglas están en `SubmissionService`**, con las transiciones como métodos
+que validan y lanzan `SubmissionException`. `ProgressService::complete()` ahora
+consulta las tareas pendientes, y `completionBlocker()` dice cuál falta en lugar
+de un «no se puede» a secas.
+
+**El límite de subida es el punto flojo.** El sistema declara 10 MB pero PHP en
+el servidor puede cortar mucho antes —medido en desarrollo: `upload_max_filesize`
+en 2 MB—, y cuando eso pasa el archivo no llega a Laravel: se pierde el cuerpo
+entero de la petición, incluido el token CSRF. `HandleOversizedUpload` traduce
+ese caso a un mensaje entendible en vez de un 419, pero es un parche: hay que
+subir el límite en el servidor. Ver `docs/DEPLOY.md`.
+
+### Dos apuntes más
+
+- **Bitácora de accesos.** FID registra quién entró, cuándo y desde qué IP
+  (`seguimiento`, la tabla más poblada después de las respuestas de examen). Acá
+  no existe y es barato de agregar.
+- **Usuario del panel acotado a un curso.** `aula_usuarios.curso` limita a un
+  administrador a un curso. Es exactamente el mecanismo que va a necesitar el
+  panel `/profesores` pendiente de §11.

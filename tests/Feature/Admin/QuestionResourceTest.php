@@ -9,8 +9,7 @@ use App\Models\Question;
 use App\Models\CourseClass;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Filament\Resources\Questions\Pages\CreateQuestion;
-use App\Filament\Resources\CourseClasses\Pages\EditCourseClass;
-use App\Filament\Resources\CourseClasses\RelationManagers\QuestionsRelationManager;
+use App\Filament\Resources\CourseClasses\Pages\ManageClassQuestions;
 
 class QuestionResourceTest extends TestCase
 {
@@ -74,10 +73,7 @@ class QuestionResourceTest extends TestCase
             ->assertSee('Preguntas');
 
         // Y la tabla, que Livewire carga aparte
-        Livewire::test(QuestionsRelationManager::class, [
-            'ownerRecord' => $question->class,
-            'pageClass' => EditCourseClass::class,
-        ])->assertCanSeeTableRecords([$question]);
+        Livewire::test(ManageClassQuestions::class, ['record' => $question->class_id])->assertCanSeeTableRecords([$question]);
     }
 
     public function test_el_enunciado_conserva_el_texto_enriquecido(): void

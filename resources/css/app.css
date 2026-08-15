@@ -49,6 +49,29 @@
     --color-error: #cc0000;
 
     /*
+     * Tokens semánticos: lo que se usa en las pantallas.
+     *
+     * Los de arriba son la identidad y no cambian nunca; estos dicen «fondo de
+     * página», «texto», «tarjeta», y son los que se dan vuelta en modo oscuro.
+     * Una vista que use `bg-canvas` en vez de `bg-surface` funciona en los dos
+     * temas sin escribir una sola variante.
+     */
+    --color-canvas: #ececec; /* fondo de página */
+    --color-canvas-fg: #333333; /* texto sobre el fondo */
+    --color-card: #ffffff; /* tarjetas, paneles, formularios */
+    --color-card-fg: #333333;
+    --color-line: #d3d3d2; /* bordes y separadores */
+    --color-subtle: #5b5b5b; /* texto secundario, ayudas */
+
+    /*
+     * Variantes de marca legibles como texto. El teal y el naranja plenos no
+     * alcanzan el contraste mínimo sobre fondo claro (2,47:1 y 2,62:1): para
+     * texto y enlaces se usan estas, que dan 5,05:1 y 4,99:1.
+     */
+    --color-brand-text: #007c79;
+    --color-accent-text: #ab4405;
+
+    /*
      * Colores del isotipo: los 6 pilares de la medicina del estilo de vida.
      * Sirven para diferenciar cursos, módulos o categorías.
      */
@@ -73,18 +96,100 @@
 }
 
 @layer base {
+    /*
+     * Modo oscuro.
+     *
+     * Sólo se dan vuelta los tokens semánticos: los colores de marca conservan
+     * su valor y lo que cambia es cuál de la escala se usa, porque el teal que
+     * se lee bien sobre blanco no se lee sobre negro y al revés.
+     *
+     * El bloque aparece dos veces a propósito. `[data-theme='dark']` es la
+     * elección explícita del usuario, que la escribe el script de
+     * `resources/js/preferences.js` antes del primer pintado. El del media query
+     * cubre a quien tenga JavaScript desactivado: se aplica sólo si nadie fijó
+     * el atributo, así que nunca le gana a la elección explícita.
+     */
+    :root {
+        color-scheme: light;
+
+        --dark-canvas: #14181c;
+        --dark-canvas-fg: #e8eaed;
+        --dark-card: #1e2429;
+        --dark-card-fg: #e8eaed;
+        --dark-line: #333b42;
+        --dark-subtle: #a8b0b8;
+        --dark-brand-text: #4dd4d1;
+        --dark-accent-text: #fba25f;
+    }
+
+    :root[data-theme='dark'] {
+        color-scheme: dark;
+
+        --color-canvas: var(--dark-canvas);
+        --color-canvas-fg: var(--dark-canvas-fg);
+        --color-card: var(--dark-card);
+        --color-card-fg: var(--dark-card-fg);
+        --color-line: var(--dark-line);
+        --color-subtle: var(--dark-subtle);
+        --color-brand-text: var(--dark-brand-text);
+        --color-accent-text: var(--dark-accent-text);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+            color-scheme: dark;
+
+            --color-canvas: var(--dark-canvas);
+            --color-canvas-fg: var(--dark-canvas-fg);
+            --color-card: var(--dark-card);
+            --color-card-fg: var(--dark-card-fg);
+            --color-line: var(--dark-line);
+            --color-subtle: var(--dark-subtle);
+            --color-brand-text: var(--dark-brand-text);
+            --color-accent-text: var(--dark-accent-text);
+        }
+    }
+
+    /*
+     * Tamaño de letra. Todo el sitio está en `rem`, así que mover la raíz
+     * escala tipografía, espaciados y componentes juntos, sin excepciones.
+     */
+    :root[data-font-size='grande'] {
+        font-size: 112.5%;
+    }
+
+    :root[data-font-size='mayor'] {
+        font-size: 125%;
+    }
+
     html {
         scroll-behavior: smooth;
     }
 
     body {
-        @apply bg-surface font-sans text-ink antialiased;
+        @apply bg-canvas font-sans text-canvas-fg antialiased;
     }
 
     /* El sitio madre no marca los focus; los mantenemos visibles por accesibilidad,
        usando el color institucional. */
     :focus-visible {
-        @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-surface;
+        @apply outline-none ring-2 ring-primary ring-offset-2;
+        --tw-ring-offset-color: var(--color-canvas);
+    }
+
+    /* Quien pidió menos movimiento no debería recibir ninguno */
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
     }
 }
 
@@ -112,20 +217,28 @@
                disabled:cursor-not-allowed disabled:opacity-50;
     }
 
+    /*
+     * Los colores de los botones están elegidos por contraste medido, no a ojo.
+     * El teal pleno con texto oscuro da 5,12:1 y pasa; el hover **aclara** en
+     * vez de oscurecer, porque con texto oscuro bajar a primary-600 caía a
+     * 3,74:1. El naranja y el rojo plenos con texto blanco no llegan (3,09:1 y
+     * 3,95:1), así que los botones usan el escalón 700, que da 5,90:1 y 6,47:1.
+     * El naranja pleno sigue siendo el color de marca en lo decorativo.
+     */
     .btn {
-        @apply bg-primary text-ink hover:bg-primary-600;
+        @apply bg-primary text-ink hover:bg-primary-400;
     }
 
     .btn-accent {
-        @apply bg-accent text-white hover:bg-accent-600;
+        @apply bg-accent-700 text-white hover:bg-accent-800;
     }
 
     .btn-danger {
-        @apply bg-danger text-white hover:bg-red-600;
+        @apply bg-red-700 text-white hover:bg-red-800;
     }
 
     .btn-ghost {
-        @apply bg-transparent text-ink hover:bg-black/5;
+        @apply border border-line bg-transparent text-canvas-fg hover:bg-black/5;
     }
 
     /* Variante en cursiva usada en las llamadas a la acción del sitio madre */
@@ -133,15 +246,15 @@
         @apply text-lg font-medium italic;
     }
 
-    /* Campos de formulario: fondo blanco, borde gris, radio 4px */
+    /* Campos de formulario: fondo de tarjeta, borde suave, radio 4px */
     .field {
-        @apply block w-full rounded border border-gray-300 bg-white px-2 py-2
-               text-base text-ink placeholder:text-gray-400
+        @apply block w-full rounded border border-line bg-card px-2 py-2
+               text-base text-card-fg placeholder:text-subtle
                focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;
     }
 
     .field-label {
-        @apply mb-1 block text-xs uppercase tracking-wide text-ink;
+        @apply mb-1 block text-xs uppercase tracking-wide;
     }
 
     /* Título de sección */
@@ -153,8 +266,102 @@
         @apply text-2xl font-normal;
     }
 
-    /* Enlace de navegación: mayúsculas, hover naranja */
+    /*
+     * Enlace de navegación: mayúsculas, hover naranja. Usa `accent-text` y no
+     * el naranja pleno porque sobre el fondo de página éste da 2,62:1 — el
+     * hover marcaba el enlace justo para quien mejor ve.
+     */
     .nav-link {
-        @apply uppercase no-underline transition-colors hover:text-accent;
+        @apply uppercase no-underline transition-colors hover:text-accent-text;
+    }
+
+    /*
+     * Piezas que existen en dos versiones y se eligen por tema, como el
+     * isotipo. Se resuelve con CSS y no con JavaScript para que la correcta
+     * esté desde el primer pintado.
+     */
+    .solo-en-oscuro {
+        @apply hidden;
+    }
+
+    :root[data-theme='dark'] .solo-en-oscuro {
+        @apply block;
+    }
+
+    :root[data-theme='dark'] .hidden-en-oscuro {
+        @apply hidden;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) .solo-en-oscuro {
+            @apply block;
+        }
+
+        :root:not([data-theme]) .hidden-en-oscuro {
+            @apply hidden;
+        }
+    }
+
+    /* ── El aula ──────────────────────────────────────────────────────────── */
+
+    .card {
+        @apply rounded-lg border border-line bg-card text-card-fg;
+    }
+
+    /*
+     * Marcado que viene del editor del panel, ya sanitizado por
+     * `<x-rich-text>`. Tailwind deja en cero los márgenes de párrafos y listas,
+     * así que sin esto el texto enriquecido se ve como un bloque corrido.
+     */
+    .prose-aamevi :is(p, ul, ol, blockquote) {
+        @apply my-3;
+    }
+
+    .prose-aamevi :is(h2, h3) {
+        @apply mb-2 mt-5 font-medium;
+    }
+
+    .prose-aamevi h2 {
+        @apply text-xl;
+    }
+
+    .prose-aamevi h3 {
+        @apply text-lg;
+    }
+
+    .prose-aamevi ul {
+        @apply list-disc pl-6;
+    }
+
+    .prose-aamevi ol {
+        @apply list-decimal pl-6;
+    }
+
+    .prose-aamevi a {
+        @apply text-brand-text underline underline-offset-2;
+    }
+
+    .prose-aamevi blockquote {
+        @apply border-l-4 border-line pl-4 italic;
+    }
+
+    .prose-aamevi :first-child {
+        @apply mt-0;
+    }
+
+    .prose-aamevi :last-child {
+        @apply mb-0;
+    }
+
+    /*
+     * Enlace para saltar la navegación. Vive fuera de la pantalla hasta que
+     * recibe el foco: es lo primero que encuentra quien navega con teclado.
+     */
+    .skip-link {
+        @apply sr-only;
+    }
+
+    .skip-link:focus {
+        @apply not-sr-only fixed left-4 top-4 z-50 rounded-button bg-primary px-4 py-2 text-ink;
     }
 }

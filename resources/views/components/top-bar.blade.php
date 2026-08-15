@@ -3,11 +3,15 @@
     pequeño alineado a la derecha. Como todo el layout está detrás de `auth`,
     acá siempre hay usuario; muestra quién es y permite cerrar sesión.
 --}}
-<div class="container-site flex w-full items-center justify-end gap-3 pt-5 text-xs">
+<div class="container-site flex w-full flex-wrap items-center justify-end gap-3 pt-5 text-xs">
+    <x-preferences />
+
     <span>Hola, {{ auth()->user()->first_name }}</span>
 
     @if (auth()->user()->isAdmin())
         <a href="/admin" class="underline-offset-2 hover:underline hover:text-accent">Administración</a>
+    @elseif (auth()->user()->isTeacher())
+        <a href="/profesores" class="underline-offset-2 hover:underline hover:text-accent">Mis cursos</a>
     @endif
 
     <form method="POST" action="{{ route('logout') }}">

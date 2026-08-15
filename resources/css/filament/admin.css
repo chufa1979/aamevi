@@ -1,0 +1,173 @@
+/*
+ * Retoques al panel de Filament.
+ *
+ * CSS plano a propósito: no pasa por Vite ni por Tailwind. Lo publica
+ * `php artisan filament:assets`, que ya está en deploy.sh, y se registra en
+ * AppServiceProvider. Armar un tema completo de Filament para un puñado de
+ * reglas sería mucho aparato.
+ */
+
+/*
+ * Las solapas del curso ocupan el ancho completo, igual que las secciones de
+ * abajo. Filament les pone `margin-inline: auto`, que en cuanto el contenedor
+ * deja de estirarlas las centra y las deja más angostas que el contenido.
+ */
+.fi-page-sub-navigation-tabs {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+}
+
+/*
+ * Con nueve solapas la fila se vuelve angosta en pantallas chicas: que las
+ * pestañas no se aplasten y la barra scrollee, en vez de partir el texto.
+ */
+.fi-page-sub-navigation-tabs .fi-tabs-item {
+    flex-shrink: 0;
+}
+
+/*
+ * El editor de texto enriquecido abre con dos renglones en vez de uno.
+ *
+ * Filament le da 3rem de alto mínimo, que descontado su propio padding deja un
+ * solo renglón: se ve como un input y no como un campo de descripción. Sigue
+ * creciendo solo a medida que se escribe.
+ *
+ * Va por CSS y no por el componente porque `RichEditor` no expone una altura
+ * mínima, y así alcanza a todos los campos que usan `App\Filament\Forms\RichText`
+ * —descripción de curso, módulo y clase, contenido y enunciado de pregunta—.
+ */
+.fi-fo-rich-editor .fi-fo-rich-editor-content {
+    /* dos renglones (1.5rem cada uno) más el padding vertical del editor */
+    min-height: calc(2 * 1.5rem + 1.5rem);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Grilla de seguimiento de alumnos
+
+   Se estila acá y no con clases de Tailwind en la vista: el panel de Filament
+   sirve su propio CSS y no carga el build de Vite del sitio, así que las
+   utilidades no llegan. Los colores salen de las variables del tema de
+   Filament, para que acompañen el modo oscuro sin duplicar la paleta.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.aamevi-tracking-state {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--gray-300);
+}
+
+.aamevi-tracking-state[data-state='completed'] {
+    color: var(--success-600);
+}
+
+.aamevi-tracking-state[data-state='in_progress'] {
+    color: var(--warning-600);
+}
+
+.aamevi-tracking-state[data-state='scheduled'] {
+    color: var(--info-600);
+}
+
+.aamevi-tracking-state[data-state='locked'] {
+    color: var(--danger-600);
+}
+
+.aamevi-tracking-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.75rem;
+    color: var(--gray-600);
+}
+
+.aamevi-tracking-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+/* La tabla scrollea sola: un curso de veinte clases no entra en pantalla */
+.aamevi-tracking {
+    overflow-x: auto;
+    border: 1px solid var(--gray-200);
+    border-radius: 0.75rem;
+    background-color: var(--color-white);
+}
+
+.aamevi-tracking table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.aamevi-tracking th,
+.aamevi-tracking td {
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.aamevi-tracking thead tr:last-child th {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.aamevi-tracking thead th {
+    color: var(--gray-950);
+}
+
+.aamevi-tracking .aamevi-tracking-module {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray-500);
+}
+
+.aamevi-tracking thead tr:first-child th,
+.aamevi-tracking tbody tr + tr td {
+    border-top: 1px solid var(--gray-200);
+}
+
+.aamevi-tracking thead tr:last-child th {
+    border-bottom: 1px solid var(--gray-200);
+}
+
+/* Separador entre módulos, para leer dónde termina uno */
+.aamevi-tracking .aamevi-tracking-module-start,
+.aamevi-tracking .aamevi-tracking-module + .aamevi-tracking-module {
+    border-left: 1px solid var(--gray-200);
+}
+
+/* El nombre queda fijo al desplazar en horizontal */
+.aamevi-tracking .aamevi-tracking-name {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    text-align: left;
+    background-color: var(--color-white);
+}
+
+.aamevi-tracking .aamevi-tracking-progress {
+    font-variant-numeric: tabular-nums;
+    color: var(--gray-600);
+}
+
+.dark .aamevi-tracking,
+.dark .aamevi-tracking .aamevi-tracking-name {
+    background-color: var(--gray-900);
+}
+
+.dark .aamevi-tracking,
+.dark .aamevi-tracking th,
+.dark .aamevi-tracking td,
+.dark .aamevi-tracking .aamevi-tracking-module-start {
+    border-color: var(--gray-700);
+}
+
+.dark .aamevi-tracking thead th {
+    color: var(--color-white);
+}

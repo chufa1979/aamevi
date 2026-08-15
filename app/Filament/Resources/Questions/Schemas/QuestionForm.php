@@ -23,7 +23,11 @@ class QuestionForm
                  */
                 Select::make('class_id')
                     ->label('Clase')
-                    ->options(fn (): array => CourseClass::with('module.course')
+                    // `visibleTo` y no todas: si no, un docente podría cargarle
+                    // preguntas al banco de un curso ajeno desde este atajo
+                    ->options(fn (): array => CourseClass::query()
+                        ->visibleTo(auth()->user())
+                        ->with('module.course')
                         ->get()
                         ->sortBy(fn (CourseClass $c): string => $c->module->course->title.$c->module->order_number.$c->order_number)
                         ->mapWithKeys(fn (CourseClass $c): array => [

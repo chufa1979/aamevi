@@ -59,7 +59,11 @@ class QuestionsTable
                 // clase, y la clase del módulo, y el módulo del curso.
                 SelectFilter::make('curso')
                     ->label('Curso')
-                    ->options(fn (): array => Course::orderBy('title')->pluck('title', 'id')->all())
+                    ->options(fn (): array => Course::query()
+                        ->visibleTo(auth()->user())
+                        ->orderBy('title')
+                        ->pluck('title', 'id')
+                        ->all())
                     ->query(fn ($query, array $data) => $query->when(
                         $data['value'] ?? null,
                         fn ($q, $courseId) => $q->whereHas(

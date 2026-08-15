@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\QuestionFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,5 +45,20 @@ class Question extends Model
     public function correctOption(): ?QuestionOption
     {
         return $this->options->firstWhere('is_correct', true);
+    }
+
+    /**
+     * Cuelga de la del curso: ver Course::scopeVisibleTo().
+     *
+     * @param  Builder<Question>  $query
+     * @return Builder<Question>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('class', fn (Builder $q): Builder => $q->visibleTo($user));
     }
 }

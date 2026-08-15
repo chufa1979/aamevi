@@ -14,8 +14,7 @@ use App\Exceptions\EnrollmentException;
 use Illuminate\Database\QueryException;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Filament\Resources\Courses\Pages\EditCourse;
-use App\Filament\Resources\Courses\RelationManagers\EnrollmentsRelationManager;
+use App\Filament\Resources\Courses\Pages\ManageCourseStudents;
 
 class EnrollmentTest extends TestCase
 {
@@ -127,10 +126,7 @@ class EnrollmentTest extends TestCase
         $course = Course::factory()->create();
         $enrollment = CourseEnrollment::factory()->create(['course_id' => $course->id]);
 
-        Livewire::test(EnrollmentsRelationManager::class, [
-            'ownerRecord' => $course,
-            'pageClass' => EditCourse::class,
-        ])
+        Livewire::test(ManageCourseStudents::class, ['record' => $course->getKey()])
             ->callAction(TestAction::make('approve')->table($enrollment))
             ->assertHasNoActionErrors();
 
@@ -143,10 +139,7 @@ class EnrollmentTest extends TestCase
         CourseEnrollment::factory()->approved()->create(['course_id' => $course->id]);
         $enrollment = CourseEnrollment::factory()->create(['course_id' => $course->id]);
 
-        Livewire::test(EnrollmentsRelationManager::class, [
-            'ownerRecord' => $course,
-            'pageClass' => EditCourse::class,
-        ])
+        Livewire::test(ManageCourseStudents::class, ['record' => $course->getKey()])
             ->callAction(TestAction::make('approve')->table($enrollment));
 
         // Sigue pendiente: la acción avisa y no cambia el estado

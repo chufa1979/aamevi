@@ -2,12 +2,11 @@
 
 namespace App\Filament\Resources\Questions;
 
-use BackedEnum;
 use App\Models\Question;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
-use Filament\Support\Icons\Heroicon;
+use App\Filament\Concerns\ScopedToOwnCourses;
 use App\Filament\Resources\Questions\Pages\EditQuestion;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
 use App\Filament\Resources\Questions\Pages\CreateQuestion;
@@ -16,19 +15,20 @@ use App\Filament\Resources\Questions\Tables\QuestionsTable;
 
 class QuestionResource extends Resource
 {
+    use ScopedToOwnCourses;
+
     protected static ?string $model = Question::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQuestionMarkCircle;
-
-    protected static ?string $navigationLabel = 'Preguntas';
+    // Sin icono propio: lo lleva el grupo, ver AdminPanelProvider
+    protected static ?string $navigationLabel = 'Banco de preguntas';
 
     protected static ?string $modelLabel = 'pregunta';
 
     protected static ?string $pluralModelLabel = 'preguntas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Contenido';
+    protected static string|\UnitEnum|null $navigationGroup = 'Evaluación';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
 
     /**
      * Atajo para cargar preguntas de corrido. Las mismas preguntas se pueden
@@ -38,7 +38,9 @@ class QuestionResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count();
+        // Por la consulta del recurso y no por el modelo: el docente cuenta las
+        // preguntas de sus cursos, no las de la plataforma entera
+        return (string) static::getEloquentQuery()->count();
     }
 
     public static function form(Schema $schema): Schema

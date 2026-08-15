@@ -8,22 +8,32 @@ use Filament\Schemas\Schema;
 use App\Filament\Forms\RichText;
 use Filament\Resources\Resource;
 use App\Filament\Forms\ModuleExam;
+use Filament\Resources\Pages\Page;
+use Filament\Navigation\NavigationItem;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use App\Filament\Concerns\ScopedToOwnCourses;
+use Filament\Pages\Enums\SubNavigationPosition;
 use App\Filament\Resources\CourseModules\Pages\EditCourseModule;
 use App\Filament\Resources\CourseModules\Pages\ListCourseModules;
-use App\Filament\Resources\CourseModules\RelationManagers\ClassesRelationManager;
+use App\Filament\Resources\CourseModules\Pages\ManageModuleClasses;
 
 /**
- * Los módulos se administran desde el curso; este recurso existe para poder
- * abrir uno y trabajar sus clases, porque un relation manager no puede anidar
- * otro. Por eso no aparece en la navegación ni permite crear sueltos.
+ * Pantalla del módulo, con sus datos, su examen y sus clases en solapas.
+ *
+ * Los módulos se crean desde el curso, así que este recurso no aparece en la
+ * navegación ni permite crear sueltos: se entra siempre desde la solapa
+ * Contenidos del curso.
  */
 class CourseModuleResource extends Resource
 {
+    use ScopedToOwnCourses;
+
     protected static ?string $model = CourseModule::class;
+
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
     protected static ?string $modelLabel = 'módulo';
 
@@ -40,7 +50,7 @@ class CourseModuleResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make()
                 ->columns(2)
                 ->components([
@@ -74,11 +84,13 @@ class CourseModuleResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
+    /** @return array<NavigationItem> */
+    public static function getRecordSubNavigation(Page $page): array
     {
-        return [
-            ClassesRelationManager::class,
-        ];
+        return $page->generateNavigationItems([
+            EditCourseModule::class,
+            ManageModuleClasses::class,
+        ]);
     }
 
     public static function getPages(): array
@@ -86,6 +98,7 @@ class CourseModuleResource extends Resource
         return [
             'index' => ListCourseModules::route('/'),
             'edit' => EditCourseModule::route('/{record}/edit'),
+            'classes' => ManageModuleClasses::route('/{record}/clases'),
         ];
     }
 }

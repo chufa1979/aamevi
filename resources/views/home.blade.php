@@ -36,7 +36,7 @@
         <div class="grid gap-6 md:grid-cols-3">
             @foreach ($accesos as $acceso)
                 <a href="{{ $acceso['href'] }}"
-                   class="group block bg-white no-underline transition-shadow hover:shadow-lg">
+                   class="group block bg-card no-underline transition-shadow hover:shadow-lg">
                     <div class="h-2 {{ $acceso['color'] }}"></div>
                     <div class="p-6">
                         <h3 class="mb-2 text-xl font-bold group-hover:text-accent">{{ $acceso['title'] }}</h3>

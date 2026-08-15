@@ -15,25 +15,35 @@ bloqueo de cuentas desactivadas. La identidad visual de
 [www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
 
 **Panel de administración** (Filament, en `/admin`) — solo para el rol
-administrador. Gestiona:
+administrador. El menú tiene cuatro grupos: **Cursos**, **Alumnos**,
+**Evaluación** y **Sistema**; y cada curso se abre en solapas:
 
-- **Usuarios**, con su ficha de alumno o profesor según el rol
-- **Cursos → módulos → clases**, con cronograma y corrimiento de fechas en lote
-- **Contenido de clase**: video con previsualización, PDF con subida y descarga,
-  texto y consignas con editor enriquecido
-- **Inscripciones**, con aprobación, rechazo y control de cupo
-- **Evaluaciones**: banco de preguntas por clase, quiz de clase, y examen de
-  módulo que sortea un porcentaje del banco combinado de todas sus clases
+| Solapa | Qué hace |
+|---|---|
+| Info general | Título, descripción, docente y cupo |
+| Planificación | Cronograma completo del curso, con corrimiento de fechas en lote |
+| Contenidos | Módulos → clases → material: video con previsualización, PDF con subida y descarga, texto y consignas |
+| Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
+| Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
+| Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
+
+Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
+sortea preguntas de su propio banco, y el **examen de módulo**, que sortea un
+porcentaje del banco combinado de todas sus clases y es opcional.
+
+Faltan tres solapas —Calificaciones, Comunicación y Consultas a mesa de ayuda—
+diseñadas en §13 del plan arquitectónico.
 
 La lógica del alumno también está implementada y probada —sorteo de preguntas,
 corrección automática, reintentos, y el desbloqueo de una clase al aprobar la
 anterior— pero **todavía no tiene pantallas**: las secciones del sitio siguen
 sirviendo un marcador.
 
-**Pendiente**: el aula pública, la pantalla de rendir un quiz, las tareas, las
-notificaciones y los certificados. El
+**Pendiente**: el aula pública, la pantalla de rendir un quiz, las
+calificaciones, las notificaciones y los certificados. El
 [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué está
-hecho, y su §3-bis documenta las reglas de negocio implementadas.
+hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
+análisis de un LMS en producción del que salió la organización del panel.
 
 ---
 
@@ -61,7 +71,7 @@ hecho, y su §3-bis documenta las reglas de negocio implementadas.
 | Framework | Laravel 12 (PHP 8.2+) |
 | Vistas | Blade, renderizado en servidor |
 | ORM | Eloquent, con UUIDs como clave primaria |
-| Base de datos | MySQL 8 (InnoDB, `utf8mb4_unicode_ci`) |
+| Base de datos | MySQL 8 / MariaDB (InnoDB, `utf8mb4_unicode_ci`) |
 | Estilos | Tailwind 4, configurado en CSS con `@theme` |
 | Build | Vite 8 (requiere Node ≥ 20.19) |
 | Autenticación | Sesión de Laravel; Sanctum disponible para una futura API |
@@ -122,7 +132,7 @@ aamevi/
 
 ## Puesta en marcha
 
-Requiere **PHP ≥ 8.2**, **Composer 2**, **Node ≥ 20.19** y **MySQL 8**.
+Requiere **PHP ≥ 8.2**, **Composer 2**, **Node ≥ 20.19** y **MySQL 8 o MariaDB**.
 
 ```bash
 git clone https://github.com/chufa1979/aamevi.git
@@ -133,9 +143,13 @@ npm install
 
 cp .env.example .env
 php artisan key:generate
-# configurar DB_* en .env
+```
 
+Antes de migrar hay que tener la base corriendo — ver la sección siguiente.
+
+```bash
 php artisan migrate
+php artisan db:seed
 ```
 
 Desarrollo con **dos procesos**, en dos terminales:
@@ -147,6 +161,154 @@ npm run dev            # servidor de Vite con recarga en caliente
 
 El detalle, los comandos habituales y los problemas frecuentes están en
 [`GETTING_STARTED.md`](./GETTING_STARTED.md).
+
+---
+
+## Base de datos local
+
+El servidor de producción corre **MariaDB**, que es compatible con MySQL 8 para
+todo lo que usa el proyecto. En macOS conviene instalarla por Homebrew.
+
+> **En Mac con chip Apple**: instalá desde el Homebrew nativo
+> (`/opt/homebrew`), no desde el de Intel (`/usr/local`). Si `brew --prefix`
+> devuelve `/opt/homebrew` pero `which mysql` apunta a `/usr/local/bin`, tenés
+> la versión x86 corriendo bajo Rosetta.
+
+### Instalar y arrancar
+
+```bash
+brew install mariadb
+brew services start mariadb      # arranca ahora y en cada login
+```
+
+Sin servicio en segundo plano, a mano:
+
+```bash
+/opt/homebrew/opt/mariadb/bin/mariadbd-safe --datadir=/opt/homebrew/var/mysql
+```
+
+Comandos del servicio:
+
+| | |
+|---|---|
+| Estado | `brew services list \| grep mariadb` |
+| Arrancar | `brew services start mariadb` |
+| Parar | `brew services stop mariadb` |
+| Reiniciar | `brew services restart mariadb` |
+| ¿Está escuchando? | `mariadb-admin ping` |
+
+### Crear la base y el usuario
+
+Una instalación nueva de Homebrew **no le pone contraseña a tu usuario del
+sistema**: entrás con `mariadb` a secas, por socket. `root`, en cambio, suele
+estar restringido y devuelve `ERROR 1698`.
+
+```bash
+mariadb -e "
+CREATE DATABASE IF NOT EXISTS aamevi_db
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'aamevi'@'127.0.0.1' IDENTIFIED BY 'aamevi';
+CREATE USER IF NOT EXISTS 'aamevi'@'localhost' IDENTIFIED BY 'aamevi';
+GRANT ALL PRIVILEGES ON aamevi_db.* TO 'aamevi'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON aamevi_db.* TO 'aamevi'@'localhost';
+FLUSH PRIVILEGES;"
+```
+
+Se crea el usuario **dos veces a propósito**: MySQL trata `localhost` (conexión
+por socket) y `127.0.0.1` (por TCP) como hosts distintos a la hora de dar
+permisos. Laravel se conecta por TCP, pero el cliente de consola usa el socket.
+
+### Configurar el `.env`
+
+```dotenv
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=aamevi_db
+DB_USERNAME=aamevi
+DB_PASSWORD=aamevi
+```
+
+> ⚠️ **Revisá que `DB_HOST` no sea la IP del servidor.** Si apunta a producción,
+> `php artisan migrate:fresh` o `db:wipe` borran la base real. El `.env` de
+> desarrollo tiene que decir `127.0.0.1`.
+
+### Verificar
+
+```bash
+php artisan config:clear     # el .env no se relee si la config está cacheada
+php artisan db:show          # tiene que decir Host 127.0.0.1
+php artisan migrate:status   # ninguna pendiente
+```
+
+### Usuarios de prueba
+
+`php artisan db:seed` deja tres cuentas, todas con contraseña `password`:
+
+| Email | Rol | Entra a |
+|---|---|---|
+| `admin@aamevi.ar` | administrador | `/admin` y el sitio |
+| `profesor@aamevi.ar` | profesor | el sitio |
+| `alumno@aamevi.ar` | alumno | el sitio |
+| `alumno01@aamevi.ar` … `alumno20@aamevi.ar` | alumnos | el sitio |
+
+### Contenido de ejemplo
+
+`db:seed` carga un programa completo, para que el panel se vea como se va a ver
+en uso y no con dos cursos de juguete:
+
+| Curso | Módulos | Clases |
+|---|---|---|
+| Fundamentos de la Medicina del Estilo de Vida | 5 | 25 |
+| Nutrición basada en plantas y prescripción alimentaria | 8 | 40 |
+| Actividad física y prescripción del ejercicio | 6 | 30 |
+| Sueño, estrés y salud mental | 4 | 20 |
+| Vínculos, comunidad y cambio de comportamiento | 5 | 25 |
+
+En total **28 módulos, 140 clases y 700 preguntas**, más 20 alumnos repartidos
+en 49 inscripciones. Cada clase tiene su autoevaluación con cinco preguntas y
+los cuatro tipos de material (video, PDF, texto y tarea); la mayoría de los
+módulos tiene examen, y algunos no —el examen es opcional y así se ve la
+diferencia—.
+
+**El cronograma va de julio a diciembre de 2026 a propósito.** Con la fecha de
+hoy en el medio, cada curso queda partido en clases ya dictadas y clases por
+venir, que es lo que hace visible la progresión.
+
+Los alumnos avanzan a **ritmos distintos** —al día, atrasados, recién empezando
+o sin entrar nunca—, porque una grilla de seguimiento donde todos van igual no
+muestra nada. El avance se simula con `QuizService` y `ProgressService`, no
+escribiendo las tablas a mano: los intentos quedan con sus preguntas sorteadas y
+sus respuestas, y nadie figura aprobado sin haber rendido.
+
+Las inscripciones cubren los tres estados —aprobada, pendiente y rechazada— para
+que la solapa *Alumnos del curso* tenga qué mostrar.
+
+Los videos apuntan a cortos de la Blender Foundation y los PDF a un archivo de
+prueba del W3C: son marcadores de posición, pero cargan de verdad, así que la
+previsualización se ve funcionando. **El texto de las preguntas es de relleno**
+—se arma combinando el título de la clase con cinco plantillas— y hay que
+reemplazarlo por material real.
+
+Los tres seeders son idempotentes: se pueden volver a correr sin duplicar nada.
+
+### Los tests no usan MySQL
+
+`phpunit.xml` fuerza **sqlite en memoria**, así que `php artisan test` corre sin
+levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
+`RefreshDatabase`, que dropea todas las tablas: si la conexión saliera del
+`.env`, un test correría contra el servidor que ahí figure.
+
+### Problemas frecuentes
+
+| Síntoma | Causa |
+|---|---|
+| `Table 'aamevi_db.users' doesn't exist` con un `Host` que es una IP | El `.env` apunta a producción — corregí `DB_HOST` |
+| `Connection refused` en `127.0.0.1:3306` | El servicio no está arrancado |
+| `Access denied for user 'aamevi'@'127.0.0.1'` | Falta el `GRANT` para ese host — ver arriba, son dos usuarios |
+| `ERROR 1698 (28000)` al hacer `mariadb -u root` | `root` usa autenticación por socket: entrá con `mariadb` sin `-u` |
+| Cambiás el `.env` y no toma efecto | Config cacheada: `php artisan config:clear` |
+| `Can't connect through socket '/tmp/mysql.sock'` | Servidor apagado, o quedó instalado el binario de otra arquitectura |
 
 ---
 
@@ -224,4 +386,4 @@ separadas. Con un monolito Blade cabe esperar algo menos de trabajo.
 
 ---
 
-**Última actualización**: 2026-08-11
+**Última actualización**: 2026-08-14

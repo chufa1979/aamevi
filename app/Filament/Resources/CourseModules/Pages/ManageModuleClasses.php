@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\CourseModules\RelationManagers;
+namespace App\Filament\Resources\CourseModules\Pages;
 
+use Carbon\Carbon;
 use Filament\Tables\Table;
 use App\Models\CourseClass;
 use App\Models\ClassContent;
@@ -9,37 +10,41 @@ use Filament\Actions\Action;
 use Filament\Schemas\Schema;
 use App\Enums\ClassContentType;
 use App\Filament\Forms\RichText;
-use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Illuminate\Contracts\View\View;
 use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use App\Filament\Tables\DragToReorder;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
+use App\Filament\Actions\ShiftClassDates;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
-use Illuminate\Database\Eloquent\Collection;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseClasses\CourseClassResource;
+use App\Filament\Resources\CourseModules\CourseModuleResource;
 
-class ClassesRelationManager extends RelationManager
+/** Las clases del módulo, con su contenido. */
+class ManageModuleClasses extends ManageRelatedRecords
 {
+    protected static string $resource = CourseModuleResource::class;
+
     protected static string $relationship = 'classes';
 
-    protected static ?string $title = 'Clases';
+    protected static ?string $navigationLabel = 'Clases';
 
-    protected static ?string $modelLabel = 'clase';
+    protected static ?string $title = 'Clases del módulo';
 
-    protected static ?string $pluralModelLabel = 'clases';
+    protected static ?string $breadcrumb = 'Clases';
 
     public function form(Schema $schema): Schema
     {
@@ -51,20 +56,35 @@ class ClassesRelationManager extends RelationManager
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make('order_number')
-                    ->label('Orden')
-                    ->numeric()
-                    ->minValue(1)
-                    ->required()
-                    ->default(fn (): int => $this->getOwnerRecord()->classes()->max('order_number') + 1),
+                // El orden se cambia arrastrando en la tabla. Una clase nueva
+                // va al final del módulo.
+                Hidden::make('order_number')
+                    ->default(fn (): int => $this->getOwnerRecord()->nextClassOrder()),
 
+                /*
+                 * El cronograma avanza en el tiempo: una clase no puede
+                 * habilitarse antes que la que va delante suyo. El mismo día sí
+                 * —dos clases el mismo día son normales—, por eso el mínimo es
+                 * el comienzo de ese día y no la hora exacta.
+                 */
                 DateTimePicker::make('activation_date')
                     ->label('Se habilita el')
                     ->seconds(false)
                     ->displayFormat('d/m/Y H:i')
                     ->required()
-                    ->default(now())
-                    ->helperText('Antes de esta fecha, la clase no es visible para los alumnos.'),
+                    ->default(fn (): Carbon => $this->fechaMinima(null) ?? now())
+                    ->minDate(fn (?CourseClass $record): ?Carbon => $this->fechaMinima($record))
+                    ->validationMessages([
+                        'after_or_equal' => 'No puede ser anterior a la clase que va antes. Como muy temprano, el mismo día.',
+                    ])
+                    ->helperText(function (?CourseClass $record): string {
+                        $minima = $this->fechaMinima($record);
+
+                        return $minima === null
+                            ? 'Antes de esta fecha, la clase no es visible para los alumnos.'
+                            : 'Antes de esta fecha, la clase no es visible para los alumnos. La anterior se habilita el '
+                                .$minima->format('d/m/Y').'.';
+                    }),
 
                 Toggle::make('is_live_session')
                     ->label('Clase en vivo')
@@ -88,8 +108,7 @@ class ClassesRelationManager extends RelationManager
 
                 /*
                  * El contenido se edita acá adentro y no en otra pantalla: sería
-                 * un tercer nivel de navegación (curso → módulo → clase →
-                 * contenido) para editar cuatro campos.
+                 * un nivel más de navegación para editar cuatro campos.
                  */
                 Repeater::make('contents')
                     ->label('Contenido de la clase')
@@ -171,20 +190,33 @@ class ClassesRelationManager extends RelationManager
                             ->dehydrated()
                             ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Text)
                                 || self::tipoEs($get, ClassContentType::Task)),
+
+                        // Sin fecha, la tarea se puede entregar siempre
+                        DateTimePicker::make('due_date')
+                            ->label('Se entrega hasta')
+                            ->seconds(false)
+                            ->displayFormat('d/m/Y H:i')
+                            ->columnSpanFull()
+                            ->dehydrated()
+                            ->visible(fn (Get $get): bool => self::tipoEs($get, ClassContentType::Task))
+                            ->helperText('Opcional. Vencida la fecha, el alumno ya no puede entregar.'),
                     ]),
             ]);
     }
 
     public function table(Table $table): Table
     {
-        return $table
+        return DragToReorder::apply($table)
             ->recordTitleAttribute('title')
+            // Los títulos de los modales salen de acá: esta clase de página no
+            // lee las propiedades estáticas $modelLabel del recurso.
+            ->modelLabel('clase')
+            ->pluralModelLabel('clases')
             ->defaultSort('order_number')
             ->columns([
                 TextColumn::make('order_number')
                     ->label('#')
-                    ->alignCenter()
-                    ->sortable(),
+                    ->alignCenter(),
 
                 TextColumn::make('title')
                     ->label('Clase')
@@ -203,6 +235,11 @@ class ClassesRelationManager extends RelationManager
                     ->counts('contents')
                     ->alignCenter(),
 
+                TextColumn::make('questions_count')
+                    ->label('Preguntas')
+                    ->counts('questions')
+                    ->alignCenter(),
+
                 IconColumn::make('is_live_session')
                     ->label('En vivo')
                     ->boolean(),
@@ -211,10 +248,10 @@ class ClassesRelationManager extends RelationManager
                 CreateAction::make()->label('Agregar clase')->modalWidth('4xl'),
             ])
             ->recordActions([
-                // El banco de preguntas se administra en la pantalla de la
-                // clase: un relation manager no puede anidar otro.
+                // La autoevaluación y el banco de preguntas se administran en la
+                // pantalla de la clase, que tiene sus propias solapas.
                 Action::make('questions')
-                    ->label('Preguntas')
+                    ->label('Evaluación')
                     ->icon('heroicon-o-question-mark-circle')
                     ->url(fn (CourseClass $record): string => CourseClassResource::getUrl('edit', ['record' => $record])),
 
@@ -223,11 +260,25 @@ class ClassesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    self::correrFechas(),
+                    ShiftClassDates::make(),
                     DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateHeading('Este módulo todavía no tiene clases');
+    }
+
+    /**
+     * Fecha más temprana admitida para esta clase.
+     *
+     * Al editar hay que mirar la clase anterior a la que se está tocando; al
+     * crear, la posición es el final del módulo, así que la referencia es la
+     * última clase cargada.
+     */
+    private function fechaMinima(?CourseClass $record): ?Carbon
+    {
+        $module = $this->getOwnerRecord();
+
+        return $module->earliestDateFor($record?->order_number ?? $module->nextClassOrder());
     }
 
     /** El estado del select puede llegar como enum o como su valor. */
@@ -262,42 +313,12 @@ class ClassesRelationManager extends RelationManager
             ? ($data['description'] ?? null)
             : null;
 
+        // La fecha de entrega sólo tiene sentido en las tareas: dejarla colgada
+        // en un video haría que `isPastDue()` diga cualquier cosa
+        $data['due_date'] = $type === ClassContentType::Task ? ($data['due_date'] ?? null) : null;
+
         unset($data['content_file']);
 
         return $data;
-    }
-
-    /**
-     * Correr el cronograma en bloque. Reprogramar un módulo entero clase por
-     * clase es la tarea que más rápido se vuelve insoportable para un docente.
-     */
-    private static function correrFechas(): BulkAction
-    {
-        return BulkAction::make('shiftDates')
-            ->label('Correr fechas')
-            ->icon('heroicon-o-calendar-days')
-            ->schema([
-                TextInput::make('days')
-                    ->label('Días')
-                    ->numeric()
-                    ->required()
-                    ->default(7)
-                    ->helperText('Podés usar un número negativo para adelantarlas.'),
-            ])
-            ->action(function (Collection $records, array $data): void {
-                $days = (int) $data['days'];
-
-                foreach ($records as $record) {
-                    $record->update([
-                        'activation_date' => $record->activation_date->addDays($days),
-                    ]);
-                }
-
-                Notification::make()
-                    ->title(count($records).' clase(s) reprogramada(s)')
-                    ->success()
-                    ->send();
-            })
-            ->deselectRecordsAfterCompletion();
     }
 }

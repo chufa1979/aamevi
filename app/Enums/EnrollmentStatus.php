@@ -46,7 +46,20 @@ enum EnrollmentStatus: string implements HasColor, HasLabel
     /** Estados que ocupan un lugar del cupo del curso. */
     public function ocupaCupo(): bool
     {
-        return in_array($this, [self::Approved, self::Active, self::Completed], true);
+        return in_array($this, self::ocupantes(), true);
+    }
+
+    /**
+     * Los estados que cuentan como «está cursando».
+     *
+     * La lista se repetía en el servicio de progreso, en el modelo de curso y en
+     * los seeders; tenerla acá evita que una se desincronice de las otras.
+     *
+     * @return array<int, self>
+     */
+    public static function ocupantes(): array
+    {
+        return [self::Approved, self::Active, self::Completed];
     }
 
     /** @return array<int, string> */
