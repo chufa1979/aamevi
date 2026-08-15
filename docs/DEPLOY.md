@@ -165,9 +165,14 @@ chmod -R ug+rw storage bootstrap/cache
 
 `--force` es obligatorio: sin él, Artisan se niega a migrar con `APP_ENV=production`.
 
-> A hoy `database/migrations/` está vacío, así que `migrate` solo crea la tabla
-> `migrations`. Las tablas del dominio salen de `docs/PLAN_ARQUITECTONICO.md` y
-> todavía no están implementadas.
+`storage:link` no es opcional: los PDF de clase y las entregas de los alumnos van
+al disco `public`, y sin el enlace simbólico el navegador recibe un 404.
+
+Para dejar el servidor con contenido de ejemplo —**sólo si la base está vacía**—:
+
+```bash
+php artisan db:seed --force
+```
 
 ### 6. Cachés de producción
 
@@ -195,6 +200,7 @@ source ~/.nvm/nvm.sh
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
+php artisan filament:assets
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
@@ -212,12 +218,17 @@ generarlas.
 | Vistas Blade, controladores | `git pull` + `view:cache` |
 | Rutas | `git pull` + `route:cache` |
 | `resources/css` o `resources/js` | `git pull` + `npm run build` |
-| `composer.json` / `.lock` | + `composer install --no-dev --optimize-autoloader` |
+| `composer.json` / `.lock` | + `composer install --no-dev --optimize-autoloader` + `php artisan filament:assets` |
 | `package.json` | + `npm ci` |
 | Migración nueva | + `php artisan migrate --force` |
 | `.env` o `config/` | + `php artisan config:cache` |
 
 En la duda, `./deploy.sh`: tarda unos segundos más y no deja nada a medias.
+
+**`filament:assets` va aparte del build de Vite.** Filament sirve su CSS y su JS
+desde `public/css|js|fonts/filament`, fuera del manifiesto de Vite y sin
+versionar, así que `npm run build` no los toca. Si se actualiza Filament y no se
+republican, el panel queda con los assets viejos.
 
 ## Alternativa sin nvm
 
