@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Database\Factories\CourseModuleFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -76,5 +77,20 @@ class CourseModule extends Model
     public function nextClassOrder(): int
     {
         return ((int) $this->classes()->max('order_number')) + 1;
+    }
+
+    /**
+     * Cuelga de la del curso: ver Course::scopeVisibleTo().
+     *
+     * @param  Builder<CourseModule>  $query
+     * @return Builder<CourseModule>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('course', fn (Builder $q): Builder => $q->visibleTo($user));
     }
 }

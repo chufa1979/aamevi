@@ -100,6 +100,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     {
         return match ($panel->getId()) {
             'admin' => $this->isAdmin() && $this->is_active,
+            'profesores' => $this->isTeacher() && $this->is_active,
             default => false,
         };
     }

@@ -6,6 +6,7 @@ use App\Models\Question;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use App\Filament\Concerns\ScopedToOwnCourses;
 use App\Filament\Resources\Questions\Pages\EditQuestion;
 use App\Filament\Resources\Questions\Pages\ListQuestions;
 use App\Filament\Resources\Questions\Pages\CreateQuestion;
@@ -14,6 +15,8 @@ use App\Filament\Resources\Questions\Tables\QuestionsTable;
 
 class QuestionResource extends Resource
 {
+    use ScopedToOwnCourses;
+
     protected static ?string $model = Question::class;
 
     // Sin icono propio: lo lleva el grupo, ver AdminPanelProvider
@@ -35,7 +38,9 @@ class QuestionResource extends Resource
      */
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count();
+        // Por la consulta del recurso y no por el modelo: el docente cuenta las
+        // preguntas de sus cursos, no las de la plataforma entera
+        return (string) static::getEloquentQuery()->count();
     }
 
     public static function form(Schema $schema): Schema

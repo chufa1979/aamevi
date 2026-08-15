@@ -67,6 +67,8 @@ External services: Google Cloud Storage for uploads (videos, PDFs, submissions, 
 
 The app has a **public site** (Blade, `resources/views/`) and an **admin panel** (Filament, `app/Filament/`). They share models, session and access rules — not views or controllers. When adding a feature, decide which surface it belongs to first: course *administration* is Filament, the course *catalogue and classroom* are Blade.
 
+Filament serves that surface through **two panels over one set of resources**: `/admin` for administrators and `/profesores` for teachers (`TeacherPanelProvider` registers a shorter list of the same resource classes — no user accounts). Never scope anything by panel id: what a teacher may see comes from `Course::scopeVisibleTo(User)`, which the resources apply via `App\Filament\Concerns\ScopedToOwnCourses`, and what they may do comes from the policies in `app/Policies/` (`CoursePolicy`, and `CoursePartPolicy` for everything hanging off a course). Both hold whichever URL the request came in through, and because Filament resolves records through the resource query, a teacher who types another teacher's course URL gets a 404.
+
 Everything is behind `auth`: `routes/web.php` splits into a `guest` group (login only) and an `auth` group (everything else). There is deliberately **no second login form** — the Filament panel does not expose `/admin/login`; admins sign in at `/login` like everyone else, so there is one rate-limited entry point to audit.
 
 ## Admin panel (Filament 5)
@@ -95,10 +97,9 @@ Business rules are enforced in models and services, each covered by a test. **§
 
 ## Known gaps
 
-- **No student-facing screens.** All the domain logic is implemented and tested, but `/cursos`, `/mis-cursos`, `/progreso` and `/certificados` still render `placeholder.blade.php`. This is the single biggest gap — see §12 of the plan.
-- **Rich text is not sanitised yet.** Four fields store HTML from the editor. Blade escapes by default, so the risk appears the moment someone uses `{!! !!}` to render the formatting on the public site. Sanitise there.
-- **Three course tabs are designed but not built**: Calificaciones, Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. A task is currently only a statement — the student submits nothing.
-- **Tasks, notifications and certificates** are unimplemented — phases 4 to 6.
+- **`/certificados`, `/ayuda` and `/buscar` still render `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission and progress.
+- **Two course tabs are designed but not built**: Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. They are last on purpose — in the FID data they were barely used.
+- **Notifications and certificates** are unimplemented — phases 5 and 6. Nothing drains `email_queue`.
 - **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
 - **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.
 - **No CI**: `.github/` is gitignored.

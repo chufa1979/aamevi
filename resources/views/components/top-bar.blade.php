@@ -10,6 +10,8 @@
 
     @if (auth()->user()->isAdmin())
         <a href="/admin" class="underline-offset-2 hover:underline hover:text-accent">Administración</a>
+    @elseif (auth()->user()->isTeacher())
+        <a href="/profesores" class="underline-offset-2 hover:underline hover:text-accent">Mis cursos</a>
     @endif
 
     <form method="POST" action="{{ route('logout') }}">

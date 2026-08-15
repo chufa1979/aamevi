@@ -1059,8 +1059,34 @@ Dos consecuencias operativas:
 - `blade-icons`, que viene con Filament, registra un componente global `x-icon`
   que le ganaba al nuestro. El componente propio pasó a ser `<x-ui.icon>`.
 
-El panel de `/profesores` queda pendiente: es un segundo panel de Filament con
-los recursos acotados a los cursos del docente.
+### El panel de `/profesores`
+
+Es un segundo panel de Filament que **reusa los recursos de `/admin`** en lugar
+de duplicarlos: un curso se administra igual lo dicte quien lo dicte, y dos
+copias del árbol curso → módulo → clase se habrían separado en cuanto se tocara
+una. `TeacherPanelProvider` declara los recursos uno por uno —cursos, módulos,
+clases y banco de preguntas— para que sumar mañana un recurso de administración
+no aparezca solo acá.
+
+Lo que separa a un docente de otro no es el panel sino dos cosas que valen
+entren por donde entren:
+
+- **`Course::scopeVisibleTo(User)`** recorta las consultas. Módulos, clases y
+  preguntas cuelgan de esa misma regla a través de su curso. Como Filament
+  resuelve los registros por la consulta del recurso, escribir a mano la URL del
+  curso ajeno devuelve 404, no la pantalla.
+- **Las policies** (`CoursePolicy` y `CoursePartPolicy`) deciden qué se puede
+  hacer. El alta y la baja de cursos son del administrador: si un docente pudiera
+  crearlos tendría que elegir docente, y si pudiera borrarlos se llevaría puestas
+  las inscripciones.
+
+En el formulario del curso, «Docente», «Cupo» y «Curso activo» se muestran
+deshabilitados para el docente. Deshabilitados y no ocultos porque Filament no
+manda al servidor el valor de un campo deshabilitado: esconderlo en la pantalla
+no habría alcanzado.
+
+Afuera quedan las cuentas de usuario. Un docente ve a sus alumnos desde la solapa
+del curso, que es donde significan algo.
 
 ### Cómo está organizado el panel
 
@@ -1207,9 +1233,9 @@ Cerrar esa brecha es lo único que separa el proyecto de ser usable:
        puede ver cada alumno y por qué; falta la vista
 2. [ ] **Pantalla de quiz** — rendir, responder y ver el resultado.
        `QuizService` ya resuelve el sorteo, la corrección y los reintentos
-3. [ ] **Revisión de intentos en el panel** — sin esto, un docente no puede
-       atender una nota reclamada, aunque el dato esté guardado
-4. [ ] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
+3. [x] **Revisión de intentos en el panel** — la solapa «Intentos» del curso
+       muestra qué preguntas le tocaron a cada alumno y qué respondió
+4. [x] **Panel `/profesores`** — segundo panel acotado a los cursos del docente
 5. [ ] **Calificaciones y entrega de tareas** — la solapa que más se usa en un
        LMS real, según los volúmenes de §13
 6. [ ] **Fase 4 en adelante** — notificaciones, certificados
@@ -1220,7 +1246,7 @@ Cerrar esa brecha es lo único que separa el proyecto de ser usable:
 
 | | |
 |---|---|
-| **Sanitizar el HTML** | Cuatro campos guardan texto enriquecido —descripción de curso, módulo y clase, contenido y enunciado de pregunta—. Al renderizarlos en el sitio público hay que sanitizarlos antes de `{!! !!}`, o cada uno es un vector de XSS. Hoy solo cargan administradores; el día que cargue un profesor, deja de ser teórico |
+| ~~**Sanitizar el HTML**~~ | Resuelto: `App\Support\Html::sanitize()` limpia al mostrar, y el único `{!! !!}` del proyecto vive dentro de `<x-rich-text>`. Dejó de ser teórico al abrir `/profesores`: ya no cargan contenido sólo administradores |
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
 | `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
 | Registro público | Hoy es un marcador: las cuentas las crea la administración |

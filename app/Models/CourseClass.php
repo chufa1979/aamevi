@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Database\Factories\CourseClassFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -66,5 +67,20 @@ class CourseClass extends Model
     public function isAvailable(): bool
     {
         return $this->activation_date->isPast();
+    }
+
+    /**
+     * Cuelga de la del curso: ver Course::scopeVisibleTo().
+     *
+     * @param  Builder<CourseClass>  $query
+     * @return Builder<CourseClass>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('module', fn (Builder $q): Builder => $q->visibleTo($user));
     }
 }

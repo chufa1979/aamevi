@@ -9,6 +9,7 @@ use Filament\Resources\Resource;
 use Filament\Resources\Pages\Page;
 use Filament\Navigation\NavigationItem;
 use Illuminate\Database\Eloquent\Model;
+use App\Filament\Concerns\ScopedToOwnCourses;
 use Filament\Pages\Enums\SubNavigationPosition;
 use App\Filament\Concerns\ListAndCreateNavigation;
 use App\Filament\Resources\Courses\Pages\EditCourse;
@@ -27,6 +28,7 @@ use App\Filament\Resources\Courses\Pages\ManageCourseStudents;
 class CourseResource extends Resource
 {
     use ListAndCreateNavigation;
+    use ScopedToOwnCourses;
 
     protected static ?string $model = Course::class;
 

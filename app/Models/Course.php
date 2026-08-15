@@ -97,4 +97,36 @@ class Course extends Model
     {
         return $this->occupiedSeats() >= $this->max_students;
     }
+
+    public function isTaughtBy(User $user): bool
+    {
+        return $this->teacher_id === $user->getKey();
+    }
+
+    /**
+     * Los cursos que este usuario tiene derecho a ver.
+     *
+     * El administrador ve todos; el docente, los suyos. Es la regla de la que
+     * cuelgan las de módulos, clases y preguntas: todo el contenido pertenece a
+     * un curso, y el curso tiene un solo responsable.
+     *
+     * Va acá y no en el panel porque no depende de por dónde se entre: la misma
+     * restricción tiene que valer para una pantalla, una consulta o un informe.
+     *
+     * @param  Builder<Course>  $query
+     * @return Builder<Course>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        if ($user->isTeacher()) {
+            return $query->where('teacher_id', $user->getKey());
+        }
+
+        // Un alumno no administra cursos: el aula es otra cosa
+        return $query->whereRaw('1 = 0');
+    }
 }

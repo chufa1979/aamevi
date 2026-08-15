@@ -13,6 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use App\Filament\Concerns\ScopedToOwnCourses;
 use Filament\Pages\Enums\SubNavigationPosition;
 use App\Filament\Resources\CourseClasses\Pages\EditCourseClass;
 use App\Filament\Resources\CourseClasses\Pages\ListCourseClasses;
@@ -25,6 +26,8 @@ use App\Filament\Resources\CourseClasses\Pages\ManageClassQuestions;
  */
 class CourseClassResource extends Resource
 {
+    use ScopedToOwnCourses;
+
     protected static ?string $model = CourseClass::class;
 
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
