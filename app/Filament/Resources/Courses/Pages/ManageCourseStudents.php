@@ -28,6 +28,8 @@ class ManageCourseStudents extends ManageRelatedRecords
 
     protected static ?string $title = 'Alumnos del curso';
 
+    protected static ?string $breadcrumb = 'Alumnos';
+
     protected static ?string $modelLabel = 'inscripción';
 
     protected static ?string $pluralModelLabel = 'inscripciones';

@@ -25,6 +25,9 @@ class UserForm
     public static function configure(Schema $schema, ?UserRole $fixedRole = null): Schema
     {
         return $schema
+            // Las secciones van una debajo de otra y a lo ancho: la grilla del
+            // formulario es de dos columnas, y sin esto quedan a media pantalla.
+            ->columns(1)
             ->components([
                 Section::make('Datos personales')
                     ->columns(2)

@@ -36,6 +36,9 @@ class ManageCourseContent extends ManageRelatedRecords
 
     protected static ?string $title = 'Contenidos del curso';
 
+    // Sin esto el breadcrumb muestra el nombre de la relación, en inglés
+    protected static ?string $breadcrumb = 'Contenidos';
+
     protected static ?string $modelLabel = 'módulo';
 
     protected static ?string $pluralModelLabel = 'módulos';

@@ -43,6 +43,8 @@ class ManageModuleClasses extends ManageRelatedRecords
 
     protected static ?string $title = 'Clases del módulo';
 
+    protected static ?string $breadcrumb = 'Clases';
+
     protected static ?string $modelLabel = 'clase';
 
     protected static ?string $pluralModelLabel = 'clases';

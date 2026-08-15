@@ -44,7 +44,7 @@ class CourseClassResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make('Autoevaluación')
                 ->description('Se rinde al terminar la clase, con preguntas sorteadas de su propio banco. Aprobarla habilita la clase siguiente.')
                 ->relationship('quiz')

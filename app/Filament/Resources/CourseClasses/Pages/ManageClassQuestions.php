@@ -28,6 +28,8 @@ class ManageClassQuestions extends ManageRelatedRecords
 
     protected static ?string $title = 'Banco de preguntas de la clase';
 
+    protected static ?string $breadcrumb = 'Preguntas';
+
     protected static ?string $modelLabel = 'pregunta';
 
     protected static ?string $pluralModelLabel = 'preguntas';

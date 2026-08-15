@@ -15,6 +15,9 @@ class CourseForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            // La grilla del formulario es de dos columnas: sin esto la sección
+            // ocupa una sola y queda a media pantalla, con el otro medio vacío.
+            ->columns(1)
             ->components([
                 Section::make()
                     ->columns(2)
