@@ -307,7 +307,34 @@ class ClassroomTest extends TestCase
         $this->get(route('classroom.class', $segunda))->assertSuccessful();
     }
 
-    public function test_el_resultado_se_ve_despues_de_entregar(): void
+    public function test_el_resultado_muestra_la_nota_y_la_devolucion(): void
+    {
+        $course = $this->curso();
+        $student = $this->inscripto($course);
+        $quiz = $course->classes()->orderBy('order_number')->first()->quiz;
+
+        $this->entrar($student)->get(route('classroom.quiz', $quiz));
+
+        $attempt = $this->quizzes->attemptsOf($quiz, $student)->last();
+
+        // Todas bien menos la primera: así se ven los dos lados de la devolución
+        $respuestas = $attempt->questions->mapWithKeys(fn (Question $q, int $i): array => [
+            $q->id => $i === 0
+                ? $q->options->firstWhere('is_correct', false)->id
+                : $q->options->firstWhere('is_correct', true)->id,
+        ])->all();
+
+        $this->followingRedirects()
+            ->post(route('classroom.quiz.submit', $quiz), ['respuestas' => $respuestas])
+            ->assertSuccessful()
+            ->assertSee('Respondiste:')
+            // La correcta se revela recién acá, después de entregar
+            ->assertSee('Correcta:')
+            ->assertSee($attempt->questions->first()->correctOption()->option_text);
+    }
+
+    /** Recargar la pantalla de resultado no puede consumir otro intento. */
+    public function test_volver_al_resultado_no_abre_un_intento_nuevo(): void
     {
         $course = $this->curso();
         $student = $this->inscripto($course);
@@ -322,11 +349,29 @@ class ClassroomTest extends TestCase
         ])->all();
 
         $this->post(route('classroom.quiz.submit', $quiz), ['respuestas' => $respuestas]);
-
-        $this->followingRedirects()
-            ->post(route('classroom.quiz.submit', $quiz), ['respuestas' => $respuestas]);
-
         $this->get(route('classroom.quiz', $quiz))->assertSuccessful();
+
+        $this->assertCount(1, $this->quizzes->attemptsOf($quiz, $student));
+    }
+
+    /** Las que no se responden se registran igual, para distinguirlas de las no preguntadas. */
+    public function test_entregar_sin_responder_registra_las_respuestas_vacias(): void
+    {
+        $course = $this->curso();
+        $student = $this->inscripto($course);
+        $quiz = $course->classes()->orderBy('order_number')->first()->quiz;
+
+        $this->entrar($student)->get(route('classroom.quiz', $quiz));
+
+        $attempt = $this->quizzes->attemptsOf($quiz, $student)->last();
+
+        $this->post(route('classroom.quiz.submit', $quiz), ['respuestas' => []]);
+
+        $attempt->refresh();
+
+        $this->assertSame(0, $attempt->score);
+        $this->assertFalse($attempt->passed);
+        $this->assertCount($attempt->questions->count(), $attempt->answers);
     }
 
     public function test_no_se_puede_rendir_la_evaluacion_de_una_clase_bloqueada(): void
