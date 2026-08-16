@@ -19,8 +19,8 @@ identidad visual de [www.aamevi.ar](https://www.aamevi.ar) está portada a
 componentes Blade.
 
 El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
-clase con su material, las evaluaciones, la entrega de trabajos prácticos y una
-barra de progreso. Puede elegir **tema claro u oscuro** y **tres tamaños de
+clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
+barra de progreso y sus certificados. Puede elegir **tema claro u oscuro** y **tres tamaños de
 letra**; las preferencias se aplican antes del primer pintado, sin parpadeo.
 
 Una clase se abre cuando llegó su fecha y se aprobó la anterior; `ProgressService`
@@ -61,7 +61,7 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: certificados, notificaciones, y las dos solapas de comunicación.
+**Pendiente**: notificaciones y las dos solapas de comunicación.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
@@ -81,10 +81,10 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Panel de administración** | Backoffice en `/admin` y `/profesores` para gestionar el material | ✅ |
 | **Autenticación** | Usuario y contraseña | ✅ |
 | **Clases en vivo** | La clase marcada en vivo muestra su enlace de Google Meet | ✅ |
+| **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
 | **Registro público** | Alta de cuenta con verificación por email | ⏳ hoy las cuentas se crean desde el panel |
 | **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
 | **Notificaciones** | Emails de verificación, recordatorios y certificados | ⏳ nada drena `email_queue` |
-| **Certificados** | Generación automática de PDF al completar el curso | ⏳ |
 
 ---
 
@@ -123,7 +123,9 @@ aamevi/
 │   ├── Models/              # Eloquent
 │   ├── Policies/            # Quién puede qué; los dos paneles las comparten
 │   ├── Providers/Filament/  # Un provider por panel: admin y profesores
-│   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas
+│   ├── Events/              # Lo que pasó, para que reaccione quien quiera
+│   ├── Listeners/           # Quién reacciona
+│   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas, Certificados
 │   └── Support/Html.php     # Saneado del texto enriquecido
 ├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
 ├── config/
@@ -306,8 +308,9 @@ en uso y no con dos cursos de juguete:
 | Actividad física y prescripción del ejercicio | 6 | 30 |
 | Sueño, estrés y salud mental | 4 | 20 |
 | Vínculos, comunidad y cambio de comportamiento | 5 | 25 |
+| Introducción a la Medicina del Estilo de Vida (edición 2025) | 2 | 10 |
 
-En total **28 módulos, 140 clases y 700 preguntas**, más 20 alumnos repartidos
+En total **30 módulos, 150 clases y 750 preguntas**, más 20 alumnos repartidos
 en 49 inscripciones. Cada clase tiene su autoevaluación con cinco preguntas y
 los cuatro tipos de material (video, PDF, texto y tarea); la mayoría de los
 módulos tiene examen, y algunos no —el examen es opcional y así se ve la
@@ -316,6 +319,11 @@ diferencia—.
 **El cronograma va de julio a diciembre de 2026 a propósito.** Con la fecha de
 hoy en el medio, cada curso queda partido en clases ya dictadas y clases por
 venir, que es lo que hace visible la progresión.
+
+La sexta, **la edición 2025, es la excepción: ya terminó**. Existe porque
+ninguno de los otros cinco cierra antes de diciembre, así que sin ella no habría
+un solo alumno recibido y las pantallas de certificados quedarían vacías. De ahí
+salen las inscripciones finalizadas y los tres certificados emitidos.
 
 Los alumnos avanzan a **ritmos distintos** —al día, atrasados, recién empezando
 o sin entrar nunca—, porque una grilla de seguimiento donde todos van igual no
@@ -392,9 +400,13 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 4. El alumno recibe la nota por email
 
 ### Certificado
-1. El alumno completa todas las clases y tareas del curso
-2. El sistema genera el certificado en PDF
-3. Se le envía el link de descarga
+1. El alumno completa todas las clases y le aprueban todas las tareas
+2. El sistema emite el certificado con su número, y la inscripción queda
+   finalizada
+3. El alumno lo descarga en PDF desde su sección de certificados
+
+El docente puede emitirlo a mano desde el panel para los casos que la regla no
+contempla.
 
 ---
 
@@ -409,7 +421,7 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 | 4 | Quiz y evaluación | ✅ |
 | 5 | Tareas | ✅ |
 | 6 | Notificaciones | ⏳ |
-| 7 | Reportes y certificados | ⏳ |
+| 7 | Reportes y certificados | ⏳ falta el modelo visual y los reportes |
 
 Fuera del plan original quedaron dos cosas que sí se hicieron: el **aula del
 alumno** —que el plan daba por sentada— y el **panel de profesores**.
@@ -432,4 +444,4 @@ alumno** —que el plan daba por sentada— y el **panel de profesores**.
 
 ---
 
-**Última actualización**: 2026-08-15
+**Última actualización**: 2026-08-16

@@ -197,10 +197,14 @@ class CourseSeeder extends Seeder
     {
         $total = collect($datos['modules'])->sum(fn (array $m): int => count($m[1]));
 
+        // Un curso puede traer su propia ventana: es lo que permite tener una
+        // edición ya terminada entre las que se están dictando
+        [$desde, $hasta] = $datos['schedule'] ?? [self::INICIO, self::FIN];
+
         // Cada curso arranca unos días después del anterior, para que no queden
         // todos dictando el mismo día
-        $inicio = Carbon::parse(self::INICIO)->addDays($indice * 3)->setTime(19, 0);
-        $fin = Carbon::parse(self::FIN)->setTime(19, 0);
+        $inicio = Carbon::parse($desde)->addDays(isset($datos['schedule']) ? 0 : $indice * 3)->setTime(19, 0);
+        $fin = Carbon::parse($hasta)->setTime(19, 0);
 
         $paso = $total > 1 ? $inicio->diffInDays($fin) / ($total - 1) : 0;
 
@@ -404,11 +408,29 @@ class CourseSeeder extends Seeder
     private function simularAvance($cursos): void
     {
         foreach ($cursos as $course) {
+            /*
+             * Las finalizadas también entran, y el orden es explícito. Si no,
+             * el seeder deja de ser idempotente: al volver a correr, los que ya
+             * se recibieron quedarían fuera de la lista, los índices se
+             * correrían y les tocaría otro ritmo a otros alumnos, que se
+             * pondrían a rendir evaluaciones nuevas. Reprocesarlos no cuesta
+             * nada porque `aprobar()` saltea las clases ya completadas.
+             */
             $inscripciones = $course->enrollments()
-                ->whereIn('status', [EnrollmentStatus::Approved, EnrollmentStatus::Active])
+                ->whereIn('status', EnrollmentStatus::ocupantes())
                 ->with('student')
+                ->orderBy('student_id')
                 ->get()
                 ->values();
+
+            /*
+             * En un curso que ya terminó no tiene sentido el reparto de ritmos:
+             * nadie se quedó «al día» en una cursada que cerró hace meses. Unos
+             * lo terminaron y otros lo abandonaron a mitad de camino, que es
+             * como se ve una edición cerrada de verdad.
+             */
+            $cerrado = $this->yaTermino($course);
+            $ritmos = $cerrado ? [1.0, 1.0, 0.6, 1.0, 0.3] : [1.0, 0.7, 0.4, 0.2, 0.0];
 
             foreach ($inscripciones as $i => $enrollment) {
                 $student = $enrollment->student;
@@ -417,15 +439,17 @@ class CourseSeeder extends Seeder
                     continue;
                 }
 
-                // 100 %, 70 %, 40 %, 20 % y nada
-                $ritmo = [1.0, 0.7, 0.4, 0.2, 0.0][$i % 5];
+                $ritmo = $ritmos[$i % 5];
 
-                $this->avanzar($course, $student, $ritmo, $i);
+                // Quien terminó una cursada cerrada tiene todo corregido: si le
+                // quedara una tarea sin aprobar no habría certificado, y es
+                // justamente lo que este curso viene a mostrar
+                $this->avanzar($course, $student, $ritmo, $i, graduado: $cerrado && $ritmo === 1.0);
             }
         }
     }
 
-    private function avanzar(Course $course, Student $student, float $ritmo, int $indice): void
+    private function avanzar(Course $course, Student $student, float $ritmo, int $indice, bool $graduado = false): void
     {
         $dictadas = $course->modules()
             ->with(['classes' => fn ($q) => $q->where('activation_date', '<=', now()), 'classes.contents', 'classes.module.course'])
@@ -449,7 +473,7 @@ class CourseSeeder extends Seeder
                 return;
             }
 
-            $this->aprobar($student, $class, $indice + $posicion);
+            $this->aprobar($student, $class, $indice + $posicion, $graduado);
         }
     }
 
@@ -460,7 +484,7 @@ class CourseSeeder extends Seeder
      * con trabajo práctico sin entregar no se completa, y el alumno quedaría con
      * huecos en el medio de su avance.
      */
-    private function aprobar(Student $student, CourseClass $class, int $indice): void
+    private function aprobar(Student $student, CourseClass $class, int $indice, bool $graduado = false): void
     {
         if ($this->progreso->hasCompleted($student, $class)) {
             return;
@@ -476,7 +500,7 @@ class CourseSeeder extends Seeder
             )->all());
         }
 
-        $this->entregarTareas($student, $class, $indice);
+        $this->entregarTareas($student, $class, $indice, $graduado);
 
         $this->progreso->complete($student, $class);
     }
@@ -488,7 +512,7 @@ class CourseSeeder extends Seeder
      * publicar: son los tres estados que tiene que poder mostrar la solapa
      * Calificaciones, y si todas terminaran iguales no se vería la diferencia.
      */
-    private function entregarTareas(Student $student, CourseClass $class, int $indice): void
+    private function entregarTareas(Student $student, CourseClass $class, int $indice, bool $graduado = false): void
     {
         $tareas = $class->contents->where('type', ClassContentType::Task);
 
@@ -497,7 +521,9 @@ class CourseSeeder extends Seeder
                 continue;
             }
 
-            $suerte = ($indice + $i) % 6;
+            // Al que se recibe se le aprueba y publica todo: el certificado
+            // exige que no quede ninguna tarea sin aprobar
+            $suerte = $graduado ? 4 : ($indice + $i) % 6;
 
             $submission = TaskSubmission::create([
                 'content_id' => $tarea->getKey(),
@@ -529,6 +555,14 @@ class CourseSeeder extends Seeder
                 'published_at' => $suerte >= 4 ? $class->activation_date->copy()->addDays(7) : null,
             ]);
         }
+    }
+
+    /** ¿El curso ya se dictó entero? */
+    private function yaTermino(Course $course): bool
+    {
+        $ultima = $course->classes()->max('activation_date');
+
+        return $ultima !== null && Carbon::parse($ultima)->isPast();
     }
 
     /**

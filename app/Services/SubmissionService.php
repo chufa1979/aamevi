@@ -11,6 +11,7 @@ use App\Models\TaskSubmission;
 use App\Enums\ClassContentType;
 use App\Enums\SubmissionStatus;
 use Illuminate\Http\UploadedFile;
+use App\Events\CourseProgressAdvanced;
 use App\Exceptions\SubmissionException;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -109,6 +110,17 @@ class SubmissionService
 
         if (! $submission->isPublished()) {
             $submission->update(['published_at' => now()]);
+
+            /*
+             * Publicar puede ser lo último que faltaba para terminar el curso.
+             * Se avisa por entrega y no por tanda: resolver a quién le cambió
+             * algo desde `publishAll()` costaría lo mismo, y así el aviso sale
+             * también cuando se publica una sola.
+             */
+            CourseProgressAdvanced::dispatch(
+                $submission->student,
+                $submission->content->class->module->course,
+            );
         }
 
         return $submission->fresh();
@@ -128,7 +140,7 @@ class SubmissionService
             ->filter(fn (TaskSubmission $s): bool => $s->isGraded() && ! $s->isPublished());
 
         foreach ($pendientes as $submission) {
-            $submission->update(['published_at' => now()]);
+            $this->publish($submission);
         }
 
         return $pendientes->count();
@@ -177,6 +189,43 @@ class SubmissionService
             ->unique();
 
         return $tareas->reject(fn (ClassContent $t): bool => $entregadas->contains($t->getKey()));
+    }
+
+    /**
+     * Tareas del curso que al alumno todavía no le aprobaron.
+     *
+     * Cuenta las que no entregó, las que están en corrección y las que le
+     * desaprobaron. Es más exigente que `pendingFor()` a propósito: para pasar de
+     * clase alcanza con haber entregado —esperar la corrección dejaría al alumno
+     * detenido por otra persona—, pero el certificado dice que aprobó el curso, y
+     * eso no se puede afirmar mientras haya algo sin corregir.
+     *
+     * También pide que la aprobación esté **publicada**: emitir el certificado
+     * antes delataría una nota que el docente todavía no comunicó.
+     *
+     * @return Collection<int, ClassContent>
+     */
+    public function unapprovedIn(Student $student, Course $course): Collection
+    {
+        $tareas = ClassContent::query()
+            ->where('type', ClassContentType::Task)
+            ->whereIn('class_id', CourseClass::query()
+                ->whereIn('module_id', $course->modules()->select('id'))
+                ->select('id'))
+            ->get();
+
+        if ($tareas->isEmpty()) {
+            return $tareas;
+        }
+
+        $aprobadas = TaskSubmission::where('student_id', $student->getKey())
+            ->whereIn('content_id', $tareas->pluck('id'))
+            ->where('status', SubmissionStatus::Approved)
+            ->whereNotNull('published_at')
+            ->pluck('content_id')
+            ->unique();
+
+        return $tareas->reject(fn (ClassContent $t): bool => $aprobadas->contains($t->getKey()));
     }
 
     /**

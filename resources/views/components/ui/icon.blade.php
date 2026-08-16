@@ -129,6 +129,12 @@
             <path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 16.5a6.4 6.4 0 0 0 0-9" />
             @break
 
+        {{-- El diploma: un sello con su cinta --}}
+        @case('certificado')
+            <circle cx="12" cy="9" r="5.5" />
+            <polyline points="8.5,13.8 7.5,21 12,18.5 16.5,21 15.5,13.8" />
+            @break
+
         @case('volver')
             <line x1="20" y1="12" x2="5" y2="12" />
             <polyline points="11,6 5,12 11,18" />

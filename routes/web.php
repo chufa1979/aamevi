@@ -8,6 +8,7 @@ use App\Http\Controllers\Classroom\ProgressController;
 use App\Http\Controllers\Classroom\ClassroomController;
 use App\Http\Controllers\Classroom\MyCoursesController;
 use App\Http\Controllers\Classroom\SubmissionController;
+use App\Http\Controllers\Classroom\CertificateController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
@@ -52,6 +53,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('evaluaciones/{quiz}', [QuizController::class, 'show'])->name('classroom.quiz');
         Route::post('evaluaciones/{quiz}', [QuizController::class, 'submit'])->name('classroom.quiz.submit');
+
+        Route::get('certificados', [CertificateController::class, 'index'])->name('classroom.certificates');
+        Route::get('certificados/{certificate}', [CertificateController::class, 'download'])->name('classroom.certificate');
     });
 
     /*
@@ -60,7 +64,6 @@ Route::middleware('auth')->group(function () {
      * a medida que se implementan (ver docs/PLAN_ARQUITECTONICO.md).
      */
     $pendientes = [
-        'certificados' => 'Certificados',
         'ayuda' => 'Ayuda',
         'buscar' => 'Buscar',
     ];

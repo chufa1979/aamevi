@@ -9,9 +9,11 @@ use Filament\Schemas\Schema;
 use App\Enums\EnrollmentStatus;
 use App\Models\CourseEnrollment;
 use Filament\Actions\CreateAction;
+use App\Services\CertificateService;
 use Filament\Forms\Components\Select;
 use App\Exceptions\EnrollmentException;
 use Filament\Tables\Columns\TextColumn;
+use App\Exceptions\CertificateException;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Resources\Courses\CourseResource;
@@ -55,6 +57,7 @@ class ManageCourseStudents extends ManageRelatedRecords
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('certificate'))
             ->recordTitleAttribute('id')
             // Los títulos de los modales salen de acá: esta clase de página no
             // lee las propiedades estáticas $modelLabel del recurso.
@@ -79,6 +82,13 @@ class ManageCourseStudents extends ManageRelatedRecords
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge(),
+
+                TextColumn::make('certificate.certificate_number')
+                    ->label('Certificado')
+                    ->placeholder('—')
+                    ->description(fn (CourseEnrollment $record): ?string => $record->certificate
+                        ? 'Emitido el '.$record->certificate->issued_at->format('d/m/Y')
+                        : null),
 
                 TextColumn::make('approvedBy.user.full_name')
                     ->label('Resuelta por')
@@ -105,8 +115,56 @@ class ManageCourseStudents extends ManageRelatedRecords
             ->recordActions([
                 self::resolver('approve', 'Aprobar', 'Inscripción aprobada', 'heroicon-o-check-circle', 'success'),
                 self::resolver('reject', 'Rechazar', 'Inscripción rechazada', 'heroicon-o-x-circle', 'danger'),
+                self::emitirCertificado(),
             ])
             ->emptyStateHeading('Todavía no hay inscripciones');
+    }
+
+    /**
+     * Emisión manual del certificado.
+     *
+     * El sistema lo emite solo cuando el alumno completa el curso; esto es para
+     * lo que la regla no contempla —una entrega fuera de término que se decidió
+     * aceptar, alguien que rindió aparte—. Por eso avisa cuando todavía no
+     * corresponde en vez de impedirlo: la decisión es del docente, pero que la
+     * tome sabiendo qué le falta.
+     */
+    private static function emitirCertificado(): Action
+    {
+        return Action::make('certificado')
+            ->label('Emitir certificado')
+            ->icon('heroicon-o-academic-cap')
+            ->color('primary')
+            ->requiresConfirmation()
+            ->modalHeading('Emitir el certificado')
+            ->modalDescription(function (CourseEnrollment $record): string {
+                $falta = app(CertificateService::class)->blocker($record->student, $record->course);
+
+                return $falta === null
+                    ? 'El alumno completó el curso. Se le emite el certificado y la inscripción queda finalizada.'
+                    : "El alumno todavía no terminó: {$falta} Emitirlo igual lo da por aprobado.";
+            })
+            ->visible(fn (CourseEnrollment $record): bool => $record->status->ocupaCupo()
+                && $record->certificate === null)
+            ->action(function (CourseEnrollment $record): void {
+                try {
+                    $certificado = app(CertificateService::class)->issue($record);
+                } catch (CertificateException|EnrollmentException $e) {
+                    Notification::make()
+                        ->title('No se pudo emitir')
+                        ->body($e->getMessage())
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Certificado emitido')
+                    ->body($certificado->certificate_number)
+                    ->success()
+                    ->send();
+            });
     }
 
     /**

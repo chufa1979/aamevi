@@ -4,7 +4,7 @@
 **Fecha**: 2026-07-28  
 **Escala**: 50 alumnos/curso (inicial), extensible a 1000+  
 **Tecnología**: Laravel 12 (PHP 8.2+) + Blade + Vite 8 + Tailwind 4 + MySQL 8
-**Actualizado**: 2026-08-15
+**Actualizado**: 2026-08-16
 
 > **Nota de revisión — 2026-08-11**
 >
@@ -36,8 +36,9 @@ aamevi/
 ├── app/
 │   ├── Enums/               ✅ UserRole, EnrollmentStatus, ClassContentType,
 │   │                           ClassProgressState, SubmissionStatus
+│   ├── Events/              ✅ CourseProgressAdvanced
 │   ├── Exceptions/          ✅ EnrollmentException, QuizException,
-│   │                           SubmissionException
+│   │                           SubmissionException, CertificateException
 │   ├── Filament/                  # Los dos paneles (§11)
 │   │   ├── Concerns/        ✅ ScopedToOwnCourses, ListAndCreateNavigation
 │   │   ├── Forms/           ✅ RichText, ModuleExam, QuestionOptions
@@ -51,15 +52,17 @@ aamevi/
 │   │   │                       Submission, Progress
 │   │   ├── Requests/        ✅ LoginRequest, StoreSubmissionRequest
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
-│   ├── Models/              ✅ 15: User, Student, Teacher, Course,
+│   ├── Listeners/           ✅ IssueCertificateIfEarned
+│   ├── Models/              ✅ 16: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
-│   │                           StudentProgress, TaskSubmission
+│   │                           StudentProgress, TaskSubmission, Certificate
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
 │   │                           preguntas) y User
 │   ├── Services/            ✅ QuizService, ProgressService,
-│   │                           EnrollmentService, SubmissionService
+│   │                           EnrollmentService, SubmissionService,
+│   │                           CertificateService
 │   ├── Support/Html.php     ✅ Saneado del texto enriquecido
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
@@ -68,11 +71,12 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 16: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 17: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
-│   │                           de intentos, student_progress y task_submissions
+│   │                           de intentos, student_progress, task_submissions
+│   │                           y certificates
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -98,12 +102,14 @@ aamevi/
 │       │   ├── rich-text.blade.php ✅ Único `{!! !!}` del proyecto
 │       │   └── ui/icon.blade.php   ✅ (x-icon lo toma blade-icons)
 │       ├── auth/            ✅ login, register
+│       ├── certificates/    ✅ La plantilla del PDF, escrita para dompdf
 │       ├── classroom/       ✅ catálogo, curso, clase, evaluaciones, quiz y
-│       │                       su resultado, mis cursos, progreso
+│       │                       su resultado, mis cursos, progreso,
+│       │                       certificados
 │       ├── home.blade.php   ✅
-│       └── placeholder.blade.php ✅ Sólo certificados, ayuda y buscar
+│       └── placeholder.blade.php ✅ Sólo ayuda y buscar
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 298: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 316: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -352,6 +358,12 @@ CREATE TABLE certificates (
 );
 ```
 
+> **`pdf_url` no se implementó.** El certificado *es* las otras cuatro columnas;
+> el PDF es una forma de mostrarlas y se arma al descargarlo, con dompdf.
+> Guardarlo obligaría a regenerar el archivo cada vez que se corrija un apellido
+> mal escrito o cambie la plantilla, y a limpiar los viejos. Lo que no se puede
+> recalcular —el número emitido y la fecha— sí queda escrito.
+
 ### Notificaciones
 ```sql
 CREATE TABLE email_queue (
@@ -570,6 +582,34 @@ genérico solo genera consultas al soporte.
   esperando la última clase de un módulo que todavía no le toca cursar.
 - **Completar una clase con quiz exige haberlo aprobado.** Sin esa guarda,
   marcarla completa saltearía la evaluación que la progresión protege.
+- **Y exige haber entregado sus tareas — entregado, no aprobado.** Pedir la
+  corrección dejaría al alumno detenido esperando a otra persona.
+
+### Certificados — `CertificateService`
+
+Se emite con dos condiciones: todas las clases completadas y **ninguna tarea sin
+aprobar**. La primera ya arrastra las evaluaciones, porque una clase no se
+completa sin haber aprobado la suya.
+
+- **Es más exigente que la progresión, a propósito.** Para pasar de clase alcanza
+  con haber entregado; el certificado afirma que el alumno *aprobó* el curso, y
+  eso no se puede sostener con una tarea sin corregir.
+- **La aprobación tiene que estar publicada.** Emitirlo antes delataría una nota
+  que el docente todavía no comunicó.
+- **Lo emite un listener, no una llamada suelta.** `CertificateService` necesita
+  preguntarle a `ProgressService` si el curso terminó, así que llamarlo desde
+  adentro sería un círculo. `CourseProgressAdvanced` se dispara donde el avance
+  puede cambiar —completar una clase, publicar una corrección— y
+  `IssueCertificateIfEarned` reacciona. Es el enganche que van a usar también las
+  notificaciones de la fase 5.
+- **`issueIfEarned()` devuelve null, no lanza.** Que a un alumno le falte una
+  clase es lo normal, no un error. El que lanza es `issue()`, la emisión manual.
+- **Emitir es lo único que lleva una inscripción a `completed`.** Pasa por
+  `activate()` si hace falta: la máquina de estados no permite saltear, y quien
+  terminó el curso estuvo cursándolo aunque nadie lo haya registrado.
+- **El número no es correlativo** (`AAMEVI-2026-4F2A9C`). Un correlativo publica
+  cuántos certificados emitió la institución y obliga a bloquear la tabla para no
+  repetirlo.
 
 ---
 
@@ -797,11 +837,13 @@ sí lleva Livewire, que viene con Filament.
 - [ ] Recordatorios 24h antes de clases en vivo
 - [ ] Notificaciones de cambios de estado
 
-### Fase 6: Reportes & Certificados (1-2 semanas)
+### Fase 6: Reportes & Certificados — **casi completa**
 - [x] `student_progress` y la grilla de seguimiento por curso para el docente
 - [x] Barra de avance del alumno
-- [ ] Modelo `certificates`
-- [ ] Generación de PDF de certificados y su modelo visual
+- [x] Modelo `certificates` y emisión automática al terminar el curso
+- [x] PDF con dompdf, armado al descargarlo
+- [ ] Modelo visual definitivo, con firma escaneada
+- [ ] Verificación pública del número de certificado
 
 ### Fase 7: Deployment & Polish (1 semana)
 - [x] Documentación de deploy (`docs/DEPLOY.md`)
@@ -1215,7 +1257,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-15 — **16 migraciones, 15 modelos, 298 tests**:
+Hecho hasta el 2026-08-16 — **17 migraciones, 16 modelos, 316 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1237,22 +1279,22 @@ Hecho hasta el 2026-08-15 — **16 migraciones, 15 modelos, 298 tests**:
 14. [x] Revisión de intentos: qué preguntas le tocaron a cada alumno y qué
         respondió
 15. [x] Panel `/profesores`, acotado a los cursos de cada docente
+16. [x] Certificados: emisión automática al terminar el curso, PDF y emisión
+        manual desde el panel
 
 ### Lo que falta
 
 El ciclo de enseñanza está cerrado: se puede cargar un curso, dictarlo, evaluarlo
 y corregirlo. Lo que queda son las piezas de alrededor.
 
-1. [ ] **Certificados** — es la última sección del aula que sigue sirviendo
-       `placeholder.blade.php`. El disparador ya existe: completar todas las
-       clases y tareas del curso
-2. [ ] **Notificaciones** — `email_queue` está en el esquema y nadie la drena.
-       Hace falta el worker y las plantillas
-3. [ ] **Registro público con verificación** — hoy las cuentas se crean desde el
+1. [ ] **Notificaciones** — `email_queue` está diseñada en §2 pero ni siquiera
+       existe como tabla. Hace falta la migración, el worker y las plantillas.
+       El evento `CourseProgressAdvanced` ya es el enganche
+2. [ ] **Registro público con verificación** — hoy las cuentas se crean desde el
        panel. `User` ya implementa `MustVerifyEmail`
-4. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
+3. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
        en la cola: en FID casi no se usaron
-5. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
+4. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
        configurar. Los archivos van hoy al disco `public`
 
 ### Deuda pendiente
@@ -1263,7 +1305,7 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
 | `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
 | Registro público | Hoy es un marcador: las cuentas las crea la administración |
-| Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo ni `email_queue` |
+| Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo, y `email_queue` todavía no existe como tabla |
 | Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
 | Límite de subida del servidor | `upload_max_filesize` está en 2 MB y `post_max_size` en 8 MB; el panel ofrece 20 MB para los PDF. PHP corta antes y la validación de Laravel ni siquiera llega a correr (ver `docs/DEPLOY.md`) |
 

@@ -260,6 +260,43 @@ class CourseCatalog
                     ]],
                 ],
             ],
+
+            /*
+             * La edición cerrada.
+             *
+             * Los cinco cursos de arriba están dictándose: ninguno termina antes
+             * de diciembre, así que con ellos solos no habría un solo alumno
+             * recibido y las pantallas de certificados quedarían vacías. Éste ya
+             * terminó —`schedule` le pone su propio cronograma, todo en el
+             * pasado—, y de ahí salen las inscripciones finalizadas y los
+             * certificados emitidos.
+             *
+             * Es corto a propósito: dos módulos de cinco clases alcanzan para
+             * ver el circuito completo sin agregar cien filas más.
+             */
+            [
+                'title' => 'Introducción a la Medicina del Estilo de Vida (edición 2025)',
+                'description' => '<p>Edición <strong>ya finalizada</strong> del curso introductorio. Se conserva para consulta y para la emisión de certificados.</p>',
+                'max_students' => 30,
+                'teacher' => 'profesora@aamevi.ar',
+                'schedule' => ['2025-08-05', '2025-11-25'],
+                'modules' => [
+                    ['Los seis pilares', [
+                        'Qué propone la medicina del estilo de vida',
+                        'Alimentación basada en plantas',
+                        'Actividad física y sedentarismo',
+                        'Sueño y descanso reparador',
+                        'Estrés, vínculos y sustancias',
+                    ]],
+                    ['De la teoría al consultorio', [
+                        'La primera consulta de estilo de vida',
+                        'Cómo se mide un cambio de hábito',
+                        'El seguimiento a los tres meses',
+                        'Errores frecuentes en la indicación',
+                        'Caso de cierre',
+                    ]],
+                ],
+            ],
         ];
     }
 }

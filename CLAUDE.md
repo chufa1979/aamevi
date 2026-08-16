@@ -94,12 +94,14 @@ Business rules are enforced in models and services, each covered by a test. **§
 - **Business exceptions throw, they don't return false.** Approving an already-rejected enrollment is a programming error and must fail loudly; the panel catches and turns it into a notification.
 - **Two services own the intricate parts**: `QuizService` (draw, grade, attempt limits) and `ProgressService` (who can open which class, and why not). Controllers and Filament actions call them — don't reimplement.
 - **`quiz_question_assignment` records which questions each student got.** The draw is per-student, so without it a disputed grade cannot be reconstructed. Questions are `RESTRICT` on delete for the same reason.
+- **Certificates are issued by a listener, not by a service call.** `CertificateService` has to ask `ProgressService` whether the course is finished, so calling it from inside `ProgressService` would be a cycle. `CourseProgressAdvanced` is dispatched wherever progress can change — completing a class, publishing a correction — and `IssueCertificateIfEarned` reacts. Add a new way to advance and you dispatch the event, not another call to the certificate code.
+- **Issuing a certificate is stricter than passing a class.** To move on, submitting a task is enough — waiting for a correction would leave the student blocked by someone else. The certificate asserts the course was *approved*, so it also requires every task graded, approved **and published**.
 
 ## Known gaps
 
-- **`/certificados`, `/ayuda` and `/buscar` still render `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission and progress.
+- **`/ayuda` and `/buscar` still render `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission, progress and certificates.
 - **Two course tabs are designed but not built**: Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. They are last on purpose — in the FID data they were barely used.
-- **Notifications and certificates** are unimplemented — phases 5 and 6. Nothing drains `email_queue`.
+- **Notifications are unimplemented** — phase 5. `email_queue` is not even a table yet, and nothing drains it. `CourseProgressAdvanced` is the hook they will use.
 - **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
 - **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.
 - **No CI**: `.github/` is gitignored.

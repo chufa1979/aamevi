@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Exceptions\EnrollmentException;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseEnrollmentFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -53,6 +54,11 @@ class CourseEnrollment extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(Teacher::class, 'approved_by');
+    }
+
+    public function certificate(): HasOne
+    {
+        return $this->hasOne(Certificate::class, 'enrollment_id');
     }
 
     /**
