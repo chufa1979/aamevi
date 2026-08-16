@@ -34,9 +34,11 @@ Marcado con ✅ lo que ya existe en el repo; el resto es lo previsto.
 ```
 aamevi/
 ├── app/
+│   ├── Console/Commands/    ✅ emails:enviar, emails:recordatorios
 │   ├── Enums/               ✅ UserRole, EnrollmentStatus, ClassContentType,
-│   │                           ClassProgressState, SubmissionStatus
-│   ├── Events/              ✅ CourseProgressAdvanced
+│   │                           ClassProgressState, SubmissionStatus, EmailType,
+│   │                           EmailStatus
+│   ├── Events/              ✅ CourseProgressAdvanced, EnrollmentApproved
 │   ├── Exceptions/          ✅ EnrollmentException, QuizException,
 │   │                           SubmissionException, CertificateException
 │   ├── Filament/                  # Los dos paneles (§11)
@@ -52,17 +54,19 @@ aamevi/
 │   │   │                       Submission, Progress
 │   │   ├── Requests/        ✅ LoginRequest, StoreSubmissionRequest
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
-│   ├── Listeners/           ✅ IssueCertificateIfEarned
+│   ├── Listeners/           ✅ IssueCertificateIfEarned,
+│   │                           QueueEnrollmentApprovedEmail
 │   ├── Models/              ✅ 16: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
-│   │                           StudentProgress, TaskSubmission, Certificate
+│   │                           StudentProgress, TaskSubmission, Certificate,
+│   │                           QueuedEmail
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
 │   │                           preguntas) y User
 │   ├── Services/            ✅ QuizService, ProgressService,
 │   │                           EnrollmentService, SubmissionService,
-│   │                           CertificateService
+│   │                           CertificateService, NotificationService
 │   ├── Support/Html.php     ✅ Saneado del texto enriquecido
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
@@ -71,12 +75,12 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 17: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 18: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
 │   │                           de intentos, student_progress, task_submissions
-│   │                           y certificates
+│   │                           certificates y email_queue
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -103,13 +107,14 @@ aamevi/
 │       │   └── ui/icon.blade.php   ✅ (x-icon lo toma blade-icons)
 │       ├── auth/            ✅ login, register
 │       ├── certificates/    ✅ La plantilla del PDF, escrita para dompdf
+│       ├── emails/          ✅ Las plantillas de los avisos, en tablas
 │       ├── classroom/       ✅ catálogo, curso, clase, evaluaciones, quiz y
 │       │                       su resultado, mis cursos, progreso,
 │       │                       certificados
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda y buscar
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 316: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 332: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -380,6 +385,15 @@ CREATE TABLE email_queue (
 );
 ```
 
+> Implementada con una columna más, `last_error`: sin ella un aviso fallido no
+> dice por qué, y la única salida sería reintentar a ciegas. `verification`
+> existe en el enum pero todavía no se usa: depende del registro público.
+>
+> **Por qué esta tabla y no la cola de Laravel.** El hosting es compartido, no
+> hay forma de dejar un `queue:work` corriendo, y lo que sí hay es cron. Además
+> esta tabla se puede mirar: la pregunta que llega es «¿le llegó el mail a
+> fulano?», y en `jobs` la respuesta está adentro de un payload serializado.
+
 ---
 
 ## 3. FLUJOS PRINCIPALES
@@ -584,6 +598,26 @@ genérico solo genera consultas al soporte.
   marcarla completa saltearía la evaluación que la progresión protege.
 - **Y exige haber entregado sus tareas — entregado, no aprobado.** Pedir la
   corrección dejaría al alumno detenido esperando a otra persona.
+
+### Avisos — `NotificationService`
+
+Nada se manda en el momento: todo se escribe en `email_queue` y sale cuando
+`emails:enviar` la vacía, por cron.
+
+- **El asunto y el cuerpo se guardan ya armados.** Lo que figura en la tabla es
+  exactamente lo que salió, y cambiar mañana una plantilla no reescribe la
+  historia.
+- **`scheduled_at` está separado de `created_at`** para poder programar el
+  recordatorio de una clase con un día de anticipación.
+- **Un envío fallido no lanza: devuelve false.** Un correo que no sale no puede
+  cortar la tanda, y acá el error es del mundo exterior, no un programa mal
+  escrito. Mientras queden reintentos sigue pendiente, con la próxima salida cada
+  vez más lejos; agotados, pasa a `failed` y espera a que alguien lo reintente
+  desde el panel.
+- **Rechazar una inscripción no avisa.** Una mala noticia por correo automático
+  es peor que un llamado.
+- **El recordatorio es sólo de las clases en vivo.** Una grabada se ve cuando el
+  alumno puede; avisar de cada una sería un correo por clase del cronograma.
 
 ### Certificados — `CertificateService`
 
@@ -830,12 +864,14 @@ sí lleva Livewire, que viene con Filament.
 - [x] Aula: entregar, ver el estado, y la nota **recién cuando se publique**
 - [x] La entrega entra en el gateo: no se completa una clase con la tarea sin entregar
 
-### Fase 5: Notificaciones & Recordatorios (1 semana)
-- [ ] Modelos: email_queue
-- [ ] Integración SendGrid/Resend
-- [ ] Verificación de email
-- [ ] Recordatorios 24h antes de clases en vivo
-- [ ] Notificaciones de cambios de estado
+### Fase 5: Notificaciones & Recordatorios — **completa salvo el proveedor**
+- [x] Tabla `email_queue` y `NotificationService`
+- [x] Worker `emails:enviar`, programado por cron cada cinco minutos
+- [x] Recordatorios 24 h antes de las clases en vivo (`emails:recordatorios`)
+- [x] Avisos de inscripción aprobada, trabajo corregido y certificado emitido
+- [x] La cola a la vista en el panel, con reintento manual
+- [ ] Configurar el SMTP del servidor: hoy `MAIL_MAILER=log`
+- [ ] Verificación de email — depende del registro público
 
 ### Fase 6: Reportes & Certificados — **casi completa**
 - [x] `student_progress` y la grilla de seguimiento por curso para el docente
@@ -1257,7 +1293,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **17 migraciones, 16 modelos, 316 tests**:
+Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 332 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1281,15 +1317,17 @@ Hecho hasta el 2026-08-16 — **17 migraciones, 16 modelos, 316 tests**:
 15. [x] Panel `/profesores`, acotado a los cursos de cada docente
 16. [x] Certificados: emisión automática al terminar el curso, PDF y emisión
         manual desde el panel
+17. [x] Avisos por email: cola, worker por cron, recordatorios de clase en vivo
+        y la cola a la vista en el panel
 
 ### Lo que falta
 
 El ciclo de enseñanza está cerrado: se puede cargar un curso, dictarlo, evaluarlo
 y corregirlo. Lo que queda son las piezas de alrededor.
 
-1. [ ] **Notificaciones** — `email_queue` está diseñada en §2 pero ni siquiera
-       existe como tabla. Hace falta la migración, el worker y las plantillas.
-       El evento `CourseProgressAdvanced` ya es el enganche
+1. [ ] **Poner a andar el correo en el servidor** — el circuito está entero, pero
+       falta la línea de cron y el SMTP. Hasta que se haga, la cola se llena y no
+       sale nada (ver `docs/DEPLOY.md`)
 2. [ ] **Registro público con verificación** — hoy las cuentas se crean desde el
        panel. `User` ya implementa `MustVerifyEmail`
 3. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
@@ -1305,7 +1343,7 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
 | `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
 | Registro público | Hoy es un marcador: las cuentas las crea la administración |
-| Verificación de email | `User` implementa `MustVerifyEmail` pero no hay flujo, y `email_queue` todavía no existe como tabla |
+| Verificación de email | `User` implementa `MustVerifyEmail` y `email_queue` ya tiene el tipo `verification`, pero falta el flujo de alta |
 | Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
 | Límite de subida del servidor | `upload_max_filesize` está en 2 MB y `post_max_size` en 8 MB; el panel ofrece 20 MB para los PDF. PHP corta antes y la validación de Laravel ni siquiera llega a correr (ver `docs/DEPLOY.md`) |
 

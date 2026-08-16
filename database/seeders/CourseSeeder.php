@@ -23,6 +23,7 @@ use Illuminate\Database\Seeder;
 use App\Models\CourseEnrollment;
 use App\Services\ProgressService;
 use Illuminate\Support\Collection;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Storage;
 use Database\Seeders\Data\CourseCatalog;
 
@@ -128,6 +129,7 @@ class CourseSeeder extends Seeder
     public function __construct(
         private readonly QuizService $quizzes,
         private readonly ProgressService $progreso,
+        private readonly NotificationService $avisos,
     ) {}
 
     public function run(): void
@@ -542,6 +544,12 @@ class CourseSeeder extends Seeder
 
             $desaprobada = $suerte === 3;
 
+            /*
+             * Se escribe la corrección a mano en lugar de pasar por
+             * `SubmissionService`: el servicio fecha todo con `now()`, y acá las
+             * correcciones tienen que quedar en los días de su clase para que el
+             * historial sea creíble.
+             */
             $submission->update([
                 // La nota tiene que acompañar al resultado: una desaprobada con
                 // un nueve deja el ejemplo sin sentido
@@ -554,6 +562,12 @@ class CourseSeeder extends Seeder
                 'graded_at' => $class->activation_date->copy()->addDays(6),
                 'published_at' => $suerte >= 4 ? $class->activation_date->copy()->addDays(7) : null,
             ]);
+
+            // El aviso sí se encola, para que la cola de ejemplo tenga los tres
+            // tipos y no sólo las inscripciones
+            if ($suerte >= 4) {
+                $this->avisos->taskGraded($submission->fresh());
+            }
         }
     }
 

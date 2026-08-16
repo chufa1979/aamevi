@@ -235,7 +235,12 @@ Filament trae su propio sistema visual y **no carga el bundle de Vite del sitio*
 dos consecuencias que ya costaron una pantalla rota:
 
 - Una vista Blade dentro del panel **no puede usar las utilidades de Tailwind del sitio**.
-  Los estilos propios del panel van en `resources/css/filament/admin.css`.
+  `grid`, `h-96` o `text-sm` no hacen nada ahí, y lo peor es que no avisan: la
+  pantalla se dibuja, sin estilo. Los estilos propios del panel van en
+  `resources/css/filament/admin.css`, con clases `.aamevi-*` y usando las
+  variables de color de Filament (`--gray-500`, `--success-600`) para que el modo
+  oscuro venga solo. Ya está resuelto así en la grilla de seguimiento y en los
+  modales de `resources/views/filament/`.
 - Los assets de Filament se sirven desde `public/css|js|fonts/filament`, fuera del build.
   No están versionados: los republica `php artisan filament:assets`, que ya está en
   `deploy.sh`.

@@ -42,6 +42,9 @@ Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
 | Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
 
+En **Sistema → Avisos por email** está la cola de correos: qué se le mandó a
+quién, si salió, y el error de los que fallaron con un botón para reintentar.
+
 Los módulos y las clases se reordenan **arrastrando**, no escribiendo un número.
 
 Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
@@ -61,7 +64,8 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: notificaciones y las dos solapas de comunicación.
+**Pendiente**: el registro público con verificación por email y las dos solapas
+de comunicación.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
@@ -84,7 +88,7 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
 | **Registro público** | Alta de cuenta con verificación por email | ⏳ hoy las cuentas se crean desde el panel |
 | **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
-| **Notificaciones** | Emails de verificación, recordatorios y certificados | ⏳ nada drena `email_queue` |
+| **Notificaciones** | Avisos por email de inscripción, corrección, certificado y clase en vivo | ✅ |
 
 ---
 
@@ -112,6 +116,7 @@ viene con Filament.
 ```
 aamevi/
 ├── app/
+│   ├── Console/Commands/    # Lo que corre por cron: la cola de correos
 │   ├── Enums/               # Estados y roles, con su etiqueta y su color
 │   ├── Exceptions/          # Excepciones de negocio: fallan fuerte, no devuelven false
 │   ├── Filament/            # El panel: recursos, formularios, tablas, acciones
@@ -125,7 +130,8 @@ aamevi/
 │   ├── Providers/Filament/  # Un provider por panel: admin y profesores
 │   ├── Events/              # Lo que pasó, para que reaccione quien quiera
 │   ├── Listeners/           # Quién reacciona
-│   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas, Certificados
+│   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas,
+│   │                        #   Certificados y Avisos
 │   └── Support/Html.php     # Saneado del texto enriquecido
 ├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
 ├── config/
@@ -397,7 +403,7 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 1. El docente publica la consigna con fecha de entrega
 2. El alumno envía su archivo
 3. El docente lo descarga, califica y deja devolución
-4. El alumno recibe la nota por email
+4. Al publicar la corrección, el alumno recibe la nota por email
 
 ### Certificado
 1. El alumno completa todas las clases y le aprueban todas las tareas
@@ -420,7 +426,7 @@ contempla.
 | 3 | Panel de administración | ✅ |
 | 4 | Quiz y evaluación | ✅ |
 | 5 | Tareas | ✅ |
-| 6 | Notificaciones | ⏳ |
+| 6 | Notificaciones | ✅ |
 | 7 | Reportes y certificados | ⏳ falta el modelo visual y los reportes |
 
 Fuera del plan original quedaron dos cosas que sí se hicieron: el **aula del

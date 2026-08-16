@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EnrollmentStatus;
+use App\Events\EnrollmentApproved;
 use App\Exceptions\EnrollmentException;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseEnrollmentFactory;
@@ -79,6 +80,8 @@ class CourseEnrollment extends Model
             'approval_date' => now(),
             'approved_by' => $teacher?->getKey(),
         ]);
+
+        EnrollmentApproved::dispatch($this);
     }
 
     /** @throws EnrollmentException si no está pendiente */

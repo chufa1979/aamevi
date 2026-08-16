@@ -30,6 +30,8 @@ class SubmissionService
 
     private const CARPETA = 'submissions';
 
+    public function __construct(private readonly NotificationService $avisos) {}
+
     /**
      * Guarda la entrega del alumno.
      *
@@ -121,6 +123,10 @@ class SubmissionService
                 $submission->student,
                 $submission->content->class->module->course,
             );
+
+            // Publicar es el momento en que la nota existe para el alumno: antes
+            // no había nada que contarle
+            $this->avisos->taskGraded($submission->fresh());
         }
 
         return $submission->fresh();

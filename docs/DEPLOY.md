@@ -182,6 +182,55 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+## Tareas programadas
+
+La plataforma no manda correos en el momento: los escribe en `email_queue` y un
+comando la vacía. Sin cron eso no sale nunca, así que **el paso es obligatorio**,
+no una mejora.
+
+Una sola línea en el crontab del hosting alcanza para todo, porque Laravel
+decide adentro qué toca en cada minuto:
+
+```cron
+* * * * * cd ~/aamevi.demosdesarrollos.com.ar && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Hoy están programados dos: `emails:enviar` cada cinco minutos y
+`emails:recordatorios` una vez por día a las 7. Se pueden correr a mano para
+probar:
+
+```bash
+php artisan emails:enviar
+php artisan emails:recordatorios
+php artisan schedule:list
+```
+
+Si el panel de LatinCloud no deja poner `schedule:run` cada minuto, la
+alternativa es una línea por tarea con la frecuencia de cada una.
+
+### El correo saliente
+
+Mientras `MAIL_MAILER=log`, los avisos se «mandan» al archivo de log y quedan
+marcados como enviados. Para que salgan de verdad hace falta configurar el
+proveedor en el `.env` del servidor:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.proveedor.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS="no-responder@aamevi.ar"
+MAIL_FROM_NAME="AAMEVi"
+```
+
+La dirección remitente tiene que ser del dominio, y conviene tener SPF y DKIM
+puestos: sin eso, buena parte de los avisos va a spam y la cola va a decir
+«enviado» igual, porque para el servidor salió.
+
+Lo que no salió se ve en **Sistema → Avisos por email**, con el error y un botón
+para reintentar.
+
 ## Actualizaciones
 
 ```bash
@@ -250,6 +299,8 @@ que cambie algo de `resources/css` o `resources/js`.
 - **Límite de subida**: verificar `upload_max_filesize` y `post_max_size` en el
   servidor y subirlos (ver arriba). Hasta que se haga, las entregas de más de
   2 MB se pierden.
+- **Cron y correo saliente**: sin la línea de `schedule:run` y sin SMTP
+  configurado, los avisos se acumulan en la cola sin salir (ver arriba).
 - **Clave SSH**: hoy el acceso es por contraseña. `ssh-copy-id -i ~/.ssh/id_ed25519.pub`
   y después deshabilitar la contraseña.
 - **HTTPS**: verificar que el certificado del dominio esté activo y que haya

@@ -32,6 +32,7 @@ class CertificateService
     public function __construct(
         private readonly ProgressService $progress,
         private readonly SubmissionService $submissions,
+        private readonly NotificationService $avisos,
     ) {}
 
     /**
@@ -125,11 +126,17 @@ class CertificateService
 
         $this->cerrarInscripcion($enrollment);
 
-        return Certificate::create([
+        $certificate = Certificate::create([
             'enrollment_id' => $enrollment->getKey(),
             'certificate_number' => $this->numero(),
             'issued_at' => now(),
         ]);
+
+        // Directo y no por evento: acá no hay círculo que cortar, y el aviso es
+        // parte de emitir — un certificado que nadie sabe que existe no sirve
+        $this->avisos->certificateIssued($certificate);
+
+        return $certificate;
     }
 
     public function of(Student $student, Course $course): ?Certificate

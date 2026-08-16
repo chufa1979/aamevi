@@ -84,6 +84,7 @@ Resources live in `app/Filament/Resources/`, one folder each, with the form and 
 - **Screens that cross students with classes must not query per cell.** Ask the service once — see `ProgressService::courseMatrix()`, which resolves the whole grid in three queries and has a test pinning it to `canAccess()`.
 - **Labels and colours belong on the enum** (`HasLabel`, `HasColor`), as `UserRole` does — not repeated per resource.
 - **`x-icon` is taken** by blade-icons, a Filament dependency, and shadows any component of that name. The project's own is `<x-ui.icon>`.
+- **A Blade view rendered inside the panel cannot use the site's Tailwind utilities.** Filament serves its own CSS and never loads the Vite bundle, so `grid`, `h-96` and friends are inert there — silently, which is how it gets missed. Style panel views with `.aamevi-*` classes in `resources/css/filament/admin.css`, using Filament's own CSS variables so dark mode follows.
 - Filament's assets sit outside the Vite build; `php artisan filament:assets` republishes them (already in `deploy.sh`).
 
 ## Domain rules live in code, not in the schema
@@ -94,6 +95,7 @@ Business rules are enforced in models and services, each covered by a test. **§
 - **Business exceptions throw, they don't return false.** Approving an already-rejected enrollment is a programming error and must fail loudly; the panel catches and turns it into a notification.
 - **Two services own the intricate parts**: `QuizService` (draw, grade, attempt limits) and `ProgressService` (who can open which class, and why not). Controllers and Filament actions call them — don't reimplement.
 - **`quiz_question_assignment` records which questions each student got.** The draw is per-student, so without it a disputed grade cannot be reconstructed. Questions are `RESTRICT` on delete for the same reason.
+- **Emails are never sent inline.** `NotificationService` renders subject and body and writes them to `email_queue`; `emails:enviar` drains it from cron. The hosting cannot keep a `queue:work` running, and tying a screen's response time to someone else's SMTP is a bad trade. What is stored is exactly what went out, so changing a template does not rewrite history.
 - **Certificates are issued by a listener, not by a service call.** `CertificateService` has to ask `ProgressService` whether the course is finished, so calling it from inside `ProgressService` would be a cycle. `CourseProgressAdvanced` is dispatched wherever progress can change — completing a class, publishing a correction — and `IssueCertificateIfEarned` reacts. Add a new way to advance and you dispatch the event, not another call to the certificate code.
 - **Issuing a certificate is stricter than passing a class.** To move on, submitting a task is enough — waiting for a correction would leave the student blocked by someone else. The certificate asserts the course was *approved*, so it also requires every task graded, approved **and published**.
 
@@ -101,7 +103,7 @@ Business rules are enforced in models and services, each covered by a test. **§
 
 - **`/ayuda` and `/buscar` still render `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission, progress and certificates.
 - **Two course tabs are designed but not built**: Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. They are last on purpose — in the FID data they were barely used.
-- **Notifications are unimplemented** — phase 5. `email_queue` is not even a table yet, and nothing drains it. `CourseProgressAdvanced` is the hook they will use.
+- **Nothing has been sent for real yet.** `MAIL_MAILER=log` locally, and the server has no SMTP configured and no cron line, so the queue fills and never drains — see `docs/DEPLOY.md`.
 - **Registration is a stub**: accounts are created from the admin panel. No email verification flow yet, though `User` implements `MustVerifyEmail`.
 - **Tests use sqlite in memory** (`phpunit.xml`). Never point them at mysql: `DB_HOST` would come from `.env`, and `RefreshDatabase` would drop tables on whatever server that names.
 - **No CI**: `.github/` is gitignored.
