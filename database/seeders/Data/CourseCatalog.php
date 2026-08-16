@@ -280,6 +280,10 @@ class CourseCatalog
                 'max_students' => 30,
                 'teacher' => 'profesora@aamevi.ar',
                 'schedule' => ['2025-08-05', '2025-11-25'],
+                // Fuera del catálogo: una edición terminada no se puede cursar.
+                // Los que la hicieron conservan su acceso y su certificado —el
+                // aula no mira `is_active`, sólo la inscripción—
+                'is_active' => false,
                 'modules' => [
                     ['Los seis pilares', [
                         'Qué propone la medicina del estilo de vida',

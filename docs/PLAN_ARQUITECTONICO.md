@@ -49,10 +49,13 @@ aamevi/
 │   │                           CourseClasses, Questions
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Auth/        ✅ AuthenticatedSessionController
+│   │   │   ├── Auth/        ✅ AuthenticatedSessionController,
+│   │   │   │                    RegisteredUserController,
+│   │   │   │                    EmailVerificationController
 │   │   │   └── Classroom/   ✅ Catalog, MyCourses, Course, Classroom, Quiz,
 │   │   │                       Submission, Progress
-│   │   ├── Requests/        ✅ LoginRequest, StoreSubmissionRequest
+│   │   ├── Requests/        ✅ LoginRequest, RegisterRequest,
+│   │   │                       StoreSubmissionRequest
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
@@ -105,7 +108,7 @@ aamevi/
 │       │   │                   task-panel
 │       │   ├── rich-text.blade.php ✅ Único `{!! !!}` del proyecto
 │       │   └── ui/icon.blade.php   ✅ (x-icon lo toma blade-icons)
-│       ├── auth/            ✅ login, register
+│       ├── auth/            ✅ login, register, verify-email
 │       ├── certificates/    ✅ La plantilla del PDF, escrita para dompdf
 │       ├── emails/          ✅ Las plantillas de los avisos, en tablas
 │       ├── classroom/       ✅ catálogo, curso, clase, evaluaciones, quiz y
@@ -114,7 +117,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda y buscar
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 332: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 347: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -599,6 +602,22 @@ genérico solo genera consultas al soporte.
 - **Y exige haber entregado sus tareas — entregado, no aprobado.** Pedir la
   corrección dejaría al alumno detenido esperando a otra persona.
 
+### Alta de cuenta — `RegisteredUserController`
+
+- **El formulario público crea siempre un alumno.** Docentes y administradores
+  los da de alta la administración; un alta pública que pudiera elegir rol sería
+  una puerta abierta.
+- **El usuario y su ficha se crean en una transacción.** Un usuario con rol
+  Alumno sin fila en `students` no puede entrar al aula, y `EnsureStudent` lo
+  rebotaría con un mensaje que no explica nada.
+- **Sin verificar, el aula está cerrada** (`verified` sobre el grupo del aula).
+  Verificar antes de dejar entrar evita que alguien se anote con la dirección de
+  otro y quede cursando a su nombre.
+- **Registrarse no da acceso a ningún curso**: la inscripción la sigue aprobando
+  una persona. Eso es lo que permite que el alta sea abierta.
+- **Las cuentas creadas desde el panel nacen verificadas.** Las da de alta la
+  institución, no alguien que dijo ser el dueño de esa casilla.
+
 ### Avisos — `NotificationService`
 
 Nada se manda en el momento: todo se escribe en `email_queue` y sale cuando
@@ -825,7 +844,7 @@ sí lleva Livewire, que viene con Filament.
 - [x] Rutas placeholder para todas las secciones
 - [x] Procedimiento de despliegue documentado (`docs/DEPLOY.md`)
 
-### Fase 1: Setup & Autenticación — **casi completa**
+### Fase 1: Setup & Autenticación — **completa salvo OAuth**
 - [x] Migraciones de `users`, `students`, `teachers` (§2)
 - [x] Modelos Eloquent con `HasUuids` y relaciones 1:1
 - [x] Login con sesión de Laravel, limitador de intentos y bloqueo de cuentas
@@ -833,8 +852,8 @@ sí lleva Livewire, que viene con Filament.
 - [x] Seeders con usuarios de prueba de cada rol
 - [ ] Registro público (hoy es un marcador; las cuentas las crea la administración)
 - [x] Policies por rol, compartidas por los dos paneles (§11)
-- [ ] Registro público (hoy es un marcador; las cuentas las crea la administración)
-- [ ] Verificación de email vía `email_queue`
+- [x] Registro público, siempre con rol Alumno
+- [x] Verificación de email vía `email_queue`, con enlace firmado
 - [ ] Google OAuth con Socialite
 
 ### Fase 2: Core Cursos & Clases — **completa**
@@ -870,8 +889,8 @@ sí lleva Livewire, que viene con Filament.
 - [x] Recordatorios 24 h antes de las clases en vivo (`emails:recordatorios`)
 - [x] Avisos de inscripción aprobada, trabajo corregido y certificado emitido
 - [x] La cola a la vista en el panel, con reintento manual
+- [x] Verificación de email al registrarse
 - [ ] Configurar el SMTP del servidor: hoy `MAIL_MAILER=log`
-- [ ] Verificación de email — depende del registro público
 
 ### Fase 6: Reportes & Certificados — **casi completa**
 - [x] `student_progress` y la grilla de seguimiento por curso para el docente
@@ -1293,7 +1312,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 332 tests**:
+Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 347 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1319,6 +1338,8 @@ Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 332 tests**:
         manual desde el panel
 17. [x] Avisos por email: cola, worker por cron, recordatorios de clase en vivo
         y la cola a la vista en el panel
+18. [x] Registro público con verificación del correo, y el aula detrás de
+        `verified`
 
 ### Lo que falta
 
@@ -1328,12 +1349,12 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 1. [ ] **Poner a andar el correo en el servidor** — el circuito está entero, pero
        falta la línea de cron y el SMTP. Hasta que se haga, la cola se llena y no
        sale nada (ver `docs/DEPLOY.md`)
-2. [ ] **Registro público con verificación** — hoy las cuentas se crean desde el
-       panel. `User` ya implementa `MustVerifyEmail`
-3. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
+2. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
        en la cola: en FID casi no se usaron
-4. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
+3. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
        configurar. Los archivos van hoy al disco `public`
+4. [ ] **`/ayuda` y `/buscar`** — siguen sirviendo el marcador, y el buscador
+       está en el encabezado de todas las pantallas sin buscar nada
 
 ### Deuda pendiente
 
@@ -1342,8 +1363,6 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 | ~~**Sanitizar el HTML**~~ | Resuelto: `App\Support\Html::sanitize()` limpia al mostrar, y el único `{!! !!}` del proyecto vive dentro de `<x-rich-text>`. Dejó de ser teórico al abrir `/profesores`: ya no cargan contenido sólo administradores |
 | `intl` en el servidor | La extensión no está instalada; hace falta para formatear números y fechas. Pedido a soporte |
 | `CACHE_STORE` en producción | El `.env` del servidor puede tener el nombre viejo `CACHE_DRIVER`, que Laravel 11 ignora; rompe el limitador de intentos del login (ver `docs/DEPLOY.md`) |
-| Registro público | Hoy es un marcador: las cuentas las crea la administración |
-| Verificación de email | `User` implementa `MustVerifyEmail` y `email_queue` ya tiene el tipo `verification`, pero falta el flujo de alta |
 | Google Cloud Storage | Los PDF van al disco público local. `ClassContent::url()` ya distingue enlace externo de ruta relativa, así que migrar no tocará las vistas |
 | Límite de subida del servidor | `upload_max_filesize` está en 2 MB y `post_max_size` en 8 MB; el panel ofrece 20 MB para los PDF. PHP corta antes y la validación de Laravel ni siquiera llega a correr (ver `docs/DEPLOY.md`) |
 

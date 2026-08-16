@@ -64,8 +64,7 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: el registro público con verificación por email y las dos solapas
-de comunicación.
+**Pendiente**: las dos solapas de comunicación, y `/ayuda` y `/buscar`.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
@@ -86,7 +85,7 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Autenticación** | Usuario y contraseña | ✅ |
 | **Clases en vivo** | La clase marcada en vivo muestra su enlace de Google Meet | ✅ |
 | **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
-| **Registro público** | Alta de cuenta con verificación por email | ⏳ hoy las cuentas se crean desde el panel |
+| **Registro público** | Alta de cuenta con verificación por email | ✅ |
 | **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
 | **Notificaciones** | Avisos por email de inscripción, corrección, certificado y clase en vivo | ✅ |
 
@@ -329,7 +328,9 @@ venir, que es lo que hace visible la progresión.
 La sexta, **la edición 2025, es la excepción: ya terminó**. Existe porque
 ninguno de los otros cinco cierra antes de diciembre, así que sin ella no habría
 un solo alumno recibido y las pantallas de certificados quedarían vacías. De ahí
-salen las inscripciones finalizadas y los tres certificados emitidos.
+salen las inscripciones finalizadas y los tres certificados emitidos. Queda
+**inactiva**, o sea fuera del catálogo: una edición terminada no se puede cursar,
+pero los que la hicieron conservan su acceso y su certificado.
 
 Los alumnos avanzan a **ritmos distintos** —al día, atrasados, recién empezando
 o sin entrar nunca—, porque una grilla de seguimiento donde todos van igual no
@@ -383,12 +384,16 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 ## Flujos principales
 
 ### Inscripción de alumno
-1. El alumno completa el formulario de registro
-2. Recibe un email de verificación con link privado
-3. Verifica el email y accede a la plataforma
+1. El alumno completa el formulario de registro y queda con la cuenta creada
+   pero sin verificar: lo único que puede hacer es verificar
+2. Recibe un correo con un enlace firmado y con vencimiento
+3. Lo abre y entra al catálogo
 4. Solicita inscripción a un curso
-5. El docente aprueba la solicitud
-6. El alumno recibe el email de bienvenida
+5. El docente la aprueba desde el panel
+6. Le llega el aviso de que ya puede empezar
+
+Registrarse no da acceso a ningún curso: la inscripción la sigue aprobando una
+persona. Por eso el alta puede ser abierta.
 
 ### Progresión por clase
 1. Accede al contenido de la clase: videos, PDFs, textos

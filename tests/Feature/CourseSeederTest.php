@@ -136,6 +136,21 @@ class CourseSeederTest extends TestCase
         }
     }
 
+    /**
+     * Y no se ofrece más: cursar una edición que terminó hace meses no tiene
+     * sentido, y todas sus clases estarían disponibles de golpe.
+     */
+    public function test_la_edicion_cerrada_no_esta_en_el_catalogo(): void
+    {
+        $curso = $this->edicionCerrada();
+
+        $this->assertFalse($curso->is_active);
+
+        $disponibles = Course::availableFor(Student::factory()->create())->pluck('id');
+
+        $this->assertNotContains($curso->getKey(), $disponibles);
+    }
+
     /** Y también alumnos que la abandonaron: si todos se recibieran no habría contraste. */
     public function test_la_edicion_cerrada_tiene_alumnos_sin_terminar(): void
     {

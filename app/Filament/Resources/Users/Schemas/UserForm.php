@@ -81,9 +81,17 @@ class UserForm
                             ->default(true)
                             ->helperText('Una cuenta inactiva no puede iniciar sesión.'),
 
+                        /*
+                         * Verificada de entrada al crearla desde el panel: la
+                         * cuenta la está dando de alta la institución, no alguien
+                         * que dijo ser el dueño de esa casilla. Dejarlo vacío
+                         * mandaría al alumno a una pantalla de verificación por
+                         * un correo que nadie pidió.
+                         */
                         DateTimePicker::make('email_verified_at')
                             ->label('Correo verificado el')
-                            ->helperText('Vacío significa que todavía no verificó su correo.'),
+                            ->default(now())
+                            ->helperText('Vacío significa que todavía no verificó su correo, y no va a poder entrar al aula.'),
                     ]),
 
                 /*

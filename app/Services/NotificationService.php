@@ -38,6 +38,24 @@ class NotificationService
 
     // ── Qué se avisa ────────────────────────────────────────────────────────
 
+    /**
+     * Verificación del correo, con el enlace firmado que arma Laravel.
+     *
+     * El enlace se calcula al encolar y no al enviar: si el worker demora, el
+     * vencimiento corre desde que el alumno apretó «crear cuenta», que es lo que
+     * él percibe como el momento del pedido.
+     */
+    public function verification(User $user, string $enlace): QueuedEmail
+    {
+        return $this->encolar(
+            $user,
+            EmailType::Verification,
+            'Verificá tu correo en AAMEVi',
+            'emails.verification',
+            ['user' => $user, 'enlace' => $enlace],
+        );
+    }
+
     public function enrollmentApproved(CourseEnrollment $enrollment): ?QueuedEmail
     {
         $user = $enrollment->student?->user;

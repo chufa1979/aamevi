@@ -161,7 +161,7 @@ class CourseSeeder extends Seeder
                 'description' => $datos['description'],
                 'teacher_id' => $this->docente($datos['teacher'])->getKey(),
                 'max_students' => $datos['max_students'],
-                'is_active' => true,
+                'is_active' => $datos['is_active'] ?? true,
             ],
         );
 
