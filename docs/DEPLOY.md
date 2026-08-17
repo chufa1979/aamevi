@@ -165,9 +165,14 @@ chmod -R ug+rw storage bootstrap/cache
 
 `--force` es obligatorio: sin él, Artisan se niega a migrar con `APP_ENV=production`.
 
-> A hoy `database/migrations/` está vacío, así que `migrate` solo crea la tabla
-> `migrations`. Las tablas del dominio salen de `docs/PLAN_ARQUITECTONICO.md` y
-> todavía no están implementadas.
+`storage:link` no es opcional: los PDF de clase y las entregas de los alumnos van
+al disco `public`, y sin el enlace simbólico el navegador recibe un 404.
+
+Para dejar el servidor con contenido de ejemplo —**sólo si la base está vacía**—:
+
+```bash
+php artisan db:seed --force
+```
 
 ### 6. Cachés de producción
 
@@ -176,6 +181,55 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
+
+## Tareas programadas
+
+La plataforma no manda correos en el momento: los escribe en `email_queue` y un
+comando la vacía. Sin cron eso no sale nunca, así que **el paso es obligatorio**,
+no una mejora.
+
+Una sola línea en el crontab del hosting alcanza para todo, porque Laravel
+decide adentro qué toca en cada minuto:
+
+```cron
+* * * * * cd ~/aamevi.demosdesarrollos.com.ar && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Hoy están programados dos: `emails:enviar` cada cinco minutos y
+`emails:recordatorios` una vez por día a las 7. Se pueden correr a mano para
+probar:
+
+```bash
+php artisan emails:enviar
+php artisan emails:recordatorios
+php artisan schedule:list
+```
+
+Si el panel de LatinCloud no deja poner `schedule:run` cada minuto, la
+alternativa es una línea por tarea con la frecuencia de cada una.
+
+### El correo saliente
+
+Mientras `MAIL_MAILER=log`, los avisos se «mandan» al archivo de log y quedan
+marcados como enviados. Para que salgan de verdad hace falta configurar el
+proveedor en el `.env` del servidor:
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.proveedor.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS="no-responder@aamevi.ar"
+MAIL_FROM_NAME="AAMEVi"
+```
+
+La dirección remitente tiene que ser del dominio, y conviene tener SPF y DKIM
+puestos: sin eso, buena parte de los avisos va a spam y la cola va a decir
+«enviado» igual, porque para el servidor salió.
+
+Lo que no salió se ve en **Sistema → Avisos por email**, con el error y un botón
+para reintentar.
 
 ## Actualizaciones
 
@@ -195,6 +249,7 @@ source ~/.nvm/nvm.sh
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
+php artisan filament:assets
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
@@ -212,12 +267,17 @@ generarlas.
 | Vistas Blade, controladores | `git pull` + `view:cache` |
 | Rutas | `git pull` + `route:cache` |
 | `resources/css` o `resources/js` | `git pull` + `npm run build` |
-| `composer.json` / `.lock` | + `composer install --no-dev --optimize-autoloader` |
+| `composer.json` / `.lock` | + `composer install --no-dev --optimize-autoloader` + `php artisan filament:assets` |
 | `package.json` | + `npm ci` |
 | Migración nueva | + `php artisan migrate --force` |
 | `.env` o `config/` | + `php artisan config:cache` |
 
 En la duda, `./deploy.sh`: tarda unos segundos más y no deja nada a medias.
+
+**`filament:assets` va aparte del build de Vite.** Filament sirve su CSS y su JS
+desde `public/css|js|fonts/filament`, fuera del manifiesto de Vite y sin
+versionar, así que `npm run build` no los toca. Si se actualiza Filament y no se
+republican, el panel queda con los assets viejos.
 
 ## Alternativa sin nvm
 
@@ -239,6 +299,8 @@ que cambie algo de `resources/css` o `resources/js`.
 - **Límite de subida**: verificar `upload_max_filesize` y `post_max_size` en el
   servidor y subirlos (ver arriba). Hasta que se haga, las entregas de más de
   2 MB se pierden.
+- **Cron y correo saliente**: sin la línea de `schedule:run` y sin SMTP
+  configurado, los avisos se acumulan en la cola sin salir (ver arriba).
 - **Clave SSH**: hoy el acceso es por contraseña. `ssh-copy-id -i ~/.ssh/id_ed25519.pub`
   y después deshabilitar la contraseña.
 - **HTTPS**: verificar que el certificado del dominio esté activo y que haya

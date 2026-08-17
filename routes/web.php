@@ -5,9 +5,12 @@ use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
 use App\Http\Controllers\Classroom\CatalogController;
 use App\Http\Controllers\Classroom\ProgressController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Classroom\ClassroomController;
 use App\Http\Controllers\Classroom\MyCoursesController;
 use App\Http\Controllers\Classroom\SubmissionController;
+use App\Http\Controllers\Classroom\CertificateController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
@@ -20,7 +23,12 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    Route::view('registro', 'auth.register')->name('register');
+    Route::get('registro', [RegisteredUserController::class, 'create'])->name('register');
+
+    // Limitado: el alta es pública, y sin freno es un formulario para llenar la
+    // tabla de usuarios desde un script
+    Route::post('registro', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:6,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -29,13 +37,33 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     /*
+     * Verificación del correo. Va dentro de `auth` y fuera de `verified`, que es
+     * justamente lo único que puede hacer quien todavía no verificó.
+     */
+    Route::get('verificar-email', [EmailVerificationController::class, 'notice'])
+        ->name('verification.notice');
+
+    Route::get('verificar-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    Route::post('verificar-email/reenviar', [EmailVerificationController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
+    /*
      * El aula. Todo pasa por `student`, que resuelve la ficha del alumno: un
      * administrador o un docente no la tienen y no tienen nada que hacer acá.
      *
      * Las rutas son sustantivos en español porque son las que ve el alumno en
      * la barra de direcciones.
      */
-    Route::middleware('student')->group(function () {
+    /*
+     * El aula pide además correo verificado. Registrarse no alcanza: sin ese
+     * paso, cualquiera podría anotarse con la dirección de otro y quedar
+     * cursando a su nombre.
+     */
+    Route::middleware(['student', 'verified'])->group(function () {
         Route::get('mis-cursos', [MyCoursesController::class, 'index'])->name('classroom.courses');
         Route::get('progreso', [ProgressController::class, 'index'])->name('classroom.progress');
 
@@ -52,6 +80,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('evaluaciones/{quiz}', [QuizController::class, 'show'])->name('classroom.quiz');
         Route::post('evaluaciones/{quiz}', [QuizController::class, 'submit'])->name('classroom.quiz.submit');
+
+        Route::get('certificados', [CertificateController::class, 'index'])->name('classroom.certificates');
+        Route::get('certificados/{certificate}', [CertificateController::class, 'download'])->name('classroom.certificate');
     });
 
     /*
@@ -60,7 +91,6 @@ Route::middleware('auth')->group(function () {
      * a medida que se implementan (ver docs/PLAN_ARQUITECTONICO.md).
      */
     $pendientes = [
-        'certificados' => 'Certificados',
         'ayuda' => 'Ayuda',
         'buscar' => 'Buscar',
     ];

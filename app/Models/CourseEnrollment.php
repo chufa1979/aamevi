@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\EnrollmentStatus;
+use App\Events\EnrollmentApproved;
 use App\Exceptions\EnrollmentException;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseEnrollmentFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -55,6 +57,11 @@ class CourseEnrollment extends Model
         return $this->belongsTo(Teacher::class, 'approved_by');
     }
 
+    public function certificate(): HasOne
+    {
+        return $this->hasOne(Certificate::class, 'enrollment_id');
+    }
+
     /**
      * Aprueba la solicitud.
      *
@@ -73,6 +80,8 @@ class CourseEnrollment extends Model
             'approval_date' => now(),
             'approved_by' => $teacher?->getKey(),
         ]);
+
+        EnrollmentApproved::dispatch($this);
     }
 
     /** @throws EnrollmentException si no está pendiente */

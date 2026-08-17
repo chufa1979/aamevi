@@ -68,11 +68,13 @@ mysql -u root -e "
 
 ```bash
 php artisan migrate
+php artisan db:seed
 ```
 
-> A hoy `database/migrations/` está **vacío**: esto solo crea la tabla
-> `migrations`. El esquema del dominio está especificado en
-> `docs/PLAN_ARQUITECTONICO.md` §2 y todavía no está implementado.
+`db:seed` es idempotente: se puede volver a correr sin duplicar nada. Deja las
+cuentas de prueba —todas con contraseña `password`— y un programa completo de
+cinco cursos con avance simulado, para que el panel se vea como se va a ver en
+uso. El detalle está en el README, en «Contenido de ejemplo».
 
 ### 4. Levantar
 
@@ -105,7 +107,13 @@ busca el servidor de Vite y, si no está, cae al manifiesto de `public/build`
 | Controlador | `php artisan make:controller Courses/CourseController` |
 | FormRequest | `php artisan make:request StoreCourseRequest` |
 | Seeders | `php artisan db:seed` |
+| Recurso de Filament | `php artisan make:filament-resource Foo --generate` |
+| Assets de Filament | `php artisan filament:assets` |
 | Limpiar cachés | `php artisan optimize:clear` |
+
+Los recursos de Filament conviene **generarlos y después revisarlos**: el
+generador tiene dos defectos que se repiten —los selects de relación muestran el
+UUID crudo, y los campos de contraseña pisan el hash con `null` al editar—.
 
 ### Front-end
 
@@ -118,8 +126,8 @@ npm run build          # build de producción a public/build
 
 ```bash
 php artisan test                              # todos los tests
-php artisan test tests/Feature/CourseTest.php # uno solo
-php artisan test --filter TestName
+php artisan test tests/Feature/Admin          # una carpeta
+php artisan test --filter TeacherPanelTest    # una clase
 php artisan test --coverage
 ./vendor/bin/pint                             # formatear
 ./vendor/bin/pint --test                      # verificar sin escribir
@@ -130,17 +138,24 @@ php artisan test --coverage
 ## Estructura
 
 ```
-app/Http/Controllers/   Por dominio: Auth, Users, Courses, Quiz, Tasks…
+app/Http/Controllers/   Auth y Classroom (el aula)
 app/Http/Requests/      Validación con FormRequest (no reglas inline)
 app/Models/             Eloquent, con trait HasUuids
+app/Services/           Quiz, Progreso, Inscripciones, Entregas
+app/Policies/           Quién puede qué; los dos paneles las comparten
+app/Filament/           Recursos del panel, con Schemas/ y Tables/ aparte
+app/Providers/Filament/ Un provider por panel: admin y profesores
 config/navigation.php   Fuente única del menú y datos de contacto
 database/migrations/    Único lugar donde cambia el esquema
-resources/css/app.css   Tokens de marca en @theme (Tailwind 4)
+resources/css/app.css   Tokens de marca y semánticos en @theme (Tailwind 4)
 resources/views/
-  layouts/app.blade.php
-  components/           header, footer, top-bar, page-hero, section, button, icon
-routes/web.php          Rutas públicas
+  layouts/, classroom/, components/
+routes/web.php          Grupo guest (login) y grupo auth (todo lo demás)
 ```
+
+La regla al agregar algo: **decidir primero de qué superficie es**. La
+administración del curso es Filament; el catálogo y el aula son Blade. No
+comparten vistas ni controladores, sólo modelos y sesión.
 
 ### Convenciones
 
@@ -185,8 +200,10 @@ Falta el build. En desarrollo, `npm run dev`; si querés servir estático,
 Si `npm run dev` está corriendo, revisá que el archivo esté dentro de lo que
 Tailwind escanea (`@source '../views'` en `app.css`). Si no, hace falta rebuild.
 
-**`php artisan migrate` no crea tablas**
-Es lo esperado: no hay migraciones todavía. Ver §2 del plan arquitectónico.
+**Los tests corren sin base de datos**
+Es a propósito: `phpunit.xml` fuerza sqlite en memoria. **No apuntarlos a MySQL**
+— usan `RefreshDatabase`, que dropea todas las tablas del servidor que figure en
+`.env`.
 
 **Cambios en `.env` que no toman efecto**
 Si corriste `php artisan config:cache`, Laravel deja de leer el archivo.
@@ -200,9 +217,6 @@ Verificá que el servicio esté arriba (`brew services list`) y que `DB_HOST` se
 
 ## Estado del proyecto
 
-**Hecho**: esqueleto Laravel 12, pipeline Vite + Tailwind 4, identidad visual del
-sitio madre portada a componentes Blade, home, rutas placeholder de todas las
-secciones, y procedimiento de despliegue.
-
-**Pendiente**: todo el dominio — migraciones, modelos, autenticación, cursos,
-quizzes, tareas, certificados y el panel de administración (§11 del plan).
+Está en el [README](./README.md#estado), que es donde se mantiene al día: qué
+superficies existen, qué solapas tiene el panel y qué falta. Acá no se repite
+para que no queden dos versiones distintas de lo mismo.

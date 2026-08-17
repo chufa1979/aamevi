@@ -7,14 +7,15 @@
     secciones. Es la forma del aula de referencia y evita un menú donde la
     mitad de los ítems no aplican hasta que entrás a algún lado.
 
-    Las secciones que todavía no existen —calificaciones, comunicaciones, mesa
-    de ayuda— no figuran: un menú con ítems muertos es peor que uno corto.
+    Las secciones que todavía no existen —comunicaciones, mesa de ayuda— no
+    figuran: un menú con ítems muertos es peor que uno corto.
 --}}
 @php
     $generales = [
         ['ruta' => 'classroom.courses', 'label' => 'Mis cursos', 'icono' => 'texto'],
         ['ruta' => 'classroom.catalog', 'label' => 'Catálogo', 'icono' => 'disponible'],
         ['ruta' => 'classroom.progress', 'label' => 'Mi progreso', 'icono' => 'aprobada'],
+        ['ruta' => 'classroom.certificates', 'label' => 'Certificados', 'icono' => 'certificado'],
     ];
 
     $delCurso = $course === null ? [] : [

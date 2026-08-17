@@ -5,6 +5,8 @@ namespace App\Models;
 use Filament\Panel;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
+use Illuminate\Support\Facades\URL;
+use App\Services\NotificationService;
 use Filament\Models\Contracts\HasName;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
@@ -103,6 +105,24 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
             'profesores' => $this->isTeacher() && $this->is_active,
             default => false,
         };
+    }
+
+    /**
+     * El aviso de verificación va a la cola, no al correo.
+     *
+     * Laravel manda una notificación en línea; acá todo pasa por `email_queue`,
+     * así que se sobrescribe para que este aviso siga el mismo camino que los
+     * demás y se vea en el panel junto a ellos.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $enlace = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes((int) config('auth.verification.expire', 60)),
+            ['id' => $this->getKey(), 'hash' => sha1($this->getEmailForVerification())],
+        );
+
+        app(NotificationService::class)->verification($this, $enlace);
     }
 
     public function isTeacher(): bool

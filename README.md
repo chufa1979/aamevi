@@ -7,16 +7,29 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 
 ## Estado
 
-En desarrollo. Hay dos superficies funcionando sobre el mismo dominio de datos:
+En desarrollo. Hay **tres superficies** sobre el mismo dominio de datos, con una
+sola puerta de entrada: `/login`, con limitador de intentos y bloqueo de cuentas
+desactivadas. Ningún panel expone su propio formulario, así que hay un solo lugar
+que auditar.
 
-**Sitio público** (Blade) — la plataforma es **privada**: sin sesión iniciada no
-se ve nada, ni el menú. El acceso es por `/login`, con limitador de intentos y
-bloqueo de cuentas desactivadas. La identidad visual de
-[www.aamevi.ar](https://www.aamevi.ar) está portada a componentes Blade.
+### El aula (Blade)
 
-**Panel de administración** (Filament, en `/admin`) — solo para el rol
-administrador. El menú tiene cuatro grupos: **Cursos**, **Alumnos**,
-**Evaluación** y **Sistema**; y cada curso se abre en solapas:
+La plataforma es **privada**: sin sesión iniciada no se ve nada, ni el menú. La
+identidad visual de [www.aamevi.ar](https://www.aamevi.ar) está portada a
+componentes Blade.
+
+El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
+clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
+barra de progreso y sus certificados. Puede elegir **tema claro u oscuro** y **tres tamaños de
+letra**; las preferencias se aplican antes del primer pintado, sin parpadeo.
+
+Una clase se abre cuando llegó su fecha y se aprobó la anterior; `ProgressService`
+decide eso en un solo lugar y sabe explicar por qué una clase está cerrada.
+
+### Panel de administración (Filament, en `/admin`)
+
+Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
+**Alumnos**, **Evaluación** y **Sistema**— y cada curso se abre en solapas:
 
 | Solapa | Qué hace |
 |---|---|
@@ -24,43 +37,57 @@ administrador. El menú tiene cuatro grupos: **Cursos**, **Alumnos**,
 | Planificación | Cronograma completo del curso, con corrimiento de fechas en lote |
 | Contenidos | Módulos → clases → material: video con previsualización, PDF con subida y descarga, texto y consignas |
 | Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
+| Intentos | Qué rindió cada alumno, con qué preguntas le tocaron y qué respondió |
+| Calificaciones | Bandeja de entregas: corregir con nota y devolución, y publicar en tanda |
 | Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
+
+En **Sistema → Avisos por email** está la cola de correos: qué se le mandó a
+quién, si salió, y el error de los que fallaron con un botón para reintentar.
+
+Los módulos y las clases se reordenan **arrastrando**, no escribiendo un número.
 
 Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
 sortea preguntas de su propio banco, y el **examen de módulo**, que sortea un
 porcentaje del banco combinado de todas sus clases y es opcional.
 
-Faltan tres solapas —Calificaciones, Comunicación y Consultas a mesa de ayuda—
-diseñadas en §13 del plan arquitectónico.
+Faltan dos solapas —Comunicación y Consultas a mesa de ayuda—, diseñadas en §13
+del plan arquitectónico y últimas en la cola a propósito: en el LMS que se analizó
+casi no se usaron.
 
-La lógica del alumno también está implementada y probada —sorteo de preguntas,
-corrección automática, reintentos, y el desbloqueo de una clase al aprobar la
-anterior— pero **todavía no tiene pantallas**: las secciones del sitio siguen
-sirviendo un marcador.
+### Panel de profesores (`/profesores`)
 
-**Pendiente**: el aula pública, la pantalla de rendir un quiz, las
-calificaciones, las notificaciones y los certificados. El
-[plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué está
-hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
+Las mismas pantallas del curso, acotadas a los cursos que dicta cada docente. No
+duplica los recursos: lo que separa a un docente de otro es
+`Course::scopeVisibleTo()`, que recorta las consultas, y las policies de
+`app/Policies/`, que deciden qué se puede hacer. Como Filament resuelve los
+registros por la consulta del recurso, escribir a mano la URL del curso ajeno
+devuelve 404.
+
+**Pendiente**: las dos solapas de comunicación, y `/ayuda` y `/buscar`.
+El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
+está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
 
 ---
 
-## Funcionalidad prevista
+## Funcionalidad
 
-| | |
-|---|---|
-| **Cursos con módulos y clases** | Estructura jerárquica: curso → módulo → clase → contenido |
-| **Quiz** | Preguntas aleatorias por alumno, calificación automática, reintentos |
-| **Contenido multimodal** | Videos, PDFs, textos, tareas y clases en vivo por Google Meet |
-| **Inscripción con aprobación** | El alumno solicita, el docente aprueba |
-| **Seguimiento de progreso** | Paneles diferenciados para alumno y docente |
-| **Tareas** | Envío de archivos y corrección con nota y devolución |
-| **Certificados** | Generación automática de PDF al completar el curso |
-| **Autenticación** | Usuario y contraseña, más Google OAuth |
-| **Notificaciones** | Emails de verificación, recordatorios y certificados |
-| **Panel de administración** | Backoffice en `/admin` y `/profesores` para gestionar el material |
+| | | |
+|---|---|---|
+| **Cursos con módulos y clases** | Estructura jerárquica: curso → módulo → clase → contenido | ✅ |
+| **Quiz** | Preguntas aleatorias por alumno, calificación automática, reintentos | ✅ |
+| **Contenido multimodal** | Videos, PDFs, textos y consignas | ✅ |
+| **Inscripción con aprobación** | El alumno solicita, el docente aprueba | ✅ |
+| **Seguimiento de progreso** | Grilla de curso para el docente, barra de avance para el alumno | ✅ |
+| **Tareas** | Envío de archivos y corrección con nota y devolución | ✅ |
+| **Panel de administración** | Backoffice en `/admin` y `/profesores` para gestionar el material | ✅ |
+| **Autenticación** | Usuario y contraseña | ✅ |
+| **Clases en vivo** | La clase marcada en vivo muestra su enlace de Google Meet | ✅ |
+| **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
+| **Registro público** | Alta de cuenta con verificación por email | ✅ |
+| **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
+| **Notificaciones** | Avisos por email de inscripción, corrección, certificado y clase en vivo | ✅ |
 
 ---
 
@@ -75,10 +102,11 @@ análisis de un LMS en producción del que salió la organización del panel.
 | Estilos | Tailwind 4, configurado en CSS con `@theme` |
 | Build | Vite 8 (requiere Node ≥ 20.19) |
 | Autenticación | Sesión de Laravel; Sanctum disponible para una futura API |
-| Archivos | Google Cloud Storage — la base guarda solo URLs |
+| Archivos | Disco `public` de Laravel. Google Cloud Storage está previsto, todavía no configurado |
 
-No hay framework de JavaScript en el sitio público: el único JS propio es el
-toggle del menú móvil.
+No hay framework de JavaScript en el aula: el JS propio son el toggle del menú
+móvil y los controles de tema y tamaño de letra. El panel sí lleva Livewire, que
+viene con Filament.
 
 ---
 
@@ -87,38 +115,55 @@ toggle del menú móvil.
 ```
 aamevi/
 ├── app/
+│   ├── Console/Commands/    # Lo que corre por cron: la cola de correos
+│   ├── Enums/               # Estados y roles, con su etiqueta y su color
+│   ├── Exceptions/          # Excepciones de negocio: fallan fuerte, no devuelven false
+│   ├── Filament/            # El panel: recursos, formularios, tablas, acciones
+│   │   └── Resources/       # Uno por carpeta, con Schemas/ y Tables/ aparte
 │   ├── Http/
-│   │   ├── Controllers/     # Por dominio: Auth, Users, Courses, Quiz, Tasks…
+│   │   ├── Controllers/     # Auth y Classroom (el aula)
 │   │   ├── Requests/        # Validación con FormRequest
 │   │   └── Middleware/
 │   ├── Models/              # Eloquent
-│   └── Providers/
+│   ├── Policies/            # Quién puede qué; los dos paneles las comparten
+│   ├── Providers/Filament/  # Un provider por panel: admin y profesores
+│   ├── Events/              # Lo que pasó, para que reaccione quien quiera
+│   ├── Listeners/           # Quién reacciona
+│   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas,
+│   │                        #   Certificados y Avisos
+│   └── Support/Html.php     # Saneado del texto enriquecido
 ├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
 ├── config/
 │   ├── database.php
 │   └── navigation.php       # Fuente única del menú y datos de contacto
 ├── database/
 │   ├── migrations/          # Único lugar donde cambia el esquema
-│   ├── seeders/
+│   ├── seeders/             # DatabaseSeeder, StudentSeeder, CourseSeeder
 │   └── factories/
 ├── public/
 │   ├── index.php            # Docroot
-│   ├── images/aamevi.svg
+│   ├── images/aamevi.svg    # Y aamevi-dark.svg, para el modo oscuro
 │   └── build/               # Assets compilados (no versionado)
 ├── resources/
-│   ├── css/app.css          # Tokens de marca en @theme
-│   ├── js/app.js
+│   ├── css/
+│   │   ├── app.css          # Tokens de marca y semánticos en @theme
+│   │   └── filament/        # Estilos del panel: no comparte bundle con el sitio
+│   ├── js/
+│   │   ├── app.js
+│   │   └── preferences.js   # Tema y tamaño de letra
 │   ├── lang/es/
 │   └── views/
 │       ├── layouts/
-│       └── components/      # header, footer, page-hero, section, button…
+│       ├── partials/        # preferences-head: se aplica antes del primer pintado
+│       ├── classroom/       # El aula
+│       └── components/      # header, footer, button, rich-text, classroom/…
 ├── routes/
 │   ├── web.php
 │   ├── api.php
 │   └── console.php
 ├── tests/
 │   ├── Unit/
-│   └── Feature/
+│   └── Feature/             # Admin/, Teacher/, Classroom/, Auth/
 ├── docs/
 │   ├── PLAN_ARQUITECTONICO.md
 │   ├── SISTEMA_DISENO.md
@@ -248,9 +293,13 @@ php artisan migrate:status   # ninguna pendiente
 | Email | Rol | Entra a |
 |---|---|---|
 | `admin@aamevi.ar` | administrador | `/admin` y el sitio |
-| `profesor@aamevi.ar` | profesor | el sitio |
-| `alumno@aamevi.ar` | alumno | el sitio |
-| `alumno01@aamevi.ar` … `alumno20@aamevi.ar` | alumnos | el sitio |
+| `profesor@aamevi.ar` | profesor | `/profesores` — dicta 3 de los 5 cursos |
+| `profesora@aamevi.ar` | profesora | `/profesores` — dicta los otros 2 |
+| `alumno@aamevi.ar` | alumno | el aula |
+| `alumno01@aamevi.ar` … `alumno20@aamevi.ar` | alumnos | el aula, con avance simulado |
+
+Los dos docentes están repartidos a propósito: con uno solo no se vería que cada
+panel muestra únicamente sus cursos.
 
 ### Contenido de ejemplo
 
@@ -264,8 +313,9 @@ en uso y no con dos cursos de juguete:
 | Actividad física y prescripción del ejercicio | 6 | 30 |
 | Sueño, estrés y salud mental | 4 | 20 |
 | Vínculos, comunidad y cambio de comportamiento | 5 | 25 |
+| Introducción a la Medicina del Estilo de Vida (edición 2025) | 2 | 10 |
 
-En total **28 módulos, 140 clases y 700 preguntas**, más 20 alumnos repartidos
+En total **30 módulos, 150 clases y 750 preguntas**, más 20 alumnos repartidos
 en 49 inscripciones. Cada clase tiene su autoevaluación con cinco preguntas y
 los cuatro tipos de material (video, PDF, texto y tarea); la mayoría de los
 módulos tiene examen, y algunos no —el examen es opcional y así se ve la
@@ -274,6 +324,13 @@ diferencia—.
 **El cronograma va de julio a diciembre de 2026 a propósito.** Con la fecha de
 hoy en el medio, cada curso queda partido en clases ya dictadas y clases por
 venir, que es lo que hace visible la progresión.
+
+La sexta, **la edición 2025, es la excepción: ya terminó**. Existe porque
+ninguno de los otros cinco cierra antes de diciembre, así que sin ella no habría
+un solo alumno recibido y las pantallas de certificados quedarían vacías. De ahí
+salen las inscripciones finalizadas y los tres certificados emitidos. Queda
+**inactiva**, o sea fuera del catálogo: una edición terminada no se puede cursar,
+pero los que la hicieron conservan su acceso y su certificado.
 
 Los alumnos avanzan a **ritmos distintos** —al día, atrasados, recién empezando
 o sin entrar nunca—, porque una grilla de seguimiento donde todos van igual no
@@ -327,12 +384,16 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 ## Flujos principales
 
 ### Inscripción de alumno
-1. El alumno completa el formulario de registro
-2. Recibe un email de verificación con link privado
-3. Verifica el email y accede a la plataforma
+1. El alumno completa el formulario de registro y queda con la cuenta creada
+   pero sin verificar: lo único que puede hacer es verificar
+2. Recibe un correo con un enlace firmado y con vencimiento
+3. Lo abre y entra al catálogo
 4. Solicita inscripción a un curso
-5. El docente aprueba la solicitud
-6. El alumno recibe el email de bienvenida
+5. El docente la aprueba desde el panel
+6. Le llega el aviso de que ya puede empezar
+
+Registrarse no da acceso a ningún curso: la inscripción la sigue aprobando una
+persona. Por eso el alta puede ser abierta.
 
 ### Progresión por clase
 1. Accede al contenido de la clase: videos, PDFs, textos
@@ -347,30 +408,34 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 1. El docente publica la consigna con fecha de entrega
 2. El alumno envía su archivo
 3. El docente lo descarga, califica y deja devolución
-4. El alumno recibe la nota por email
+4. Al publicar la corrección, el alumno recibe la nota por email
 
 ### Certificado
-1. El alumno completa todas las clases y tareas del curso
-2. El sistema genera el certificado en PDF
-3. Se le envía el link de descarga
+1. El alumno completa todas las clases y le aprueban todas las tareas
+2. El sistema emite el certificado con su número, y la inscripción queda
+   finalizada
+3. El alumno lo descarga en PDF desde su sección de certificados
+
+El docente puede emitirlo a mano desde el panel para los casos que la regla no
+contempla.
 
 ---
 
 ## Fases de desarrollo
 
-| Fase | Descripción | Semanas |
+| Fase | Descripción | Estado |
 |---|---|---|
-| 0 | Base del proyecto, identidad visual y pipeline | ✅ hecho |
-| 1 | Autenticación | 1-2 |
-| 2 | Cursos, módulos y clases | 2-3 |
-| 3 | Panel de administración | 1-2 |
-| 4 | Quiz y evaluación | 2-3 |
-| 5 | Tareas | 1-2 |
-| 6 | Notificaciones | 1 |
-| 7 | Reportes y certificados | 1-2 |
+| 0 | Base del proyecto, identidad visual y pipeline | ✅ |
+| 1 | Autenticación | ✅ |
+| 2 | Cursos, módulos y clases | ✅ |
+| 3 | Panel de administración | ✅ |
+| 4 | Quiz y evaluación | ✅ |
+| 5 | Tareas | ✅ |
+| 6 | Notificaciones | ✅ |
+| 7 | Reportes y certificados | ⏳ falta el modelo visual y los reportes |
 
-Las estimaciones vienen del plan original, que suponía dos aplicaciones
-separadas. Con un monolito Blade cabe esperar algo menos de trabajo.
+Fuera del plan original quedaron dos cosas que sí se hicieron: el **aula del
+alumno** —que el plan daba por sentada— y el **panel de profesores**.
 
 ---
 
@@ -379,11 +444,15 @@ separadas. Con un monolito Blade cabe esperar algo menos de trabajo.
 - Sesión de servidor con las protecciones de Laravel (CSRF, cookies firmadas)
 - Contraseñas hasheadas con bcrypt
 - Validación explícita mediante `FormRequest`, nunca reglas inline
-- Autorización por rol con middleware y Policies
+- Autorización por rol con middleware y Policies; los recursos del panel recortan
+  además sus consultas, así que un docente no puede abrir el curso de otro ni
+  escribiendo la URL
+- El texto enriquecido cargado desde el panel se sanea al mostrarlo
+  (`App\Support\Html`); el único `{!! !!}` del proyecto vive dentro de `<x-rich-text>`
 - Credenciales y claves solo en `.env`, fuera del control de versiones y fuera
   del docroot
 - `APP_DEBUG=false` en producción
 
 ---
 
-**Última actualización**: 2026-08-14
+**Última actualización**: 2026-08-16

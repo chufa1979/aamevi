@@ -10,6 +10,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\StudentProgress;
 use App\Enums\ClassProgressState;
 use Illuminate\Support\Collection;
+use App\Events\CourseProgressAdvanced;
 
 /**
  * Quién puede ver qué, y qué lleva completado.
@@ -141,6 +142,8 @@ class ProgressService
         }
 
         $this->start($student, $class)->update(['completed_at' => now()]);
+
+        CourseProgressAdvanced::dispatch($student, $class->module->course);
 
         return true;
     }

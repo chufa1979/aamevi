@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Course;
 use App\Models\Student;
 use App\Models\Question;
+use App\Models\Certificate;
 use App\Models\CourseClass;
 use App\Models\QuizAttempt;
 use App\Models\ClassContent;
@@ -18,6 +19,7 @@ use App\Models\CourseEnrollment;
 use App\Enums\ClassProgressState;
 use App\Services\ProgressService;
 use Database\Seeders\CourseSeeder;
+use Illuminate\Support\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 /**
@@ -43,9 +45,10 @@ class CourseSeederTest extends TestCase
         return Student::find(User::where('email', 'alumno@aamevi.ar')->value('id'));
     }
 
-    public function test_siembra_cinco_cursos_con_la_cantidad_de_modulos_pedida(): void
+    /** Los cinco que se están dictando más la edición ya cerrada. */
+    public function test_siembra_seis_cursos_con_la_cantidad_de_modulos_pedida(): void
     {
-        $this->assertSame(5, Course::count());
+        $this->assertSame(6, Course::count());
 
         $modulos = Course::withCount('modules')
             ->get()
@@ -54,7 +57,19 @@ class CourseSeederTest extends TestCase
             ->values()
             ->all();
 
-        $this->assertSame([4, 5, 5, 6, 8], $modulos);
+        $this->assertSame([2, 4, 5, 5, 6, 8], $modulos);
+    }
+
+    /** El curso cuyo cronograma ya terminó: de ahí salen los certificados. */
+    private function edicionCerrada(): Course
+    {
+        return Course::where('title', 'like', '%edición 2025%')->firstOrFail();
+    }
+
+    /** @return Collection<int, Course> los que se están dictando */
+    private function enDictado(): Collection
+    {
+        return Course::whereKeyNot($this->edicionCerrada()->getKey())->get();
     }
 
     public function test_cada_modulo_tiene_al_menos_cinco_clases(): void
@@ -84,17 +99,74 @@ class CourseSeederTest extends TestCase
 
     public function test_el_cronograma_va_de_julio_a_diciembre_de_2026(): void
     {
-        $desde = CourseClass::min('activation_date');
-        $hasta = CourseClass::max('activation_date');
+        $clases = CourseClass::whereIn('module_id', CourseModule::whereIn(
+            'course_id',
+            $this->enDictado()->modelKeys(),
+        )->select('id'));
 
-        $this->assertStringStartsWith('2026-07', $desde);
-        $this->assertStringStartsWith('2026-12', $hasta);
+        $this->assertStringStartsWith('2026-07', (clone $clases)->min('activation_date'));
+        $this->assertStringStartsWith('2026-12', (clone $clases)->max('activation_date'));
+    }
+
+    /** La edición cerrada queda entera en el pasado, o no habría quien se reciba. */
+    public function test_la_edicion_cerrada_ya_se_dicto_completa(): void
+    {
+        $curso = $this->edicionCerrada();
+        $clases = $curso->modules->flatMap->classes;
+
+        $this->assertTrue($clases->isNotEmpty());
+        $this->assertSame(0, $clases->reject->isAvailable()->count(), 'La edición 2025 tiene clases por venir.');
+    }
+
+    /** Lo que este curso viene a mostrar: alumnos recibidos. */
+    public function test_la_edicion_cerrada_dejo_certificados_emitidos(): void
+    {
+        $curso = $this->edicionCerrada();
+
+        $certificados = Certificate::whereIn(
+            'enrollment_id',
+            $curso->enrollments()->select('id'),
+        )->get();
+
+        $this->assertGreaterThan(0, $certificados->count(), 'Nadie se recibió de la edición cerrada.');
+
+        foreach ($certificados as $certificado) {
+            $this->assertSame(EnrollmentStatus::Completed, $certificado->enrollment->status);
+            $this->assertStringStartsWith('AAMEVI-', $certificado->certificate_number);
+        }
+    }
+
+    /**
+     * Y no se ofrece más: cursar una edición que terminó hace meses no tiene
+     * sentido, y todas sus clases estarían disponibles de golpe.
+     */
+    public function test_la_edicion_cerrada_no_esta_en_el_catalogo(): void
+    {
+        $curso = $this->edicionCerrada();
+
+        $this->assertFalse($curso->is_active);
+
+        $disponibles = Course::availableFor(Student::factory()->create())->pluck('id');
+
+        $this->assertNotContains($curso->getKey(), $disponibles);
+    }
+
+    /** Y también alumnos que la abandonaron: si todos se recibieran no habría contraste. */
+    public function test_la_edicion_cerrada_tiene_alumnos_sin_terminar(): void
+    {
+        $sinCertificado = $this->edicionCerrada()
+            ->enrollments()
+            ->whereIn('status', EnrollmentStatus::ocupantes())
+            ->doesntHave('certificate')
+            ->count();
+
+        $this->assertGreaterThan(0, $sinCertificado);
     }
 
     /** Con la fecha de hoy en el medio, cada curso queda partido en dictadas y por venir. */
     public function test_cada_curso_tiene_clases_dictadas_y_clases_por_venir(): void
     {
-        foreach (Course::with('modules.classes')->get() as $course) {
+        foreach ($this->enDictado()->load('modules.classes') as $course) {
             $clases = $course->modules->flatMap->classes;
 
             $this->assertGreaterThan(0, $clases->filter->isAvailable()->count(), "{$course->title} no tiene ninguna clase dictada.");
