@@ -59,18 +59,20 @@ aamevi/
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
-│   ├── Models/              ✅ 16: User, Student, Teacher, Course,
+│   ├── Models/              ✅ 20: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
 │   │                           StudentProgress, TaskSubmission, Certificate,
-│   │                           QueuedEmail
+│   │                           QueuedEmail, Announcement, SupportTicket,
+│   │                           SupportMessage
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
 │   │                           preguntas) y User
 │   ├── Services/            ✅ QuizService, ProgressService,
 │   │                           EnrollmentService, SubmissionService,
 │   │                           CertificateService, NotificationService,
-│   │                           SearchService
+│   │                           SearchService, AnnouncementService,
+│   │                           SupportService
 │   ├── Support/Html.php     ✅ Saneado del texto enriquecido
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
@@ -79,12 +81,13 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 18: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 22: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
 │   │                           de intentos, student_progress, task_submissions
-│   │                           certificates y email_queue
+│   │                           certificates, email_queue, announcements,
+│   │                           support_tickets y support_messages
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -118,7 +121,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 381: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 408: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -1297,7 +1300,7 @@ La acción masiva **«Correr fechas» no valida esto**: correr un subconjunto de
 clases hacia atrás puede dejar el módulo desordenado. Es deliberado —la acción
 existe para reprogramar en bloque— pero conviene saberlo.
 
-**Las tres solapas que faltan** —Calificaciones, Comunicación y Consultas a mesa
+**Las tres solapas que faltaban** —Calificaciones, Comunicación y Consultas a mesa
 de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 
 **Convenciones a respetar** al sumar recursos:
@@ -1328,7 +1331,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 381 tests**:
+Hecho hasta el 2026-08-16 — **22 migraciones, 20 modelos, 408 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1357,6 +1360,8 @@ Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 381 tests**:
 18. [x] Registro público con verificación del correo, y el aula detrás de
         `verified`
 19. [x] Buscador del aula, y la navegación del sitio acotada a cada rol
+20. [x] Comunicaciones y consultas a mesa de ayuda: las dos últimas solapas del
+        curso
 
 ### Lo que falta
 
@@ -1366,11 +1371,9 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 1. [ ] **Poner a andar el correo en el servidor** — el circuito está entero, pero
        falta la línea de cron y el SMTP. Hasta que se haga, la cola se llena y no
        sale nada (ver `docs/DEPLOY.md`)
-2. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
-       en la cola: en FID casi no se usaron
-3. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
+2. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
        configurar. Los archivos van hoy al disco `public`
-4. [ ] **`/ayuda`** — sigue sirviendo el marcador
+3. [ ] **`/ayuda`** — sigue sirviendo el marcador
 
 ### Deuda pendiente
 
@@ -1473,15 +1476,33 @@ petición, incluido el token CSRF. `HandleOversizedUpload` traduce ese caso a un
 mensaje entendible en lugar de un 419, pero es un parche: hay que subir el
 límite en el servidor. Ver `docs/DEPLOY.md`.
 
-**Comunicaciones.** Tablón de anuncios por curso: título, texto enriquecido,
-destinatario (todo el curso o un alumno) y visibilidad. En FID **no manda
-emails**, pese al nombre del módulo; acá se engancha a `email_queue`, que ya está
-en §2 pero todavía sin migración.
+**Comunicaciones — implementado el 2026-08-16.** Tablón por curso: título, texto
+enriquecido y destinatario, que en null significa todo el curso. En FID **no
+mandaba un solo email**, pese al nombre del módulo; acá el correo existe pero
+**no es obligatorio**: publicar y avisar son dos pasos. Un aviso de que se corrió
+una clase merece correo, una nota de color no, y si todo saliera por mail el
+docente terminaría no publicando lo menor. `notified_at` deja el aviso en una
+sola vez, así que corregir una errata no vuelve a llenarle la casilla a nadie.
 
-**Consultas a mesa de ayuda.** Ticket con estado y respuesta. Tres cosas de FID
-que se corrigen en el diseño: el hilo es de una sola respuesta, el listado **no
-filtra por curso** aunque viva dentro del menú del curso, y la notificación va a
-una casilla personal quemada en el código.
+Sin borradores a propósito: una comunicación se escribe cuando hay algo que
+decir, y la pantalla de edición existe para corregir, no para preparar textos.
+
+**Consultas a mesa de ayuda — implementado el 2026-08-16.** Las tres cosas de FID
+quedaron corregidas:
+
+| FID | Acá |
+|---|---|
+| El hilo era de una sola respuesta | `support_messages` es una tabla: la consulta es una conversación, aunque casi siempre sea corta |
+| El listado **no filtraba por curso** aunque viviera en su menú | La consulta cuelga del curso y la atiende quien lo dicta: una duda sobre una clase no pasa por gente que no la dictó |
+| La notificación iba a una casilla quemada en el código | Va por `email_queue`, al alumno, cuando le responden |
+
+El estado no se asigna: sale de quién escribió último. Escribe el alumno y queda
+esperando respuesta; contesta el docente y queda respondida. Una consulta cerrada
+no recibe más mensajes —reabrirla con una repregunta entierra la última
+respuesta—; para seguir se abre otra.
+
+El listado del alumno es de **todas** sus consultas, de todos sus cursos: lo que
+uno se pregunta es «qué pregunté», no «qué pregunté en este curso».
 
 ### Entrega de tareas y calificaciones — implementado
 

@@ -365,3 +365,26 @@
     font-weight: 500;
     color: var(--danger-600);
 }
+
+/* ── Hilo de una consulta ── */
+
+.aamevi-answer[data-mio='1'] {
+    border-left: 3px solid var(--primary-500);
+}
+
+.aamevi-thread-meta {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.aamevi-thread-body {
+    margin: 0.5rem 0 0;
+    white-space: pre-line;
+    line-height: 1.6;
+    color: var(--gray-950);
+}
+
+.dark .aamevi-thread-body {
+    color: var(--gray-100);
+}

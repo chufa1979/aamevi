@@ -11,6 +11,9 @@ use App\Models\Certificate;
 use App\Models\CourseClass;
 use App\Models\QueuedEmail;
 use Carbon\CarbonInterface;
+use App\Models\Announcement;
+use App\Models\SupportTicket;
+use App\Models\SupportMessage;
 use App\Models\TaskSubmission;
 use App\Models\CourseEnrollment;
 use Illuminate\Support\Facades\Mail;
@@ -134,6 +137,41 @@ class NotificationService
             'emails.class-reminder',
             ['user' => $user, 'class' => $class, 'course' => $class->module?->course],
             $cuando->isPast() ? now() : $cuando,
+        );
+    }
+
+    public function announcement(Announcement $announcement, Student $student): ?QueuedEmail
+    {
+        $user = $student->user;
+        $course = $announcement->course;
+
+        if ($user === null || $course === null) {
+            return null;
+        }
+
+        return $this->encolar(
+            $user,
+            EmailType::Announcement,
+            $announcement->title,
+            'emails.announcement',
+            ['user' => $user, 'announcement' => $announcement, 'course' => $course],
+        );
+    }
+
+    public function supportReplied(SupportTicket $ticket, SupportMessage $message): ?QueuedEmail
+    {
+        $user = $ticket->student?->user;
+
+        if ($user === null) {
+            return null;
+        }
+
+        return $this->encolar(
+            $user,
+            EmailType::SupportReply,
+            "Respondieron tu consulta: «{$ticket->subject}»",
+            'emails.support-reply',
+            ['user' => $user, 'ticket' => $ticket, 'message' => $message],
         );
     }
 

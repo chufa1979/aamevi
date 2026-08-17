@@ -11,8 +11,10 @@ use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Question;
 use App\Models\CourseClass;
+use App\Models\Announcement;
 use App\Models\ClassContent;
 use App\Models\CourseModule;
+use App\Models\SupportTicket;
 use App\Services\QuizService;
 use App\Models\QuestionOption;
 use App\Models\TaskSubmission;
@@ -21,8 +23,10 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\SubmissionStatus;
 use Illuminate\Database\Seeder;
 use App\Models\CourseEnrollment;
+use App\Services\SupportService;
 use App\Services\ProgressService;
 use Illuminate\Support\Collection;
+use App\Services\AnnouncementService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Storage;
 use Database\Seeders\Data\CourseCatalog;
@@ -130,6 +134,8 @@ class CourseSeeder extends Seeder
         private readonly QuizService $quizzes,
         private readonly ProgressService $progreso,
         private readonly NotificationService $avisos,
+        private readonly AnnouncementService $comunicaciones,
+        private readonly SupportService $consultas,
     ) {}
 
     public function run(): void
@@ -139,6 +145,8 @@ class CourseSeeder extends Seeder
 
         $this->inscribir($cursos);
         $this->simularAvance($cursos);
+        $this->comunicar($cursos);
+        $this->consultar($cursos);
 
         $this->command?->info(sprintf(
             'Contenido de ejemplo: %d cursos, %d módulos, %d clases, %d preguntas, %d inscripciones.',
@@ -567,6 +575,106 @@ class CourseSeeder extends Seeder
             // tipos y no sólo las inscripciones
             if ($suerte >= 4) {
                 $this->avisos->taskGraded($submission->fresh());
+            }
+        }
+    }
+
+    // ── Comunicación ────────────────────────────────────────────────────────
+
+    /**
+     * Dos comunicaciones por curso: una para todos y una dirigida.
+     *
+     * Con una sola no se vería la diferencia entre las dos formas, que es lo que
+     * la solapa tiene para mostrar. La general va avisada por correo y la
+     * dirigida no, para que la columna «Avisada» tampoco quede toda igual.
+     *
+     * @param  Collection<int, Course>  $cursos
+     */
+    private function comunicar($cursos): void
+    {
+        foreach ($cursos as $course) {
+            $docente = $course->teacher_id;
+
+            $general = Announcement::firstOrCreate(
+                ['course_id' => $course->getKey(), 'title' => 'Cronograma actualizado'],
+                [
+                    'author_id' => $docente,
+                    'body' => '<p>Subimos el material de las próximas clases y se corrió una fecha. '
+                        .'Revisen la <strong>planificación</strong> antes del encuentro.</p>',
+                    'published_at' => now()->subDays(9),
+                ],
+            );
+
+            if ($general->wasNotified()) {
+                continue;
+            }
+
+            $this->comunicaciones->notify($general);
+
+            $alumno = $course->enrollments()
+                ->whereIn('status', EnrollmentStatus::ocupantes())
+                ->value('student_id');
+
+            if ($alumno === null) {
+                continue;
+            }
+
+            Announcement::firstOrCreate(
+                ['course_id' => $course->getKey(), 'title' => 'Sobre tu última entrega'],
+                [
+                    'student_id' => $alumno,
+                    'author_id' => $docente,
+                    'body' => '<p>Te dejé una devolución más larga en la calificación. Cualquier duda, escribime.</p>',
+                    'published_at' => now()->subDays(3),
+                ],
+            );
+        }
+    }
+
+    // ── Consultas ───────────────────────────────────────────────────────────
+
+    /**
+     * Unas pocas consultas, en los tres estados.
+     *
+     * Son pocas a propósito: en FID hubo tres en años de operación, y llenar la
+     * solapa de tickets inventados daría una idea equivocada de para qué sirve.
+     *
+     * @param  Collection<int, Course>  $cursos
+     */
+    private function consultar($cursos): void
+    {
+        $guiones = [
+            ['No me abre el video de la primera clase', 'Probé desde Chrome y desde el celular y queda cargando.', 'respondida'],
+            ['¿La entrega va en PDF?', 'Tengo el trabajo en Word, ¿lo paso a PDF o da igual?', 'cerrada'],
+            ['Me falta una evaluación', 'Aprobé la clase 2 pero no me habilita la 3.', 'abierta'],
+        ];
+
+        foreach ($cursos->take(3)->values() as $i => $course) {
+            $enrollment = $course->enrollments()
+                ->whereIn('status', EnrollmentStatus::ocupantes())
+                ->with('student')
+                ->first();
+
+            if ($enrollment?->student === null) {
+                continue;
+            }
+
+            [$asunto, $texto, $estado] = $guiones[$i];
+
+            if (SupportTicket::where('subject', $asunto)->exists()) {
+                continue;
+            }
+
+            $ticket = $this->consultas->open($enrollment->student, $course, $asunto, $texto);
+
+            if ($estado === 'abierta') {
+                continue;
+            }
+
+            $this->consultas->reply($ticket, $course->teacher->user, 'Lo estamos viendo, te confirmo en el día.');
+
+            if ($estado === 'cerrada') {
+                $this->consultas->close($ticket->fresh());
             }
         }
     }

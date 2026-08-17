@@ -18,10 +18,12 @@ use App\Filament\Resources\Courses\Pages\ListCourses;
 use App\Filament\Resources\Courses\Pages\CourseGrades;
 use App\Filament\Resources\Courses\Pages\CreateCourse;
 use App\Filament\Resources\Courses\Schemas\CourseForm;
+use App\Filament\Resources\Courses\Pages\CourseTickets;
 use App\Filament\Resources\Courses\Tables\CoursesTable;
 use App\Filament\Resources\Courses\Pages\CourseAttempts;
 use App\Filament\Resources\Courses\Pages\CourseSchedule;
 use App\Filament\Resources\Courses\Pages\CourseTracking;
+use App\Filament\Resources\Courses\Pages\CourseAnnouncements;
 use App\Filament\Resources\Courses\Pages\ManageCourseContent;
 use App\Filament\Resources\Courses\Pages\ManageCourseStudents;
 
@@ -67,8 +69,9 @@ class CourseResource extends Resource
      * después el cronograma y el material, después la evaluación, y al final el
      * alumnado.
      *
-     * Calificaciones, Comunicación y Consultas a mesa de ayuda todavía no
-     * existen; están documentadas en §13 del plan arquitectónico.
+     * Comunicación y Consultas van al final: son las menos usadas de todas
+     * —en los datos de FID, una comunicación y tres consultas en años— y el
+     * trabajo diario está en las de arriba.
      *
      * @return array<NavigationItem>
      */
@@ -83,6 +86,8 @@ class CourseResource extends Resource
             CourseGrades::class,
             ManageCourseStudents::class,
             CourseTracking::class,
+            CourseAnnouncements::class,
+            CourseTickets::class,
         ]);
     }
 
@@ -99,6 +104,8 @@ class CourseResource extends Resource
             'grades' => CourseGrades::route('/{record}/calificaciones'),
             'students' => ManageCourseStudents::route('/{record}/alumnos'),
             'tracking' => CourseTracking::route('/{record}/seguimiento'),
+            'announcements' => CourseAnnouncements::route('/{record}/comunicaciones'),
+            'tickets' => CourseTickets::route('/{record}/consultas'),
         ];
     }
 }

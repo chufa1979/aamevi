@@ -22,7 +22,8 @@ componentes Blade.
 
 El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
 clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
-barra de progreso, sus certificados y un buscador. Puede elegir **tema claro u oscuro** y **tres tamaños de
+barra de progreso, sus certificados, un buscador, el tablón de comunicaciones de
+cada curso y sus consultas a mesa de ayuda. Puede elegir **tema claro u oscuro** y **tres tamaños de
 letra**; las preferencias se aplican antes del primer pintado, sin parpadeo.
 
 Una clase se abre cuando llegó su fecha y se aprobó la anterior; `ProgressService`
@@ -43,6 +44,8 @@ Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
 | Calificaciones | Bandeja de entregas: corregir con nota y devolución, y publicar en tanda |
 | Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
+| Comunicación | Tablón del curso: para todos o para un alumno, con aviso por email opcional |
+| Consultas | Las preguntas de los alumnos del curso, con su hilo y su estado |
 
 En **Sistema → Avisos por email** está la cola de correos: qué se le mandó a
 quién, si salió, y el error de los que fallaron con un botón para reintentar.
@@ -53,10 +56,6 @@ Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
 sortea preguntas de su propio banco, y el **examen de módulo**, que sortea un
 porcentaje del banco combinado de todas sus clases y es opcional.
 
-Faltan dos solapas —Comunicación y Consultas a mesa de ayuda—, diseñadas en §13
-del plan arquitectónico y últimas en la cola a propósito: en el LMS que se analizó
-casi no se usaron.
-
 ### Panel de profesores (`/profesores`)
 
 Las mismas pantallas del curso, acotadas a los cursos que dicta cada docente. No
@@ -66,7 +65,7 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: las dos solapas de comunicación y `/ayuda`.
+**Pendiente**: `/ayuda`, Google OAuth y Google Cloud Storage.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
@@ -89,7 +88,9 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
 | **Registro público** | Alta de cuenta con verificación por email | ✅ |
 | **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
-| **Notificaciones** | Avisos por email de inscripción, corrección, certificado y clase en vivo | ✅ |
+| **Notificaciones** | Avisos por email de inscripción, corrección, certificado, clase en vivo, comunicación y respuesta a una consulta | ✅ |
+| **Comunicaciones** | Tablón del curso, con aviso por email opcional | ✅ |
+| **Mesa de ayuda** | Consultas por curso, con hilo y estado | ✅ |
 
 ---
 

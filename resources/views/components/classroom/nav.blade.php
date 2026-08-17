@@ -7,8 +7,9 @@
     secciones. Es la forma del aula de referencia y evita un menú donde la
     mitad de los ítems no aplican hasta que entrás a algún lado.
 
-    Las secciones que todavía no existen —comunicaciones, mesa de ayuda— no
-    figuran: un menú con ítems muertos es peor que uno corto.
+    Las comunicaciones son del curso —cuelgan de él— y las consultas no: el
+    alumno busca «qué pregunté», no «qué pregunté en este curso». Por eso una
+    está abajo y la otra arriba.
 --}}
 @php
     $generales = [
@@ -16,11 +17,13 @@
         ['ruta' => 'classroom.catalog', 'label' => 'Catálogo', 'icono' => 'disponible'],
         ['ruta' => 'classroom.progress', 'label' => 'Mi progreso', 'icono' => 'aprobada'],
         ['ruta' => 'classroom.certificates', 'label' => 'Certificados', 'icono' => 'certificado'],
+        ['ruta' => 'classroom.tickets', 'label' => 'Consultas', 'icono' => 'evaluacion'],
     ];
 
     $delCurso = $course === null ? [] : [
         ['ruta' => 'classroom.course', 'params' => $course, 'label' => 'Clases', 'icono' => 'video'],
         ['ruta' => 'classroom.evaluations', 'params' => $course, 'label' => 'Mis evaluaciones', 'icono' => 'evaluacion'],
+        ['ruta' => 'classroom.announcements', 'params' => $course, 'label' => 'Comunicaciones', 'icono' => 'texto'],
     ];
 @endphp
 
