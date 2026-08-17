@@ -400,3 +400,42 @@
 .dark .aamevi-thread-body {
     color: var(--gray-100);
 }
+
+/* ── Historial de intentos de un alumno ── */
+
+.aamevi-attempt + .aamevi-attempt {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+.dark .aamevi-attempt + .aamevi-attempt {
+    border-color: var(--gray-700);
+}
+
+.aamevi-attempt-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--gray-500);
+}
+
+.aamevi-attempt-head strong {
+    color: var(--gray-950);
+}
+
+.dark .aamevi-attempt-head strong {
+    color: var(--color-white);
+}
+
+.aamevi-attempt-head .is-aprobado {
+    font-weight: 500;
+    color: var(--success-600);
+}
+
+.aamevi-attempt-head .is-desaprobado {
+    font-weight: 500;
+    color: var(--danger-600);
+}

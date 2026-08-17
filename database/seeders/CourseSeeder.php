@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Question;
 use App\Models\CourseClass;
+use App\Models\QuizAttempt;
 use App\Models\Announcement;
 use App\Models\ClassContent;
 use App\Models\CourseModule;
@@ -147,6 +148,7 @@ class CourseSeeder extends Seeder
         $this->simularAvance($cursos);
         $this->comunicar($cursos);
         $this->consultar($cursos);
+        $this->trabar($cursos);
 
         $this->command?->info(sprintf(
             'Contenido de ejemplo: %d cursos, %d módulos, %d clases, %d preguntas, %d inscripciones.',
@@ -675,6 +677,79 @@ class CourseSeeder extends Seeder
 
             if ($estado === 'cerrada') {
                 $this->consultas->close($ticket->fresh());
+            }
+        }
+    }
+
+    // ── Alumnos trabados ────────────────────────────────────────────────────
+
+    /**
+     * Dos alumnos que agotan los intentos de una clase sin aprobarla.
+     *
+     * Todos los demás aprueban en el primer intento, así que sin esto la solapa
+     * Intentos no tendría un solo caso de los que hay que atender: el estado que
+     * la pantalla existe para mostrar no se vería nunca.
+     *
+     * Al segundo se le devuelven los intentos, para que se vean los dos lados
+     * —el que espera y el que ya fue destrabado—.
+     *
+     * @param  Collection<int, Course>  $cursos
+     */
+    private function trabar($cursos): void
+    {
+        // Uno por curso: el alumno tiene que ser de los que no arrancaron, o
+        // tendría intentos fallidos en una clase que ya había aprobado
+        foreach ($cursos->take(2)->values() as $i => $course) {
+            $clase = $course->modules()->first()?->classes()->first();
+
+            if ($clase?->quiz === null) {
+                continue;
+            }
+
+            /*
+             * Idempotencia: si en esta clase ya hay una tanda de intentos
+             * fallidos, el caso ya está sembrado. Sin este corte, cada corrida
+             * elegía a otro alumno —el anterior ya no tiene intentos libres— y
+             * el seeder iba dejando trabados de más.
+             */
+            $fallidos = QuizAttempt::where('quiz_id', $clase->quiz->getKey())
+                ->where('passed', false)
+                ->count();
+
+            if ($fallidos >= $clase->quiz->max_attempts) {
+                continue;
+            }
+
+            $student = $course->enrollments()
+                ->whereIn('status', EnrollmentStatus::ocupantes())
+                ->with('student')
+                ->get()
+                ->pluck('student')
+                ->filter(fn (?Student $s): bool => $s !== null
+                    && $this->quizzes->attemptsLeft($clase->quiz, $s) === $clase->quiz->max_attempts)
+                ->first();
+
+            if ($student === null) {
+                continue;
+            }
+
+            foreach (range(1, $clase->quiz->max_attempts) as $vuelta) {
+                $attempt = $this->quizzes->start($clase->quiz, $student);
+
+                // Todas mal a propósito: es lo que lo deja trabado
+                $this->quizzes->submit($attempt, $attempt->questions->mapWithKeys(
+                    fn (Question $q): array => [$q->getKey() => $q->options->firstWhere('is_correct', false)?->getKey()],
+                )->all());
+            }
+
+            // Al segundo ya se lo destrabó: así se ven los dos lados
+            if ($i === 1) {
+                $this->quizzes->reset(
+                    $clase->quiz,
+                    $student,
+                    $course->teacher?->user,
+                    'Tuvo problemas de conexión durante los intentos.',
+                );
             }
         }
     }

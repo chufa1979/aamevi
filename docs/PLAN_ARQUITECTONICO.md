@@ -61,13 +61,13 @@ aamevi/
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
-│   ├── Models/              ✅ 21: User, Student, Teacher, Course,
+│   ├── Models/              ✅ 22: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
 │   │                           StudentProgress, TaskSubmission, Certificate,
 │   │                           QueuedEmail, Announcement, AnnouncementRead,
-│   │                           SupportTicket, SupportMessage
+│   │                           SupportTicket, SupportMessage, QuizAttemptReset
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
 │   │                           preguntas), User y QueuedEmail
 │   ├── Services/            ✅ QuizService, ProgressService,
@@ -84,14 +84,14 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 24: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 25: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
 │   │                           de intentos, student_progress, task_submissions,
 │   │                           certificates, email_queue, announcements,
-│   │                           support_tickets, support_messages y
-│   │                           announcement_reads
+│   │                           support_tickets, support_messages,
+│   │                           announcement_reads y quiz_attempt_resets
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -125,7 +125,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 432: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 454: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -660,6 +660,28 @@ Nada se manda en el momento: todo se escribe en `email_queue` y sale cuando
   es peor que un llamado.
 - **El recordatorio es sólo de las clases en vivo.** Una grabada se ve cuando el
   alumno puede; avisar de cada una sería un correo por clase del cronograma.
+
+### Intentos agotados — `QuizService::reset()`
+
+Un alumno que agota los intentos de una autoevaluación sin aprobarla **queda
+trabado**: `ProgressService::complete()` exige aprobarla, así que no puede seguir
+el curso. El aula le decía «hablá con tu docente» y el docente no tenía nada que
+apretar; lo único a mano era subirle el límite a la evaluación —que se lo sube a
+todo el curso— o borrar el intento.
+
+- **Resetear no borra: abre un ciclo.** `quiz_attempt_resets` guarda una fila por
+  reseteo, y `attemptsLeft()` cuenta los intentos **posteriores al último**. El
+  historial completo queda —es la prueba de sobre qué se lo calificó— y encima
+  queda registrado quién destrabó a quién y por qué.
+- **El número de intento sigue contando todos.** Hay un
+  `unique(quiz_id, student_id, attempt_number)`: reiniciar la numeración en cada
+  ciclo choca contra él.
+- **Aprobar es aprobar**, aunque haya sido antes de un reseteo.
+- **El aviso de que alguien se trabó va al docente, no al alumno.** El alumno ya
+  lo está leyendo en pantalla; el que tiene que hacer algo es el otro.
+- **Lo que sigue faltando**: si el docente decide no resetear, el alumno no
+  termina el curso. Destrabar eso pide poder dar una clase por aprobada a mano,
+  que hoy nada en el sistema permite.
 
 ### Certificados — `CertificateService`
 
@@ -1366,7 +1388,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 432 tests**:
+Hecho hasta el 2026-08-16 — **25 migraciones, 22 modelos, 454 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1397,6 +1419,8 @@ Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 432 tests**:
 19. [x] Buscador del aula, y la navegación del sitio acotada a cada rol
 20. [x] Comunicaciones y consultas a mesa de ayuda: las dos últimas solapas del
         curso, con contador de sin leer en el menú del aula
+21. [x] Intentos agotados: aviso al docente, solapa agrupada por alumno y
+        reseteo con historial
 
 ### Lo que falta
 

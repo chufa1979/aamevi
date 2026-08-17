@@ -40,7 +40,7 @@ Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
 | Planificación | Cronograma completo del curso, con corrimiento de fechas en lote |
 | Contenidos | Módulos → clases → material: video con previsualización, PDF con subida y descarga, texto y consignas |
 | Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
-| Intentos | Qué rindió cada alumno, con qué preguntas le tocaron y qué respondió |
+| Intentos | Cómo le fue a cada alumno en cada evaluación, con su historial completo y la opción de devolverle los intentos al que se trabó |
 | Calificaciones | Bandeja de entregas: corregir con nota y devolución, y publicar en tanda |
 | Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |

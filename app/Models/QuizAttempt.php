@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\QuizService;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\QuizAttemptFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,6 +68,39 @@ class QuizAttempt extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(StudentAnswer::class, 'attempt_id');
+    }
+
+    /**
+     * Todos los intentos del mismo alumno en la misma evaluación.
+     *
+     * Es el historial que se muestra en el panel: la fila de la tabla es el
+     * último, y desde ahí se llega al resto.
+     *
+     * @return Collection<int, QuizAttempt>
+     */
+    public function hermanos(): Collection
+    {
+        return static::query()
+            ->where('quiz_id', $this->quiz_id)
+            ->where('student_id', $this->student_id)
+            ->with(['answers.question.options', 'answers.selectedOption'])
+            ->orderBy('attempt_number')
+            ->get();
+    }
+
+    /**
+     * Cuántos intentos le quedan, sin volver a preguntarle a la base.
+     *
+     * Usa `usados`, la columna que agrega la consulta de la pantalla del panel.
+     * Fuera de ahí no está cargada, así que cae en `QuizService`.
+     */
+    public function attemptsLeft(): int
+    {
+        if (! isset($this->attributes['usados'])) {
+            return app(QuizService::class)->attemptsLeft($this->quiz, $this->student);
+        }
+
+        return max(0, ($this->quiz?->max_attempts ?? 0) - (int) $this->attributes['usados']);
     }
 
     public function isSubmitted(): bool

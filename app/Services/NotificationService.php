@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Throwable;
+use App\Models\Quiz;
 use App\Models\User;
 use App\Models\Student;
 use App\Enums\EmailType;
@@ -16,6 +17,7 @@ use App\Models\SupportTicket;
 use App\Models\SupportMessage;
 use App\Models\TaskSubmission;
 use App\Models\CourseEnrollment;
+use App\Models\QuizAttemptReset;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -172,6 +174,50 @@ class NotificationService
             "Respondieron tu consulta: «{$ticket->subject}»",
             'emails.support-reply',
             ['user' => $user, 'ticket' => $ticket, 'message' => $message],
+        );
+    }
+
+    /**
+     * Un alumno se quedó sin intentos y sin aprobar.
+     *
+     * Va al docente y no al alumno: el alumno ya lo está leyendo en pantalla, y
+     * el que tiene que hacer algo es el otro. Sin este aviso, el «hablá con tu
+     * docente» del aula depende de que el alumno efectivamente escriba.
+     */
+    public function attemptsExhausted(Quiz $quiz, Student $student): ?QueuedEmail
+    {
+        $course = $quiz->course();
+        $docente = $course?->teacher?->user;
+        $alumno = $student->user;
+
+        if ($docente === null || $alumno === null) {
+            return null;
+        }
+
+        return $this->encolar(
+            $docente,
+            EmailType::AttemptsExhausted,
+            "{$alumno->full_name} se quedó sin intentos",
+            'emails.attempts-exhausted',
+            ['user' => $docente, 'alumno' => $alumno, 'quiz' => $quiz, 'course' => $course],
+        );
+    }
+
+    /** Le devolvieron los intentos: puede volver a rendir. */
+    public function attemptsReset(Quiz $quiz, Student $student, QuizAttemptReset $reset): ?QueuedEmail
+    {
+        $alumno = $student->user;
+
+        if ($alumno === null) {
+            return null;
+        }
+
+        return $this->encolar(
+            $alumno,
+            EmailType::AttemptsReset,
+            'Podés volver a rendir la evaluación',
+            'emails.attempts-reset',
+            ['user' => $alumno, 'quiz' => $quiz, 'course' => $quiz->course(), 'reset' => $reset],
         );
     }
 
