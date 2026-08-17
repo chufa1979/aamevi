@@ -123,8 +123,12 @@ class CourseTickets extends ManageRelatedRecords
                             ->rows(4)
                             ->required(),
                     ])
-                    // Cerrada no se contesta: el botón de enviar sobra
-                    ->modalSubmitAction(fn (SupportTicket $record): bool => ! $record->isClosed())
+                    /*
+                     * Cerrada no se contesta: el botón de enviar sobra. `false`
+                     * lo saca y `null` deja el que Filament arma solo — un
+                     * `true` acá revienta, porque el getter espera una acción.
+                     */
+                    ->modalSubmitAction(fn (SupportTicket $record) => $record->isClosed() ? false : null)
                     ->action(function (SupportTicket $record, array $data): void {
                         try {
                             app(SupportService::class)->reply(

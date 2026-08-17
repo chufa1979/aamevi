@@ -5,16 +5,20 @@ namespace Tests\Feature\Classroom;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Course;
+use Livewire\Livewire;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Enums\EmailType;
 use App\Enums\TicketStatus;
 use App\Models\QueuedEmail;
 use App\Models\SupportTicket;
+use Filament\Facades\Filament;
 use App\Models\CourseEnrollment;
 use App\Services\SupportService;
 use App\Exceptions\SupportException;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Filament\Resources\Courses\Pages\CourseTickets;
 
 /**
  * Consultas a mesa de ayuda.
@@ -222,6 +226,55 @@ class SupportTest extends TestCase
             ->get("/profesores/courses/{$this->course->getKey()}/consultas")
             ->assertSuccessful()
             ->assertSee('Consulta visible');
+    }
+
+    /**
+     * Abrir el hilo desde el panel.
+     *
+     * Va con Livewire y no con un GET porque el modal es una acción: los tests
+     * que sólo pedían la pantalla daban verde con el botón roto.
+     */
+    public function test_el_docente_abre_el_hilo_desde_el_panel(): void
+    {
+        $ticket = $this->abrir('Consulta abierta');
+
+        $this->actingAs($this->docente());
+        Filament::setCurrentPanel('profesores');
+
+        Livewire::test(CourseTickets::class, ['record' => $this->course->getKey()])
+            ->mountAction(TestAction::make('hilo')->table($ticket))
+            ->assertHasNoErrors();
+    }
+
+    /** Y también el de una cerrada, que no lleva botón de enviar. */
+    public function test_el_docente_abre_el_hilo_de_una_cerrada(): void
+    {
+        $ticket = $this->consultas->close($this->abrir('Consulta cerrada'));
+
+        $this->actingAs($this->docente());
+        Filament::setCurrentPanel('profesores');
+
+        Livewire::test(CourseTickets::class, ['record' => $this->course->getKey()])
+            ->mountAction(TestAction::make('hilo')->table($ticket))
+            ->assertHasNoErrors();
+    }
+
+    public function test_el_docente_responde_desde_el_panel(): void
+    {
+        $ticket = $this->abrir();
+
+        $this->actingAs($this->docente());
+        Filament::setCurrentPanel('profesores');
+
+        Livewire::test(CourseTickets::class, ['record' => $this->course->getKey()])
+            ->callAction(TestAction::make('hilo')->table($ticket), ['mensaje' => 'Probá de nuevo.']);
+
+        $this->assertSame(TicketStatus::Answered, $ticket->fresh()->status);
+
+        // Por contenido y no por «el último»: los dos mensajes caen en el mismo
+        // segundo y ordenar por fecha no los distingue
+        $this->assertSame(2, $ticket->messages()->count());
+        $this->assertTrue($ticket->messages()->where('body', 'Probá de nuevo.')->exists());
     }
 
     public function test_un_docente_ajeno_no_llega_a_esa_solapa(): void
