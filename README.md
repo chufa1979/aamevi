@@ -10,7 +10,9 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 En desarrollo. Hay **tres superficies** sobre el mismo dominio de datos, con una
 sola puerta de entrada: `/login`, con limitador de intentos y bloqueo de cuentas
 desactivadas. Ningún panel expone su propio formulario, así que hay un solo lugar
-que auditar.
+que auditar. Cada rol cae después en lo suyo —el alumno en sus cursos, el docente
+y el administrador en su panel—, salvo que viniera de una URL concreta, en cuyo
+caso vuelve ahí.
 
 ### El aula (Blade)
 
