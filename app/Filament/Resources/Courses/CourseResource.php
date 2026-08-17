@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Courses;
 use App\Models\Course;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
+use App\Services\SupportService;
 use Filament\Resources\Resource;
 use Filament\Resources\Pages\Page;
 use Filament\Navigation\NavigationItem;
@@ -52,6 +53,32 @@ class CourseResource extends Resource
     public static function getRecordTitle(?Model $record): ?string
     {
         return $record?->title;
+    }
+
+    /**
+     * Las consultas que esperan respuesta, en el menú lateral.
+     *
+     * Es lo único de este panel que espera a una persona: el resto —cargar
+     * material, corregir— lo maneja el docente a su ritmo, pero una consulta sin
+     * contestar tiene a alguien del otro lado. Sin este número habría que entrar
+     * curso por curso para enterarse.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $esperando = app(SupportService::class)->pendingFor($user);
+
+        return $esperando > 0 ? (string) $esperando : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
     }
 
     public static function form(Schema $schema): Schema

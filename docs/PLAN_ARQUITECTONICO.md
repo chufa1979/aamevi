@@ -122,7 +122,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 421: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 429: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -1332,7 +1332,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 421 tests**:
+Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 429 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1509,6 +1509,11 @@ respuesta—; para seguir se abre otra.
 
 El listado del alumno es de **todas** sus consultas, de todos sus cursos: lo que
 uno se pregunta es «qué pregunté», no «qué pregunté en este curso».
+
+Del lado del docente el panel avisa en tres lugares —el menú lateral, la columna
+del listado de cursos y la solapa del curso—, siempre con lo mismo: las que
+**esperan respuesta**. Es lo único del panel que tiene a alguien del otro lado;
+cargar material o corregir lo maneja el docente a su ritmo.
 
 Del lado del alumno alcanza con una columna, `student_read_at`, porque una
 consulta tiene un solo lector de este lado. Es un timestamp y no un booleano: se

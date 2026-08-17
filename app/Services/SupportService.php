@@ -138,6 +138,31 @@ class SupportService
         $ticket->update(['student_read_at' => now()]);
     }
 
+    /**
+     * Cuántas consultas esperan respuesta en los cursos de este usuario.
+     *
+     * Es el número del panel: el docente entra y ve si alguien lo está
+     * esperando, sin abrir curso por curso. El administrador ve las de todos.
+     *
+     * Sólo las `open`: una respondida ya no le toca a él, y una cerrada menos.
+     */
+    public function pendingFor(User $user): int
+    {
+        return SupportTicket::query()
+            ->where('status', TicketStatus::Open)
+            ->whereIn('course_id', Course::query()->visibleTo($user)->select('id'))
+            ->count();
+    }
+
+    /** Las que esperan respuesta en un curso. Es el número de su solapa. */
+    public function pendingInCourse(Course $course): int
+    {
+        return SupportTicket::query()
+            ->where('course_id', $course->getKey())
+            ->where('status', TicketStatus::Open)
+            ->count();
+    }
+
     /** ¿Este usuario puede leer y contestar esta consulta? */
     public function canHandle(User $user, SupportTicket $ticket): bool
     {

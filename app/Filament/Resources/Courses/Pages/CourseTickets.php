@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Courses\Pages;
 
+use App\Models\Course;
 use Filament\Tables\Table;
 use App\Enums\TicketStatus;
 use Filament\Actions\Action;
@@ -37,6 +38,31 @@ class CourseTickets extends ManageRelatedRecords
     protected static ?string $title = 'Consultas a mesa de ayuda';
 
     protected static ?string $breadcrumb = 'Consultas';
+
+    /**
+     * Cuántas esperan respuesta en **este** curso.
+     *
+     * El curso sale de la ruta y no del registro de la página: Filament pide el
+     * badge por estático, sin instancia. La solapa sólo se dibuja dentro de un
+     * curso, así que ahí el parámetro siempre está.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $course = Course::find(request()->route('record'));
+
+        if ($course === null) {
+            return null;
+        }
+
+        $esperando = app(SupportService::class)->pendingInCourse($course);
+
+        return $esperando > 0 ? (string) $esperando : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     public function form(Schema $schema): Schema
     {

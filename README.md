@@ -91,7 +91,7 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Notificaciones** | Avisos por email de inscripción, corrección, certificado, clase en vivo, comunicación y respuesta a una consulta | ✅ |
 | **Comunicaciones** | Tablón del curso, con aviso por email opcional | ✅ |
 | **Mesa de ayuda** | Consultas por curso, con hilo y estado | ✅ |
-| **Sin leer** | El menú del aula avisa cuántas comunicaciones y respuestas hay nuevas | ✅ |
+| **Sin leer** | El menú del aula avisa cuántas comunicaciones y respuestas hay nuevas, y el panel cuántas consultas esperan respuesta | ✅ |
 
 ---
 
