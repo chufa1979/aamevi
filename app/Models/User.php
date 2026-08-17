@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Filament\Panel;
 use App\Enums\UserRole;
+use Filament\Facades\Filament;
 use Database\Factories\UserFactory;
 use Illuminate\Support\Facades\URL;
 use App\Services\NotificationService;
@@ -123,6 +124,26 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         );
 
         app(NotificationService::class)->verification($this, $enlace);
+    }
+
+    /**
+     * Dónde le corresponde entrar a este usuario.
+     *
+     * Cada rol trabaja en una superficie distinta y la portada no es la de
+     * nadie: al alumno le sirve ver sus cursos, y al docente o al administrador
+     * su panel. Sin esto, entrar dejaba a los tres en la misma pantalla de
+     * bienvenida, con un clic de más para todos.
+     *
+     * Se usa en dos lados —después de iniciar sesión, y al abrir /login con la
+     * sesión ya iniciada— por eso vive acá y no en el controlador.
+     */
+    public function homeUrl(): string
+    {
+        return match (true) {
+            $this->isAdmin() => Filament::getPanel('admin')->getUrl(),
+            $this->isTeacher() => Filament::getPanel('profesores')->getUrl(),
+            default => route('classroom.courses'),
+        };
     }
 
     public function isTeacher(): bool

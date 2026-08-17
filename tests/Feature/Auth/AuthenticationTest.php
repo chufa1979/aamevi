@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use Tests\TestCase;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class AuthenticationTest extends TestCase
@@ -49,7 +50,7 @@ class AuthenticationTest extends TestCase
 
     public function test_un_usuario_puede_iniciar_sesion(): void
     {
-        $user = User::factory()->create([
+        $user = User::factory()->student()->create([
             'email' => 'test@aamevi.ar',
             'password' => 'password',
         ]);
@@ -57,9 +58,50 @@ class AuthenticationTest extends TestCase
         $this->post('/login', [
             'email' => 'test@aamevi.ar',
             'password' => 'password',
-        ])->assertRedirect('/');
+        ])->assertRedirect(route('classroom.courses'));
 
         $this->assertAuthenticatedAs($user);
+    }
+
+    /**
+     * Cada rol entra a lo suyo.
+     *
+     * La portada no es la pantalla de trabajo de ninguno: al alumno le sirve
+     * ver sus cursos, y al docente o al administrador su panel.
+     */
+    #[DataProvider('destinos')]
+    public function test_cada_rol_entra_a_su_pantalla(string $rol, string $destino): void
+    {
+        User::factory()->{$rol}()->create(['email' => 'test@aamevi.ar', 'password' => 'password']);
+
+        $this->post('/login', ['email' => 'test@aamevi.ar', 'password' => 'password'])
+            ->assertRedirect($destino);
+    }
+
+    /** @return array<string, array{0: string, 1: string}> */
+    public static function destinos(): array
+    {
+        return [
+            'alumno' => ['student', '/mis-cursos'],
+            'profesor' => ['teacher', '/profesores'],
+            'administrador' => ['admin', '/admin'],
+        ];
+    }
+
+    /**
+     * Si venía de algún lado, vuelve ahí.
+     *
+     * Pedirle la contraseña en el camino y después soltarlo en otra pantalla le
+     * hace perder lo que estaba por abrir.
+     */
+    public function test_vuelve_a_la_pantalla_que_estaba_buscando(): void
+    {
+        User::factory()->student()->create(['email' => 'test@aamevi.ar', 'password' => 'password']);
+
+        $this->get('/progreso')->assertRedirect('/login');
+
+        $this->post('/login', ['email' => 'test@aamevi.ar', 'password' => 'password'])
+            ->assertRedirect('/progreso');
     }
 
     public function test_no_se_puede_iniciar_sesion_con_la_contrasena_incorrecta(): void
@@ -127,10 +169,12 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_un_usuario_autenticado_no_ve_el_login(): void
+    /** Abrir /login con la sesión iniciada lleva a lo de uno, no a la portada. */
+    #[DataProvider('destinos')]
+    public function test_el_login_con_sesion_iniciada_redirige_a_lo_suyo(string $rol, string $destino): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->{$rol}()->create())
             ->get('/login')
-            ->assertRedirect('/');
+            ->assertRedirect($destino);
     }
 }

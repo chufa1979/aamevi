@@ -23,7 +23,13 @@ class AuthenticatedSessionController extends Controller
         // Rota el id de sesión para cerrar la ventana de session fixation
         $request->session()->regenerate();
 
-        return redirect()->intended(route('home'));
+        /*
+         * `intended` primero: si la persona venía de una URL concreta —el enlace
+         * a una clase, por ejemplo— y le pedimos la contraseña en el camino, hay
+         * que devolverla ahí. Recién si no venía de ningún lado la mandamos a lo
+         * suyo, que depende del rol.
+         */
+        return redirect()->intended($request->user()->homeUrl());
     }
 
     public function destroy(Request $request): RedirectResponse
