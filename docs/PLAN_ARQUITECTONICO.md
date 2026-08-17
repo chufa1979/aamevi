@@ -69,7 +69,8 @@ aamevi/
 │   │                           preguntas) y User
 │   ├── Services/            ✅ QuizService, ProgressService,
 │   │                           EnrollmentService, SubmissionService,
-│   │                           CertificateService, NotificationService
+│   │                           CertificateService, NotificationService,
+│   │                           SearchService
 │   ├── Support/Html.php     ✅ Saneado del texto enriquecido
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
@@ -113,11 +114,11 @@ aamevi/
 │       ├── emails/          ✅ Las plantillas de los avisos, en tablas
 │       ├── classroom/       ✅ catálogo, curso, clase, evaluaciones, quiz y
 │       │                       su resultado, mis cursos, progreso,
-│       │                       certificados
+│       │                       certificados, buscador
 │       ├── home.blade.php   ✅
-│       └── placeholder.blade.php ✅ Sólo ayuda y buscar
+│       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 347: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 381: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -617,6 +618,21 @@ genérico solo genera consultas al soporte.
   una persona. Eso es lo que permite que el alta sea abierta.
 - **Las cuentas creadas desde el panel nacen verificadas.** Las da de alta la
   institución, no alguien que dijo ser el dueño de esa casilla.
+
+### Buscador — `SearchService`
+
+Busca **sólo lo que ese alumno puede abrir**: los cursos de su catálogo o los
+que ya cursa, y las clases de los cursos en los que está inscripto.
+
+- **El recorte va en la consulta, no en la salida.** Buscar en todo y esconder
+  después filtraría igual: la lista de títulos que existen ya es información.
+- **Las clases todavía no habilitadas aparecen, pero sin enlace.** Figuran en el
+  temario desde el primer día, así que no revelan nada; el resultado dice en qué
+  estado están y ofrece el curso, en vez de mandar al alumno a un 403.
+- **Las palabras se buscan por separado**: «medicina vida» encuentra «Medicina
+  del estilo de vida», que como una sola cadena no aparecería.
+- **Es del aula.** El docente y el administrador tienen el buscador global de su
+  panel; a ellos ni se les muestra el campo.
 
 ### Avisos — `NotificationService`
 
@@ -1312,7 +1328,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 347 tests**:
+Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 381 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1340,6 +1356,7 @@ Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 347 tests**:
         y la cola a la vista en el panel
 18. [x] Registro público con verificación del correo, y el aula detrás de
         `verified`
+19. [x] Buscador del aula, y la navegación del sitio acotada a cada rol
 
 ### Lo que falta
 
@@ -1353,8 +1370,7 @@ y corregirlo. Lo que queda son las piezas de alrededor.
        en la cola: en FID casi no se usaron
 3. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
        configurar. Los archivos van hoy al disco `public`
-4. [ ] **`/ayuda` y `/buscar`** — siguen sirviendo el marcador, y el buscador
-       está en el encabezado de todas las pantallas sin buscar nada
+4. [ ] **`/ayuda`** — sigue sirviendo el marcador
 
 ### Deuda pendiente
 

@@ -75,17 +75,24 @@
         </div>
     </x-section>
 
-    {{-- Banda de llamada a la acción, equivalente al bloque `.membresia` del sitio madre --}}
-    <section>
-        <h2 class="bg-ink py-2 text-center text-sm uppercase text-white">Sumate a AAMEVi</h2>
-        <div class="container-site-sm py-10 text-center md:py-16">
-            <p class="mx-auto max-w-xl text-xl font-light">
-                Creá tu cuenta para inscribirte a los cursos y llevar el seguimiento de tu formación.
-            </p>
-            <div class="mt-6 flex flex-wrap justify-center gap-6">
-                <x-button href="/registro" cta>Quiero unirme</x-button>
-                <x-button href="/login" variant="ghost" cta>Ya tengo cuenta</x-button>
+    {{--
+        Banda de llamada a la acción, equivalente al bloque `.membresia` del sitio
+        madre. Es para el alumno: al docente y al administrador les invitaba a
+        crear una cuenta que ya tienen, y a iniciar una sesión que ya está
+        iniciada. El sitio está detrás de `auth`, así que acá nunca hay invitados.
+    --}}
+    @if (auth()->user()->isStudent())
+        <section>
+            <h2 class="bg-ink py-2 text-center text-sm uppercase text-white">Seguí formándote</h2>
+            <div class="container-site-sm py-10 text-center md:py-16">
+                <p class="mx-auto max-w-xl text-xl font-light">
+                    Recorré el catálogo y pedí inscripción al curso que quieras cursar.
+                </p>
+                <div class="mt-6 flex flex-wrap justify-center gap-6">
+                    <x-button href="{{ route('classroom.catalog') }}" cta>Ver el catálogo</x-button>
+                    <x-button href="{{ route('classroom.courses') }}" variant="ghost" cta>Mis cursos</x-button>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
+    @endif
 @endsection

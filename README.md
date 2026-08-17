@@ -22,7 +22,7 @@ componentes Blade.
 
 El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
 clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
-barra de progreso y sus certificados. Puede elegir **tema claro u oscuro** y **tres tamaños de
+barra de progreso, sus certificados y un buscador. Puede elegir **tema claro u oscuro** y **tres tamaños de
 letra**; las preferencias se aplican antes del primer pintado, sin parpadeo.
 
 Una clase se abre cuando llegó su fecha y se aprobó la anterior; `ProgressService`
@@ -66,7 +66,7 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: las dos solapas de comunicación, y `/ayuda` y `/buscar`.
+**Pendiente**: las dos solapas de comunicación y `/ayuda`.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.

@@ -74,6 +74,26 @@ class NavigationTest extends TestCase
             ->assertDontSee('Administración');
     }
 
+    /**
+     * El sitio está detrás de `auth`: en la portada nunca hay un invitado.
+     *
+     * La banda de cierre invitaba a crear una cuenta que quien la lee ya tiene,
+     * y a iniciar una sesión que ya está iniciada.
+     */
+    public function test_la_portada_no_invita_a_crear_una_cuenta(): void
+    {
+        foreach ([$this->alumno(), User::factory()->admin()->create(), Teacher::factory()->create()->user] as $user) {
+            $this->actingAs($user)->get('/')
+                ->assertDontSee('Quiero unirme')
+                ->assertDontSee('Ya tengo cuenta');
+        }
+    }
+
+    public function test_al_alumno_la_portada_lo_lleva_al_catalogo(): void
+    {
+        $this->actingAs($this->alumno())->get('/')->assertSee('Ver el catálogo');
+    }
+
     /** La ayuda es de todos: no depende del rol. */
     public function test_la_ayuda_la_ven_todos(): void
     {

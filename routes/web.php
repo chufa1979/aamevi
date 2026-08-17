@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
+use App\Http\Controllers\Classroom\SearchController;
 use App\Http\Controllers\Classroom\CatalogController;
 use App\Http\Controllers\Classroom\ProgressController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -83,6 +84,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('certificados', [CertificateController::class, 'index'])->name('classroom.certificates');
         Route::get('certificados/{certificate}', [CertificateController::class, 'download'])->name('classroom.certificate');
+
+        Route::get('buscar', [SearchController::class, 'index'])->name('classroom.search');
     });
 
     /*
@@ -92,7 +95,6 @@ Route::middleware('auth')->group(function () {
      */
     $pendientes = [
         'ayuda' => 'Ayuda',
-        'buscar' => 'Buscar',
     ];
 
     foreach ($pendientes as $path => $title) {

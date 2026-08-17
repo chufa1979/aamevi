@@ -103,7 +103,7 @@ Business rules are enforced in models and services, each covered by a test. **§
 
 ## Known gaps
 
-- **`/ayuda` and `/buscar` still render `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission, progress and certificates.
+- **`/ayuda` still renders `placeholder.blade.php`.** The rest of the classroom is built: catalogue, enrolment, class screen, quiz, task submission, progress, certificates and search.
 - **Two course tabs are designed but not built**: Comunicación and Consultas a mesa de ayuda. They need tables that do not exist yet; §13 of the plan specifies them. They are last on purpose — in the FID data they were barely used.
 - **Nothing has been sent for real yet.** `MAIL_MAILER=log` locally, and the server has no SMTP configured and no cron line, so the queue fills and never drains — see `docs/DEPLOY.md`.
 - **Registration is open but gated.** Anyone can create an account at `/registro`; it is always a student, always unverified, and the classroom sits behind `verified`. Enrolment still needs a teacher's approval, which is what makes an open sign-up safe. Accounts created from the panel default to verified — the institution is vouching for them.
