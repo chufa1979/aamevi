@@ -146,6 +146,33 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         };
     }
 
+    /**
+     * ¿Este usuario puede llegar a esa dirección?
+     *
+     * Se usa para filtrar el destino que quedó guardado antes de pedir la
+     * contraseña. Sin este filtro, una visita previa a /admin dejaba a un alumno
+     * yendo ahí después de entrar, y recibiendo un 403 como bienvenida.
+     *
+     * La regla es por superficie: el administrador entra a /admin, el docente a
+     * /profesores, y el alumno a todo lo que no sea un panel. Cuando el destino
+     * no es de la superficie de quien entró, se descarta y va a la suya.
+     */
+    public function canReach(string $url): bool
+    {
+        $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+
+        foreach (Filament::getPanels() as $panel) {
+            $prefijo = trim($panel->getPath(), '/');
+
+            if ($path === $prefijo || str_starts_with($path, $prefijo.'/')) {
+                return $this->canAccessPanel($panel);
+            }
+        }
+
+        // Fuera de los paneles está el aula, que es de los alumnos
+        return $this->isStudent();
+    }
+
     public function isTeacher(): bool
     {
         return $this->role === UserRole::Teacher;

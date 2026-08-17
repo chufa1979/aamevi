@@ -23,13 +23,22 @@ class AuthenticatedSessionController extends Controller
         // Rota el id de sesión para cerrar la ventana de session fixation
         $request->session()->regenerate();
 
+        $user = $request->user();
+
         /*
-         * `intended` primero: si la persona venía de una URL concreta —el enlace
-         * a una clase, por ejemplo— y le pedimos la contraseña en el camino, hay
-         * que devolverla ahí. Recién si no venía de ningún lado la mandamos a lo
-         * suyo, que depende del rol.
+         * El destino guardado tiene prioridad: si a alguien le pedimos la
+         * contraseña camino a una clase, hay que devolverlo a esa clase.
+         *
+         * Pero sólo si puede llegar. Ese destino lo guardó el middleware la
+         * última vez que alguien —no necesariamente esta persona— quiso abrir
+         * algo sin sesión, y sobrevive en la sesión del navegador: sin el filtro,
+         * un alumno que antes había tocado /admin entraba y recibía un 403.
          */
-        return redirect()->intended($request->user()->homeUrl());
+        $destino = $request->session()->pull('url.intended');
+
+        return redirect()->to(
+            $destino !== null && $user->canReach($destino) ? $destino : $user->homeUrl(),
+        );
     }
 
     public function destroy(Request $request): RedirectResponse

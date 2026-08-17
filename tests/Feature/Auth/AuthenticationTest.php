@@ -104,6 +104,52 @@ class AuthenticationTest extends TestCase
             ->assertRedirect('/progreso');
     }
 
+    /**
+     * El destino guardado no es una orden.
+     *
+     * Lo dejó el middleware la última vez que alguien quiso abrir algo sin
+     * sesión, y sobrevive en el navegador: sin filtrarlo, un alumno que antes
+     * había tocado /admin entraba y lo primero que veía era un 403.
+     *
+     * @param  string  $rol  el rol con el que se inicia sesión
+     * @param  string  $guardado  la dirección que quedó pendiente
+     * @param  string  $destino  a dónde tiene que terminar
+     */
+    #[DataProvider('destinosAjenos')]
+    public function test_no_se_respeta_un_destino_de_otra_superficie(string $rol, string $guardado, string $destino): void
+    {
+        User::factory()->{$rol}()->create(['email' => 'test@aamevi.ar', 'password' => 'password']);
+
+        // Visitarlo sin sesión es lo que lo deja guardado
+        $this->get($guardado);
+
+        $this->post('/login', ['email' => 'test@aamevi.ar', 'password' => 'password'])
+            ->assertRedirect($destino);
+    }
+
+    /** @return array<string, array{0: string, 1: string, 2: string}> */
+    public static function destinosAjenos(): array
+    {
+        return [
+            'un alumno no va al panel de administración' => ['student', '/admin', '/mis-cursos'],
+            'un alumno no va al panel de profesores' => ['student', '/profesores', '/mis-cursos'],
+            'un docente no va al panel de administración' => ['teacher', '/admin', '/profesores'],
+            'un docente no va al aula' => ['teacher', '/mis-cursos', '/profesores'],
+            'un administrador no va al aula' => ['admin', '/progreso', '/admin'],
+        ];
+    }
+
+    /** Lo suyo sí se respeta, y con la ruta completa. */
+    public function test_un_administrador_vuelve_a_la_pantalla_del_panel_que_buscaba(): void
+    {
+        User::factory()->admin()->create(['email' => 'test@aamevi.ar', 'password' => 'password']);
+
+        $this->get('/admin/users');
+
+        $this->post('/login', ['email' => 'test@aamevi.ar', 'password' => 'password'])
+            ->assertRedirect('/admin/users');
+    }
+
     public function test_no_se_puede_iniciar_sesion_con_la_contrasena_incorrecta(): void
     {
         User::factory()->create(['email' => 'test@aamevi.ar', 'password' => 'password']);
