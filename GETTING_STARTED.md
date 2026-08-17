@@ -107,6 +107,8 @@ busca el servidor de Vite y, si no está, cae al manifiesto de `public/build`
 | Controlador | `php artisan make:controller Courses/CourseController` |
 | FormRequest | `php artisan make:request StoreCourseRequest` |
 | Seeders | `php artisan db:seed` |
+| Vaciar la cola de correos | `php artisan emails:enviar` |
+| Ver lo programado | `php artisan schedule:list` |
 | Recurso de Filament | `php artisan make:filament-resource Foo --generate` |
 | Assets de Filament | `php artisan filament:assets` |
 | Limpiar cachés | `php artisan optimize:clear` |
@@ -138,10 +140,13 @@ php artisan test --coverage
 ## Estructura
 
 ```
+app/Console/Commands/   Lo que corre por cron: la cola de correos
+app/Events/             Lo que pasó; app/Listeners/, quién reacciona
 app/Http/Controllers/   Auth y Classroom (el aula)
 app/Http/Requests/      Validación con FormRequest (no reglas inline)
 app/Models/             Eloquent, con trait HasUuids
-app/Services/           Quiz, Progreso, Inscripciones, Entregas
+app/Services/           Quiz, Progreso, Inscripciones, Entregas, Certificados,
+                        Avisos, Comunicaciones, Consultas y Buscador
 app/Policies/           Quién puede qué; los dos paneles las comparten
 app/Filament/           Recursos del panel, con Schemas/ y Tables/ aparte
 app/Providers/Filament/ Un provider por panel: admin y profesores
@@ -149,8 +154,9 @@ config/navigation.php   Fuente única del menú y datos de contacto
 database/migrations/    Único lugar donde cambia el esquema
 resources/css/app.css   Tokens de marca y semánticos en @theme (Tailwind 4)
 resources/views/
-  layouts/, classroom/, components/
+  layouts/, classroom/, components/, emails/, certificates/
 routes/web.php          Grupo guest (login) y grupo auth (todo lo demás)
+routes/console.php      Lo programado: emails:enviar y emails:recordatorios
 ```
 
 La regla al agregar algo: **decidir primero de qué superficie es**. La

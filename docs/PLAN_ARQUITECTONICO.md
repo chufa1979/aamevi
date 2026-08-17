@@ -37,25 +37,27 @@ aamevi/
 │   ├── Console/Commands/    ✅ emails:enviar, emails:recordatorios
 │   ├── Enums/               ✅ UserRole, EnrollmentStatus, ClassContentType,
 │   │                           ClassProgressState, SubmissionStatus, EmailType,
-│   │                           EmailStatus
+│   │                           EmailStatus, TicketStatus
 │   ├── Events/              ✅ CourseProgressAdvanced, EnrollmentApproved
 │   ├── Exceptions/          ✅ EnrollmentException, QuizException,
-│   │                           SubmissionException, CertificateException
+│   │                           SubmissionException, CertificateException,
+│   │                           SupportException
 │   ├── Filament/                  # Los dos paneles (§11)
 │   │   ├── Concerns/        ✅ ScopedToOwnCourses, ListAndCreateNavigation
 │   │   ├── Forms/           ✅ RichText, ModuleExam, QuestionOptions
 │   │   ├── Tables/          ✅ DragToReorder
 │   │   └── Resources/       ✅ Users, Students, Courses, CourseModules,
-│   │                           CourseClasses, Questions
+│   │                           CourseClasses, Questions, QueuedEmails
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Auth/        ✅ AuthenticatedSessionController,
 │   │   │   │                    RegisteredUserController,
 │   │   │   │                    EmailVerificationController
 │   │   │   └── Classroom/   ✅ Catalog, MyCourses, Course, Classroom, Quiz,
-│   │   │                       Submission, Progress
+│   │   │                       Submission, Progress, Certificate, Search,
+│   │   │                       Announcement, Ticket
 │   │   ├── Requests/        ✅ LoginRequest, RegisterRequest,
-│   │   │                       StoreSubmissionRequest
+│   │   │                       StoreSubmissionRequest, StoreTicketRequest
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
@@ -67,13 +69,14 @@ aamevi/
 │   │                           QueuedEmail, Announcement, AnnouncementRead,
 │   │                           SupportTicket, SupportMessage
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
-│   │                           preguntas) y User
+│   │                           preguntas), User y QueuedEmail
 │   ├── Services/            ✅ QuizService, ProgressService,
 │   │                           EnrollmentService, SubmissionService,
 │   │                           CertificateService, NotificationService,
 │   │                           SearchService, AnnouncementService,
 │   │                           SupportService
-│   ├── Support/Html.php     ✅ Saneado del texto enriquecido
+│   ├── Support/             ✅ Html (saneado del texto enriquecido),
+│   │                           Navigation (el menú, recortado por rol)
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
 ├── config/
@@ -85,7 +88,7 @@ aamevi/
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
-│   │                           de intentos, student_progress, task_submissions
+│   │                           de intentos, student_progress, task_submissions,
 │   │                           certificates, email_queue, announcements,
 │   │                           support_tickets, support_messages y
 │   │                           announcement_reads
@@ -122,7 +125,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 429: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 432: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -696,17 +699,26 @@ disponible por si más adelante hace falta una API para mobile.
 
 ```php
 // app/Http/Controllers/Auth/
-RegisteredUserController::store(RegisterRequest)   // type: student|teacher
-AuthenticatedSessionController::store(LoginRequest)
-AuthenticatedSessionController::destroy()
-EmailVerificationController::verify(id, hash)
-GoogleOAuthController::redirect() / callback()     // Laravel Socialite
-PasswordResetLinkController::store(email)
-NewPasswordController::store(token, password)
+AuthenticatedSessionController::store(LoginRequest)   // ✅
+AuthenticatedSessionController::destroy()             // ✅
+RegisteredUserController::create() / store()          // ✅ siempre alumno
+EmailVerificationController::notice() / verify() / resend()  // ✅
+GoogleOAuthController::redirect() / callback()        // pendiente (Socialite)
+PasswordResetLinkController::store(email)             // pendiente
+NewPasswordController::store(token, password)         // pendiente
 ```
 
+El alta pública **no elige rol**, a diferencia del boceto: crea siempre un
+alumno. Uno que pudiera pedir ser docente sería una puerta abierta; los docentes
+y administradores los da de alta la administración desde el panel.
+
+A dónde entra cada uno después sale de `User::homeUrl()`, y el destino que
+quedó guardado antes de pedir la contraseña sólo se respeta si `canReach()` dice
+que esa superficie es suya.
+
 Autorización por rol con middleware y Policies (`CoursePolicy`,
-`EnrollmentPolicy`), no con chequeos sueltos en los controladores.
+`CoursePartPolicy`, `UserPolicy`, `QueuedEmailPolicy`), no con chequeos sueltos
+en los controladores.
 
 ### Módulo Courses
 
@@ -714,12 +726,23 @@ Autorización por rol con middleware y Policies (`CoursePolicy`,
 > y clases se hace desde el panel de Filament (§11). Estos controladores son los
 > del **sitio público**: lo que ve y hace un alumno.
 
+Quedaron bajo `app/Http/Controllers/Classroom/` y no `Courses/`: el nombre dice
+de qué superficie son, que es la distinción que importa ahora que la
+administración vive en otro lado.
+
 ```php
-// app/Http/Controllers/Courses/
-CourseController::index()      // GET  /cursos                catálogo
-CourseController::show(Course) // GET  /cursos/{course}       (route model binding)
-EnrollmentController::store(Course)  // POST /cursos/{course}/inscripcion → pending
-ClassroomController::show(CourseClass) // GET /clases/{class}  aula: contenido y quiz
+// app/Http/Controllers/Classroom/
+CatalogController::index() / store(Course)   // catálogo y solicitud de inscripción
+MyCoursesController::index()                 // los suyos, con avance
+CourseController::show(Course) / evaluations(Course)
+ClassroomController::show(CourseClass) / complete(CourseClass)
+QuizController::show(Quiz) / submit(Quiz)
+SubmissionController::store(ClassContent)    // entrega de una tarea
+ProgressController::index()
+CertificateController::index() / download(Certificate)
+AnnouncementController::index(Course)        // tablón del curso
+TicketController::index() / store() / show() / reply() / close()
+SearchController::index()
 ```
 
 La aprobación de inscripciones (§3-A) es una acción del panel, no de este
@@ -732,34 +755,45 @@ progreso) va en clases de servicio bajo `app/Services/`, no en el controlador.
 
 Es la parte más intrincada del dominio; ver §3-B y las tablas de §2.
 
+Así quedó implementado, que difiere del boceto original: cargar preguntas y
+configurar el quiz no son métodos del servicio sino formularios del panel, y el
+servicio se quedó con lo que nadie más puede hacer bien.
+
 ```php
-// app/Services/Quiz/
-QuizService::createQuestion(CourseClass, text, options, correctOption)
-QuizService::configure(CourseClass, questionsPerStudent, passingScore, maxAttempts)
-QuizService::startAttempt(Quiz, Student): QuizAttempt
-    // Sortea N preguntas del banco de la clase y las graba en
-    // quiz_question_assignment, para que el intento sea reproducible
-QuizService::submit(QuizAttempt, array $answers): QuizResult
-    // Califica automáticamente y devuelve score + passed
-QuizService::attemptsFor(Quiz, Student): Collection
+// app/Services/QuizService.php
+QuizService::start(Quiz, Student): QuizAttempt
+    // Sortea las preguntas y las graba en quiz_question_assignment, para que
+    // el intento sea reproducible
+QuizService::submit(QuizAttempt, array $respuestas): QuizAttempt
+    // Corrige sola y deja score y passed
+QuizService::attemptsOf(Quiz, Student): Collection
+QuizService::hasPassed(Quiz, Student): bool
+QuizService::attemptsLeft(Quiz, Student): int
 ```
 
 ### Vistas Blade
 
 Sustituyen a las páginas React del plan original. Cada una extiende
-`layouts.app` y reutiliza los componentes de `resources/views/components/`.
+`layouts.classroom` —o `layouts.guest` en el acceso— y reutiliza los componentes
+de `resources/views/components/`.
+
+Tampoco hay dos tableros como preveía el boceto: el docente trabaja en su panel
+(§11), así que del lado Blade quedó sólo el aula.
 
 ```
-auth/login, auth/register          Form + botón de Google + olvido de contraseña
-dashboard/student                  Mis cursos (con % de progreso), próximas
-                                   clases, tareas pendientes, certificados
-dashboard/teacher                  Mis cursos, inscripciones pendientes con
-                                   aprobar/rechazar, tareas por calificar
-courses/index, courses/show        Catálogo; detalle con árbol módulos → clases
-                                   y botón de inscripción
-classroom/class                    Contenido (video, PDF, texto), quiz con
-                                   reintentos y score, tareas, siguiente clase
-certificates/index                 Listado y descarga
+auth/login, register, verify-email  Acceso, alta de cuenta y verificación
+classroom/catalog                   Cursos abiertos, con solicitud de inscripción
+classroom/my-courses                Los suyos, con el porcentaje de avance
+classroom/course                    Temario del curso, clase por clase
+classroom/class                     Contenido (video, PDF, texto), tarea y quiz
+classroom/quiz, quiz-result,        Rendir, el resultado y el caso sin intentos
+  quiz-closed
+classroom/evaluations               Lo rendido del curso y lo que falta
+classroom/progress                  Avance general del alumno
+classroom/certificates              Los emitidos y qué falta para los demás
+classroom/announcements             Tablón del curso
+classroom/tickets, ticket           Consultas y su hilo
+classroom/search                    Buscador de cursos y clases
 ```
 
 El quiz es la única pantalla con interacción no trivial. Se resuelve con envío
@@ -1332,7 +1366,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 429 tests**:
+Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 432 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout

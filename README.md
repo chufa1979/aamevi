@@ -130,12 +130,13 @@ aamevi/
 │   │   └── Middleware/
 │   ├── Models/              # Eloquent
 │   ├── Policies/            # Quién puede qué; los dos paneles las comparten
-│   ├── Providers/Filament/  # Un provider por panel: admin y profesores
 │   ├── Events/              # Lo que pasó, para que reaccione quien quiera
 │   ├── Listeners/           # Quién reacciona
+│   ├── Providers/Filament/  # Un provider por panel: admin y profesores
 │   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas,
-│   │                        #   Certificados y Avisos
-│   └── Support/Html.php     # Saneado del texto enriquecido
+│   │                        #   Certificados, Avisos, Comunicaciones,
+│   │                        #   Consultas y Buscador
+│   └── Support/             # Saneado del texto enriquecido y el menú por rol
 ├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
 ├── config/
 │   ├── database.php
@@ -160,6 +161,8 @@ aamevi/
 │       ├── layouts/
 │       ├── partials/        # preferences-head: se aplica antes del primer pintado
 │       ├── classroom/       # El aula
+│       ├── emails/          # Las plantillas de los avisos, en tablas
+│       ├── certificates/    # La plantilla del PDF, escrita para dompdf
 │       └── components/      # header, footer, button, rich-text, classroom/…
 ├── routes/
 │   ├── web.php
