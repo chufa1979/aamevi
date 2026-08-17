@@ -25,7 +25,7 @@ class CourseTracking extends Page
 
     protected static string $resource = CourseResource::class;
 
-    protected static ?string $navigationLabel = 'Seguimiento alumnos';
+    protected static ?string $navigationLabel = 'Seguimiento';
 
     protected static ?string $title = 'Seguimiento de alumnos';
 

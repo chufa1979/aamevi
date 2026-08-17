@@ -26,7 +26,7 @@ class ManageCourseStudents extends ManageRelatedRecords
 
     protected static string $relationship = 'enrollments';
 
-    protected static ?string $navigationLabel = 'Alumnos del curso';
+    protected static ?string $navigationLabel = 'Alumnos';
 
     protected static ?string $title = 'Alumnos del curso';
 

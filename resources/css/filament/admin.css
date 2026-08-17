@@ -19,9 +19,21 @@
 }
 
 /*
- * Con nueve solapas la fila se vuelve angosta en pantallas chicas: que las
- * pestañas no se aplasten y la barra scrollee, en vez de partir el texto.
+ * Las solapas envuelven en varias filas en lugar de scrollear.
+ *
+ * Son diez, y en una sola línea no entran ni en pantalla ancha: Filament dejaba
+ * la última fuera de vista con una barra de scroll horizontal, que es de las
+ * pocas cosas que la gente no encuentra. Envolviendo, la barra crece un renglón
+ * y no se esconde ninguna.
+ *
+ * `flex-shrink: 0` se conserva para que una pestaña no se parta al medio.
  */
+.fi-page-sub-navigation-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 0.25rem;
+}
+
 .fi-page-sub-navigation-tabs .fi-tabs-item {
     flex-shrink: 0;
 }
