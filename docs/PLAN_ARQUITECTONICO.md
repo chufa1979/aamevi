@@ -59,13 +59,13 @@ aamevi/
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
-│   ├── Models/              ✅ 20: User, Student, Teacher, Course,
+│   ├── Models/              ✅ 21: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
 │   │                           StudentProgress, TaskSubmission, Certificate,
-│   │                           QueuedEmail, Announcement, SupportTicket,
-│   │                           SupportMessage
+│   │                           QueuedEmail, Announcement, AnnouncementRead,
+│   │                           SupportTicket, SupportMessage
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
 │   │                           preguntas) y User
 │   ├── Services/            ✅ QuizService, ProgressService,
@@ -81,13 +81,14 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 22: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 24: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
 │   │                           de intentos, student_progress, task_submissions
 │   │                           certificates, email_queue, announcements,
-│   │                           support_tickets y support_messages
+│   │                           support_tickets, support_messages y
+│   │                           announcement_reads
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -121,7 +122,7 @@ aamevi/
 │       ├── home.blade.php   ✅
 │       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 408: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 421: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -1331,7 +1332,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **22 migraciones, 20 modelos, 408 tests**:
+Hecho hasta el 2026-08-16 — **24 migraciones, 21 modelos, 421 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1361,7 +1362,7 @@ Hecho hasta el 2026-08-16 — **22 migraciones, 20 modelos, 408 tests**:
         `verified`
 19. [x] Buscador del aula, y la navegación del sitio acotada a cada rol
 20. [x] Comunicaciones y consultas a mesa de ayuda: las dos últimas solapas del
-        curso
+        curso, con contador de sin leer en el menú del aula
 
 ### Lo que falta
 
@@ -1487,6 +1488,11 @@ sola vez, así que corregir una errata no vuelve a llenarle la casilla a nadie.
 Sin borradores a propósito: una comunicación se escribe cuando hay algo que
 decir, y la pantalla de edición existe para corregir, no para preparar textos.
 
+**La lectura se registra** en `announcement_reads` —tabla y no columna, porque
+una comunicación del curso tiene tantos lectores como inscriptos—, y el menú del
+aula muestra cuántas hay sin leer. Sin ese número, entrar al tablón es un acto de
+fe: el alumno no tiene forma de saber si hay algo nuevo salvo mirando.
+
 **Consultas a mesa de ayuda — implementado el 2026-08-16.** Las tres cosas de FID
 quedaron corregidas:
 
@@ -1503,6 +1509,11 @@ respuesta—; para seguir se abre otra.
 
 El listado del alumno es de **todas** sus consultas, de todos sus cursos: lo que
 uno se pregunta es «qué pregunté», no «qué pregunté en este curso».
+
+Del lado del alumno alcanza con una columna, `student_read_at`, porque una
+consulta tiene un solo lector de este lado. Es un timestamp y no un booleano: se
+compara contra la fecha del último mensaje, así que una respuesta nueva la vuelve
+a marcar sin leer sin tener que tocar nada.
 
 ### Entrega de tareas y calificaciones — implementado
 

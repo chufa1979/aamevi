@@ -22,10 +22,19 @@ class AnnouncementController extends Controller
 
         abort_unless($progreso->isEnrolled($student, $course), 403, 'No estás inscripto en este curso.');
 
+        $listadas = $comunicaciones->forStudent($student, $course);
+
+        /*
+         * Abrir el tablón es leerlo: muestra el texto completo de cada
+         * comunicación. El contador del menú de esta misma pantalla ya sale en
+         * cero, que es lo correcto — las está mirando.
+         */
+        $comunicaciones->markRead($student, $listadas);
+
         return view('classroom.announcements', [
             'course' => $course,
             'cursoActual' => $course,
-            'comunicaciones' => $comunicaciones->forStudent($student, $course),
+            'comunicaciones' => $listadas,
         ]);
     }
 }

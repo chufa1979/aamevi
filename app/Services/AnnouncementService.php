@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Student;
 use App\Models\Announcement;
 use App\Enums\EnrollmentStatus;
+use App\Models\AnnouncementRead;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -62,17 +63,46 @@ class AnnouncementService
     }
 
     /**
-     * Cuántas hay para este alumno.
+     * Cuántas comunicaciones sin leer tiene, en un curso o en todos.
      *
-     * Cuántas tiene **sin leer** sería más útil, pero registrar la lectura pide
-     * una tabla más para un módulo que en FID se usó una vez en años.
+     * Es el número del menú del aula. Sin él, entrar al tablón es un acto de fe:
+     * el alumno no tiene forma de saber si hay algo nuevo salvo mirando.
      */
-    public function countForStudent(Student $student, Course $course): int
+    public function unreadFor(Student $student, ?Course $course = null): int
     {
         return Announcement::query()
-            ->where('course_id', $course->getKey())
             ->visibleToStudent($student)
+            ->when($course !== null, fn ($q) => $q->where('course_id', $course->getKey()))
+            // Sólo de los cursos que cursa: una comunicación de un curso del que
+            // se dio de baja no es un pendiente suyo
+            ->whereIn('course_id', $student->enrollments()
+                ->whereIn('status', EnrollmentStatus::ocupantes())
+                ->select('course_id'))
+            ->whereNotExists(fn ($q) => $q
+                ->selectRaw('1')
+                ->from('announcement_reads')
+                ->whereColumn('announcement_reads.announcement_id', 'announcements.id')
+                ->where('announcement_reads.student_id', $student->getKey()))
             ->count();
+    }
+
+    /**
+     * Da por leídas las comunicaciones que el alumno tiene delante.
+     *
+     * El tablón muestra el texto completo de cada una, así que abrirlo **es**
+     * leerlas: pedirle además un clic por comunicación sería inventar trabajo
+     * para sostener un contador.
+     *
+     * @param  Collection<int, Announcement>  $comunicaciones
+     */
+    public function markRead(Student $student, Collection $comunicaciones): void
+    {
+        foreach ($comunicaciones as $comunicacion) {
+            AnnouncementRead::firstOrCreate(
+                ['announcement_id' => $comunicacion->getKey(), 'student_id' => $student->getKey()],
+                ['read_at' => now()],
+            );
+        }
     }
 
     /**

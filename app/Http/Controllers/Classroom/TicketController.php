@@ -61,6 +61,8 @@ class TicketController extends Controller
     {
         $this->suya($request, $ticket);
 
+        $consultas->markRead($ticket);
+
         return view('classroom.ticket', [
             'ticket' => $ticket->load(['messages.author', 'course']),
         ]);

@@ -12,6 +12,20 @@
     está abajo y la otra arriba.
 --}}
 @php
+    $alumno = auth()->user()->student;
+
+    /*
+     * Los pendientes del alumno. Dos consultas por pantalla del aula, las dos
+     * `count()` con índice: alcanza para esto y evita que cada ítem del menú
+     * pregunte por su cuenta.
+     */
+    $sinLeer = [
+        'classroom.tickets' => app(\App\Services\SupportService::class)->unreadFor($alumno),
+        'classroom.announcements' => $course === null
+            ? 0
+            : app(\App\Services\AnnouncementService::class)->unreadFor($alumno, $course),
+    ];
+
     $generales = [
         ['ruta' => 'classroom.courses', 'label' => 'Mis cursos', 'icono' => 'texto'],
         ['ruta' => 'classroom.catalog', 'label' => 'Catálogo', 'icono' => 'disponible'],
@@ -44,6 +58,8 @@
                        ])>
                         <x-ui.icon :name="$item['icono']" class="h-4 w-4 shrink-0" />
                         {{ $item['label'] }}
+
+                        <x-classroom.unread :count="$sinLeer[$item['ruta']] ?? 0" />
                     </a>
                 </li>
             @endforeach
@@ -71,6 +87,8 @@
                            ])>
                             <x-ui.icon :name="$item['icono']" class="h-4 w-4 shrink-0" />
                             {{ $item['label'] }}
+
+                            <x-classroom.unread :count="$sinLeer[$item['ruta']] ?? 0" />
                         </a>
                     </li>
                 @endforeach

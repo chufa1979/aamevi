@@ -113,6 +113,31 @@ class SupportService
             ->get();
     }
 
+    /**
+     * Cuántas consultas tienen una respuesta que el alumno todavía no vio.
+     *
+     * Se compara contra la fecha del último mensaje y no contra un booleano: el
+     * hilo sigue, así que una respuesta nueva vuelve a marcarla sin leer sola.
+     */
+    public function unreadFor(Student $student): int
+    {
+        return SupportTicket::query()
+            ->where('student_id', $student->getKey())
+            ->whereHas('messages', fn ($q) => $q
+                // De la otra parte: los propios no son novedad
+                ->where(fn ($m) => $m->whereNull('author_id')
+                    ->orWhereColumn('support_messages.author_id', '!=', 'support_tickets.student_id'))
+                ->where(fn ($m) => $m->whereNull('support_tickets.student_read_at')
+                    ->orWhereColumn('support_messages.created_at', '>', 'support_tickets.student_read_at')))
+            ->count();
+    }
+
+    /** Abrir el hilo es leerlo: está entero en pantalla. */
+    public function markRead(SupportTicket $ticket): void
+    {
+        $ticket->update(['student_read_at' => now()]);
+    }
+
     /** ¿Este usuario puede leer y contestar esta consulta? */
     public function canHandle(User $user, SupportTicket $ticket): bool
     {

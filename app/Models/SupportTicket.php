@@ -28,6 +28,7 @@ class SupportTicket extends Model
         'subject',
         'status',
         'closed_at',
+        'student_read_at',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class SupportTicket extends Model
         return [
             'status' => TicketStatus::class,
             'closed_at' => 'datetime',
+            'student_read_at' => 'datetime',
         ];
     }
 
