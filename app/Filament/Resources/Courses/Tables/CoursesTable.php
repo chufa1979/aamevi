@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Courses\Tables;
 
 use Filament\Tables\Table;
+use App\Enums\TicketStatus;
 use App\Enums\EnrollmentStatus;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
@@ -50,6 +51,24 @@ class CoursesTable
                     ])
                     ->alignCenter()
                     ->description(fn ($record): string => "de {$record->max_students}"),
+
+                /*
+                 * Sólo se ve cuando hay algo esperando. Una columna con un cero
+                 * en todas las filas ocupa lugar y no dice nada; en cambio un
+                 * número acá es lo que le dice al docente a qué curso entrar.
+                 */
+                TextColumn::make('tickets_count')
+                    ->label('Consultas')
+                    ->counts([
+                        'tickets' => fn ($query) => $query->where('status', TicketStatus::Open),
+                    ])
+                    // La cápsula también va condicionada: sin esto, el cero
+                    // dibujaba un globo naranja vacío, que llama la atención
+                    // justamente donde no hay nada que atender
+                    ->badge(fn (int $state): bool => $state > 0)
+                    ->color('warning')
+                    ->alignCenter()
+                    ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : ''),
 
                 IconColumn::make('is_active')
                     ->label('Activo')

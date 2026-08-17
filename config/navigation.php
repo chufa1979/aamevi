@@ -7,6 +7,12 @@
  * (Certificación, Membresía, Donaciones).
  *
  * `match` es el patrón que se pasa a Request::is() para marcar el ítem activo.
+ *
+ * `roles` acota quién ve cada ítem; sin esa clave lo ve todo el mundo. Casi todo
+ * este menú es del aula, y el aula es de los alumnos: sin el recorte, a un
+ * administrador le aparecían tres secciones que le daban 403. Lo aplica
+ * `App\Support\Navigation`, que además agrega el acceso al panel de quien
+ * tenga uno.
  */
 
 return [
@@ -16,21 +22,22 @@ return [
             'label' => 'Cursos',
             'href' => '/cursos',
             'match' => 'cursos*',
+            'roles' => ['student'],
             'children' => [
                 ['label' => 'Catálogo', 'href' => '/cursos', 'match' => 'cursos'],
                 ['label' => 'Mis cursos', 'href' => '/mis-cursos', 'match' => 'mis-cursos*'],
             ],
         ],
-        ['label' => 'Mi progreso', 'href' => '/progreso', 'match' => 'progreso*'],
-        ['label' => 'Certificados', 'href' => '/certificados', 'match' => 'certificados*'],
+        ['label' => 'Mi progreso', 'href' => '/progreso', 'match' => 'progreso*', 'roles' => ['student']],
+        ['label' => 'Certificados', 'href' => '/certificados', 'match' => 'certificados*', 'roles' => ['student']],
         ['label' => 'Ayuda', 'href' => '/ayuda', 'match' => 'ayuda*'],
     ],
 
     'footer' => [
         ['label' => 'Inicio', 'href' => '/', 'match' => '/'],
-        ['label' => 'Cursos', 'href' => '/cursos', 'match' => 'cursos*'],
-        ['label' => 'Mi progreso', 'href' => '/progreso', 'match' => 'progreso*'],
-        ['label' => 'Certificados', 'href' => '/certificados', 'match' => 'certificados*'],
+        ['label' => 'Cursos', 'href' => '/cursos', 'match' => 'cursos*', 'roles' => ['student']],
+        ['label' => 'Mi progreso', 'href' => '/progreso', 'match' => 'progreso*', 'roles' => ['student']],
+        ['label' => 'Certificados', 'href' => '/certificados', 'match' => 'certificados*', 'roles' => ['student']],
         ['label' => 'Ayuda', 'href' => '/ayuda', 'match' => 'ayuda*'],
     ],
 

@@ -104,24 +104,39 @@ class CourseNavigationTest extends TestCase
         $this->get(CourseResource::getUrl($page, ['record' => $course]))->assertSuccessful();
     }
 
-    public function test_las_seis_solapas_aparecen_en_la_pantalla_del_curso(): void
+    /**
+     * Las diez, todas presentes en el HTML.
+     *
+     * Importa porque la barra envuelve en varias filas en vez de scrollear: si
+     * alguna volviera a quedar fuera de vista, este test no lo vería, pero al
+     * menos garantiza que ninguna se cayó de la lista.
+     */
+    public function test_las_diez_solapas_aparecen_en_la_pantalla_del_curso(): void
     {
         $course = Course::factory()->create();
 
-        $this->get(CourseResource::getUrl('edit', ['record' => $course]))
-            ->assertSuccessful()
-            ->assertSee('Info general')
-            ->assertSee('Planificación')
-            ->assertSee('Contenidos')
-            ->assertSee('Exámenes')
-            ->assertSee('Alumnos del curso')
-            ->assertSee('Seguimiento alumnos');
+        $response = $this->get(CourseResource::getUrl('edit', ['record' => $course]))->assertSuccessful();
+
+        foreach ([
+            'Info general',
+            'Planificación',
+            'Contenidos',
+            'Exámenes',
+            'Intentos',
+            'Calificaciones',
+            'Alumnos',
+            'Seguimiento',
+            'Comunicación',
+            'Consultas',
+        ] as $solapa) {
+            $response->assertSee($solapa);
+        }
     }
 
     /**
      * Los retoques de estilo del panel viven en un CSS aparte, publicado por
-     * `filament:assets`. Si deja de registrarse, las solapas vuelven a quedar
-     * angostas y no lo nota ningún otro test.
+     * `filament:assets`. Si deja de registrarse, las solapas vuelven a scrollear
+     * en una sola fila y no lo nota ningún otro test.
      */
     public function test_la_hoja_de_estilos_del_panel_esta_enlazada(): void
     {

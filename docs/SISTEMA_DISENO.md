@@ -204,9 +204,11 @@ resources/views/components/
 ├── rich-text.blade.php      # Único lugar del proyecto con `{!! !!}`
 ├── ui/icon.blade.php        # Íconos SVG en línea
 └── classroom/               # El aula
-    ├── nav.blade.php
+    ├── nav.blade.php           # Con el contador de sin leer por sección
     ├── progress-bar.blade.php
     ├── state-badge.blade.php   # Aprobada, en curso, bloqueada, no habilitada
+    ├── badge.blade.php         # La genérica: hoy, el estado de una consulta
+    ├── unread.blade.php        # Cuántas cosas sin leer tiene un ítem del menú
     ├── content-block.blade.php # Video, PDF, texto o consigna
     └── task-panel.blade.php    # Entrega, estado, nota y devolución
 ```
@@ -265,6 +267,7 @@ sobre fondo oscuro no se lee.
 
 - Imágenes de cabecera propias por sección. Hoy `<x-page-hero>` cae a un degradado con los
   colores del isotipo cuando no recibe imagen.
-- Pantallas de certificados: es la última sección del aula que sigue sirviendo el marcador.
+- `/ayuda` es la última sección que sigue sirviendo el marcador.
+- El modelo visual definitivo del certificado: hoy es tipográfico, sin firma escaneada.
 - El sitio madre incluye un cursor personalizado y un carrusel (slick) en la home. Se
   omitieron a propósito: aportan poco en una plataforma de estudio.

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use App\Http\Middleware\EnsureStudent;
 use Illuminate\Foundation\Application;
 use App\Http\Middleware\HandleOversizedUpload;
@@ -14,6 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        /*
+         * A dónde va quien abre /login con la sesión ya iniciada. Sin esto
+         * caería en la portada, que no es la pantalla de trabajo de ninguno de
+         * los tres roles.
+         */
+        $middleware->redirectUsersTo(fn (Request $request): string => $request->user()->homeUrl());
+
         $middleware->alias([
             'student' => EnsureStudent::class,
         ]);

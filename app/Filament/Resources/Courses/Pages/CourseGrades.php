@@ -141,9 +141,11 @@ class CourseGrades extends Page implements HasTable
                         ->orderBy('order_number')
                         ->pluck('title', 'id')
                         ->all())
-                    ->query(fn (Builder $q, array $data): Builder => filled($data['value'] ?? null)
-                        ? $q->whereIn('content_id', ClassContent::where('class_id', $data['value'])->select('id'))
-                        : $q),
+                    // `$query` y no `$q`: Filament resuelve los argumentos del
+                    // closure por nombre, y uno con otro nombre no recibe nada
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                        ? $query->whereIn('content_id', ClassContent::where('class_id', $data['value'])->select('id'))
+                        : $query),
             ])
             ->recordActions([
                 Action::make('descargar')

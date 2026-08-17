@@ -67,6 +67,12 @@ class Quiz extends Model
         return $this->belongsTo(CourseModule::class, 'module_id');
     }
 
+    /** El curso al que pertenece, cuelgue de una clase o de un módulo. */
+    public function course(): ?Course
+    {
+        return $this->class?->module?->course ?? $this->module?->course;
+    }
+
     public function isModuleExam(): bool
     {
         return filled($this->module_id);

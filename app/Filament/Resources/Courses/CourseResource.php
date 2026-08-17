@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Courses;
 use App\Models\Course;
 use Filament\Tables\Table;
 use Filament\Schemas\Schema;
+use App\Services\SupportService;
 use Filament\Resources\Resource;
 use Filament\Resources\Pages\Page;
 use Filament\Navigation\NavigationItem;
@@ -18,10 +19,12 @@ use App\Filament\Resources\Courses\Pages\ListCourses;
 use App\Filament\Resources\Courses\Pages\CourseGrades;
 use App\Filament\Resources\Courses\Pages\CreateCourse;
 use App\Filament\Resources\Courses\Schemas\CourseForm;
+use App\Filament\Resources\Courses\Pages\CourseTickets;
 use App\Filament\Resources\Courses\Tables\CoursesTable;
 use App\Filament\Resources\Courses\Pages\CourseAttempts;
 use App\Filament\Resources\Courses\Pages\CourseSchedule;
 use App\Filament\Resources\Courses\Pages\CourseTracking;
+use App\Filament\Resources\Courses\Pages\CourseAnnouncements;
 use App\Filament\Resources\Courses\Pages\ManageCourseContent;
 use App\Filament\Resources\Courses\Pages\ManageCourseStudents;
 
@@ -52,6 +55,32 @@ class CourseResource extends Resource
         return $record?->title;
     }
 
+    /**
+     * Las consultas que esperan respuesta, en el menú lateral.
+     *
+     * Es lo único de este panel que espera a una persona: el resto —cargar
+     * material, corregir— lo maneja el docente a su ritmo, pero una consulta sin
+     * contestar tiene a alguien del otro lado. Sin este número habría que entrar
+     * curso por curso para enterarse.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $esperando = app(SupportService::class)->pendingFor($user);
+
+        return $esperando > 0 ? (string) $esperando : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return CourseForm::configure($schema);
@@ -67,8 +96,9 @@ class CourseResource extends Resource
      * después el cronograma y el material, después la evaluación, y al final el
      * alumnado.
      *
-     * Calificaciones, Comunicación y Consultas a mesa de ayuda todavía no
-     * existen; están documentadas en §13 del plan arquitectónico.
+     * Comunicación y Consultas van al final: son las menos usadas de todas
+     * —en los datos de FID, una comunicación y tres consultas en años— y el
+     * trabajo diario está en las de arriba.
      *
      * @return array<NavigationItem>
      */
@@ -83,6 +113,8 @@ class CourseResource extends Resource
             CourseGrades::class,
             ManageCourseStudents::class,
             CourseTracking::class,
+            CourseAnnouncements::class,
+            CourseTickets::class,
         ]);
     }
 
@@ -99,6 +131,8 @@ class CourseResource extends Resource
             'grades' => CourseGrades::route('/{record}/calificaciones'),
             'students' => ManageCourseStudents::route('/{record}/alumnos'),
             'tracking' => CourseTracking::route('/{record}/seguimiento'),
+            'announcements' => CourseAnnouncements::route('/{record}/comunicaciones'),
+            'tickets' => CourseTickets::route('/{record}/consultas'),
         ];
     }
 }

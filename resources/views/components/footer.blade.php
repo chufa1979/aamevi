@@ -17,7 +17,7 @@
         <x-footer-icons :items="$social" />
 
         <ul class="md:flex">
-            @foreach (config('navigation.footer') as $item)
+            @foreach (\App\Support\Navigation::footer(auth()->user()) as $item)
                 <li class="my-2 md:mx-6 md:my-0">
                     <a href="{{ $item['href'] }}"
                        @class(['text-sm uppercase no-underline', 'font-semibold' => request()->is($item['match'])])>

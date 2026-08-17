@@ -19,9 +19,21 @@
 }
 
 /*
- * Con nueve solapas la fila se vuelve angosta en pantallas chicas: que las
- * pestañas no se aplasten y la barra scrollee, en vez de partir el texto.
+ * Las solapas envuelven en varias filas en lugar de scrollear.
+ *
+ * Son diez, y en una sola línea no entran ni en pantalla ancha: Filament dejaba
+ * la última fuera de vista con una barra de scroll horizontal, que es de las
+ * pocas cosas que la gente no encuentra. Envolviendo, la barra crece un renglón
+ * y no se esconde ninguna.
+ *
+ * `flex-shrink: 0` se conserva para que una pestaña no se parta al medio.
  */
+.fi-page-sub-navigation-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 0.25rem;
+}
+
 .fi-page-sub-navigation-tabs .fi-tabs-item {
     flex-shrink: 0;
 }
@@ -362,6 +374,68 @@
 }
 
 .aamevi-attempt-meta .is-desaprobado {
+    font-weight: 500;
+    color: var(--danger-600);
+}
+
+/* ── Hilo de una consulta ── */
+
+.aamevi-answer[data-mio='1'] {
+    border-left: 3px solid var(--primary-500);
+}
+
+.aamevi-thread-meta {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.aamevi-thread-body {
+    margin: 0.5rem 0 0;
+    white-space: pre-line;
+    line-height: 1.6;
+    color: var(--gray-950);
+}
+
+.dark .aamevi-thread-body {
+    color: var(--gray-100);
+}
+
+/* ── Historial de intentos de un alumno ── */
+
+.aamevi-attempt + .aamevi-attempt {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+.dark .aamevi-attempt + .aamevi-attempt {
+    border-color: var(--gray-700);
+}
+
+.aamevi-attempt-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--gray-500);
+}
+
+.aamevi-attempt-head strong {
+    color: var(--gray-950);
+}
+
+.dark .aamevi-attempt-head strong {
+    color: var(--color-white);
+}
+
+.aamevi-attempt-head .is-aprobado {
+    font-weight: 500;
+    color: var(--success-600);
+}
+
+.aamevi-attempt-head .is-desaprobado {
     font-weight: 500;
     color: var(--danger-600);
 }

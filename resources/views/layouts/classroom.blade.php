@@ -32,7 +32,23 @@
                 <x-brand-logo />
             </a>
 
-            <p class="text-sm uppercase tracking-wide text-subtle">Aula virtual</p>
+            <div class="flex flex-wrap items-center gap-4">
+                {{-- El buscador también acá: el alumno pasa el día adentro del
+                     aula, y tenerlo sólo en la portada obligaba a salir para
+                     usarlo. Es el mismo campo del encabezado del sitio --}}
+                <form action="{{ route('classroom.search') }}" method="GET" role="search"
+                      class="flex items-center">
+                    <button type="submit" class="px-2" aria-label="Buscar">
+                        <x-ui.icon name="search" />
+                    </button>
+                    <input type="text" name="q" value="{{ request('q') }}"
+                           aria-label="Buscar en la plataforma"
+                           class="w-[130px] rounded-none rounded-br-[15px] border-0 border-r-[1.5px] border-b-[1.5px]
+                                  border-primary bg-transparent pb-1 text-xs focus:outline-none">
+                </form>
+
+                <p class="text-sm uppercase tracking-wide text-subtle">Aula virtual</p>
+            </div>
         </div>
     </header>
 

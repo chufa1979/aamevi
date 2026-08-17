@@ -10,7 +10,9 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 En desarrollo. Hay **tres superficies** sobre el mismo dominio de datos, con una
 sola puerta de entrada: `/login`, con limitador de intentos y bloqueo de cuentas
 desactivadas. Ningún panel expone su propio formulario, así que hay un solo lugar
-que auditar.
+que auditar. Cada rol cae después en lo suyo —el alumno en sus cursos, el docente
+y el administrador en su panel—, salvo que viniera de una URL concreta, en cuyo
+caso vuelve ahí.
 
 ### El aula (Blade)
 
@@ -20,7 +22,8 @@ componentes Blade.
 
 El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
 clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
-barra de progreso y sus certificados. Puede elegir **tema claro u oscuro** y **tres tamaños de
+barra de progreso, sus certificados, un buscador, el tablón de comunicaciones de
+cada curso y sus consultas a mesa de ayuda. Puede elegir **tema claro u oscuro** y **tres tamaños de
 letra**; las preferencias se aplican antes del primer pintado, sin parpadeo.
 
 Una clase se abre cuando llegó su fecha y se aprobó la anterior; `ProgressService`
@@ -37,10 +40,12 @@ Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
 | Planificación | Cronograma completo del curso, con corrimiento de fechas en lote |
 | Contenidos | Módulos → clases → material: video con previsualización, PDF con subida y descarga, texto y consignas |
 | Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
-| Intentos | Qué rindió cada alumno, con qué preguntas le tocaron y qué respondió |
+| Intentos | Cómo le fue a cada alumno en cada evaluación, con su historial completo y la opción de devolverle los intentos al que se trabó |
 | Calificaciones | Bandeja de entregas: corregir con nota y devolución, y publicar en tanda |
 | Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
+| Comunicación | Tablón del curso: para todos o para un alumno, con aviso por email opcional |
+| Consultas | Las preguntas de los alumnos del curso, con su hilo y su estado |
 
 En **Sistema → Avisos por email** está la cola de correos: qué se le mandó a
 quién, si salió, y el error de los que fallaron con un botón para reintentar.
@@ -51,10 +56,6 @@ Las evaluaciones son de dos tipos: la **autoevaluación** de cada clase, que
 sortea preguntas de su propio banco, y el **examen de módulo**, que sortea un
 porcentaje del banco combinado de todas sus clases y es opcional.
 
-Faltan dos solapas —Comunicación y Consultas a mesa de ayuda—, diseñadas en §13
-del plan arquitectónico y últimas en la cola a propósito: en el LMS que se analizó
-casi no se usaron.
-
 ### Panel de profesores (`/profesores`)
 
 Las mismas pantallas del curso, acotadas a los cursos que dicta cada docente. No
@@ -64,7 +65,7 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
-**Pendiente**: las dos solapas de comunicación, y `/ayuda` y `/buscar`.
+**Pendiente**: `/ayuda`, Google OAuth y Google Cloud Storage.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
 análisis de un LMS en producción del que salió la organización del panel.
@@ -87,7 +88,10 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Certificados** | PDF de finalización, emitido solo al completar el curso | ✅ |
 | **Registro público** | Alta de cuenta con verificación por email | ✅ |
 | **Google OAuth** | Inicio de sesión con cuenta de Google | ⏳ |
-| **Notificaciones** | Avisos por email de inscripción, corrección, certificado y clase en vivo | ✅ |
+| **Notificaciones** | Avisos por email de inscripción, corrección, certificado, clase en vivo, comunicación y respuesta a una consulta | ✅ |
+| **Comunicaciones** | Tablón del curso, con aviso por email opcional | ✅ |
+| **Mesa de ayuda** | Consultas por curso, con hilo y estado | ✅ |
+| **Sin leer** | El menú del aula avisa cuántas comunicaciones y respuestas hay nuevas, y el panel cuántas consultas esperan respuesta | ✅ |
 
 ---
 
@@ -126,12 +130,13 @@ aamevi/
 │   │   └── Middleware/
 │   ├── Models/              # Eloquent
 │   ├── Policies/            # Quién puede qué; los dos paneles las comparten
-│   ├── Providers/Filament/  # Un provider por panel: admin y profesores
 │   ├── Events/              # Lo que pasó, para que reaccione quien quiera
 │   ├── Listeners/           # Quién reacciona
+│   ├── Providers/Filament/  # Un provider por panel: admin y profesores
 │   ├── Services/            # Quiz, Progreso, Inscripciones, Entregas,
-│   │                        #   Certificados y Avisos
-│   └── Support/Html.php     # Saneado del texto enriquecido
+│   │                        #   Certificados, Avisos, Comunicaciones,
+│   │                        #   Consultas y Buscador
+│   └── Support/             # Saneado del texto enriquecido y el menú por rol
 ├── bootstrap/app.php        # Esqueleto slim de Laravel 11+
 ├── config/
 │   ├── database.php
@@ -156,6 +161,8 @@ aamevi/
 │       ├── layouts/
 │       ├── partials/        # preferences-head: se aplica antes del primer pintado
 │       ├── classroom/       # El aula
+│       ├── emails/          # Las plantillas de los avisos, en tablas
+│       ├── certificates/    # La plantilla del PDF, escrita para dompdf
 │       └── components/      # header, footer, button, rich-text, classroom/…
 ├── routes/
 │   ├── web.php

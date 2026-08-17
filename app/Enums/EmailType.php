@@ -20,6 +20,10 @@ enum EmailType: string implements HasColor, HasLabel
     case ClassReminder = 'class_reminder';
     case Certificate = 'certificate';
     case TaskGraded = 'task_graded';
+    case Announcement = 'announcement';
+    case SupportReply = 'support_reply';
+    case AttemptsExhausted = 'attempts_exhausted';
+    case AttemptsReset = 'attempts_reset';
 
     public function getLabel(): string
     {
@@ -29,6 +33,10 @@ enum EmailType: string implements HasColor, HasLabel
             self::ClassReminder => 'Recordatorio de clase',
             self::Certificate => 'Certificado emitido',
             self::TaskGraded => 'Trabajo corregido',
+            self::Announcement => 'Comunicación del curso',
+            self::SupportReply => 'Respuesta a una consulta',
+            self::AttemptsExhausted => 'Alumno sin intentos',
+            self::AttemptsReset => 'Intentos habilitados',
         };
     }
 
@@ -40,6 +48,10 @@ enum EmailType: string implements HasColor, HasLabel
             self::ClassReminder => 'warning',
             self::Certificate => 'primary',
             self::TaskGraded => 'info',
+            self::Announcement => 'primary',
+            self::SupportReply => 'info',
+            self::AttemptsExhausted => 'warning',
+            self::AttemptsReset => 'success',
         };
     }
 

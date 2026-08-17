@@ -37,40 +37,46 @@ aamevi/
 │   ├── Console/Commands/    ✅ emails:enviar, emails:recordatorios
 │   ├── Enums/               ✅ UserRole, EnrollmentStatus, ClassContentType,
 │   │                           ClassProgressState, SubmissionStatus, EmailType,
-│   │                           EmailStatus
+│   │                           EmailStatus, TicketStatus
 │   ├── Events/              ✅ CourseProgressAdvanced, EnrollmentApproved
 │   ├── Exceptions/          ✅ EnrollmentException, QuizException,
-│   │                           SubmissionException, CertificateException
+│   │                           SubmissionException, CertificateException,
+│   │                           SupportException
 │   ├── Filament/                  # Los dos paneles (§11)
 │   │   ├── Concerns/        ✅ ScopedToOwnCourses, ListAndCreateNavigation
 │   │   ├── Forms/           ✅ RichText, ModuleExam, QuestionOptions
 │   │   ├── Tables/          ✅ DragToReorder
 │   │   └── Resources/       ✅ Users, Students, Courses, CourseModules,
-│   │                           CourseClasses, Questions
+│   │                           CourseClasses, Questions, QueuedEmails
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Auth/        ✅ AuthenticatedSessionController,
 │   │   │   │                    RegisteredUserController,
 │   │   │   │                    EmailVerificationController
 │   │   │   └── Classroom/   ✅ Catalog, MyCourses, Course, Classroom, Quiz,
-│   │   │                       Submission, Progress
+│   │   │                       Submission, Progress, Certificate, Search,
+│   │   │                       Announcement, Ticket
 │   │   ├── Requests/        ✅ LoginRequest, RegisterRequest,
-│   │   │                       StoreSubmissionRequest
+│   │   │                       StoreSubmissionRequest, StoreTicketRequest
 │   │   └── Middleware/      ✅ EnsureUserIsStudent, HandleOversizedUpload
 │   ├── Listeners/           ✅ IssueCertificateIfEarned,
 │   │                           QueueEnrollmentApprovedEmail
-│   ├── Models/              ✅ 16: User, Student, Teacher, Course,
+│   ├── Models/              ✅ 22: User, Student, Teacher, Course,
 │   │                           CourseModule, CourseClass, ClassContent,
 │   │                           CourseEnrollment, Quiz, Question,
 │   │                           QuestionOption, QuizAttempt, StudentAnswer,
 │   │                           StudentProgress, TaskSubmission, Certificate,
-│   │                           QueuedEmail
+│   │                           QueuedEmail, Announcement, AnnouncementRead,
+│   │                           SupportTicket, SupportMessage, QuizAttemptReset
 │   ├── Policies/            ✅ Course, CoursePart (módulos, clases,
-│   │                           preguntas) y User
+│   │                           preguntas), User y QueuedEmail
 │   ├── Services/            ✅ QuizService, ProgressService,
 │   │                           EnrollmentService, SubmissionService,
-│   │                           CertificateService, NotificationService
-│   ├── Support/Html.php     ✅ Saneado del texto enriquecido
+│   │                           CertificateService, NotificationService,
+│   │                           SearchService, AnnouncementService,
+│   │                           SupportService
+│   ├── Support/             ✅ Html (saneado del texto enriquecido),
+│   │                           Navigation (el menú, recortado por rol)
 │   └── Providers/Filament/  ✅ AdminPanelProvider, TeacherPanelProvider
 ├── bootstrap/app.php        ✅ Esqueleto slim de Laravel 11+
 ├── config/
@@ -78,12 +84,14 @@ aamevi/
 │   ├── database.php         ✅ mysql + sqlite (esta última solo para tests)
 │   └── navigation.php       ✅ Fuente única del menú del aula
 ├── database/
-│   ├── migrations/          ✅ 18: users, password_reset_tokens, students,
+│   ├── migrations/          ✅ 25: users, password_reset_tokens, students,
 │   │                           teachers, courses, modules, classes,
 │   │                           class_content (+ due_date), course_enrollments,
 │   │                           questions, question_options, quizzes, los tres
-│   │                           de intentos, student_progress, task_submissions
-│   │                           certificates y email_queue
+│   │                           de intentos, student_progress, task_submissions,
+│   │                           certificates, email_queue, announcements,
+│   │                           support_tickets, support_messages,
+│   │                           announcement_reads y quiz_attempt_resets
 │   ├── factories/           ✅ Una por modelo
 │   └── seeders/             ✅ DatabaseSeeder (un usuario por rol),
 │                               StudentSeeder y CourseSeeder (programa completo)
@@ -113,11 +121,11 @@ aamevi/
 │       ├── emails/          ✅ Las plantillas de los avisos, en tablas
 │       ├── classroom/       ✅ catálogo, curso, clase, evaluaciones, quiz y
 │       │                       su resultado, mis cursos, progreso,
-│       │                       certificados
+│       │                       certificados, buscador
 │       ├── home.blade.php   ✅
-│       └── placeholder.blade.php ✅ Sólo ayuda y buscar
+│       └── placeholder.blade.php ✅ Sólo ayuda
 ├── routes/web.php           ✅ Grupos `guest` y `auth`
-├── tests/                   ✅ 347: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
+├── tests/                   ✅ 454: Unit/ y Feature/{Auth,Admin,Teacher,Classroom}
 ├── docs/                    ✅ Este plan, SISTEMA_DISENO.md, DEPLOY.md
 ├── deploy.sh                ✅ Ciclo de actualización en el servidor
 ├── composer.json            ✅
@@ -618,6 +626,21 @@ genérico solo genera consultas al soporte.
 - **Las cuentas creadas desde el panel nacen verificadas.** Las da de alta la
   institución, no alguien que dijo ser el dueño de esa casilla.
 
+### Buscador — `SearchService`
+
+Busca **sólo lo que ese alumno puede abrir**: los cursos de su catálogo o los
+que ya cursa, y las clases de los cursos en los que está inscripto.
+
+- **El recorte va en la consulta, no en la salida.** Buscar en todo y esconder
+  después filtraría igual: la lista de títulos que existen ya es información.
+- **Las clases todavía no habilitadas aparecen, pero sin enlace.** Figuran en el
+  temario desde el primer día, así que no revelan nada; el resultado dice en qué
+  estado están y ofrece el curso, en vez de mandar al alumno a un 403.
+- **Las palabras se buscan por separado**: «medicina vida» encuentra «Medicina
+  del estilo de vida», que como una sola cadena no aparecería.
+- **Es del aula.** El docente y el administrador tienen el buscador global de su
+  panel; a ellos ni se les muestra el campo.
+
 ### Avisos — `NotificationService`
 
 Nada se manda en el momento: todo se escribe en `email_queue` y sale cuando
@@ -637,6 +660,28 @@ Nada se manda en el momento: todo se escribe en `email_queue` y sale cuando
   es peor que un llamado.
 - **El recordatorio es sólo de las clases en vivo.** Una grabada se ve cuando el
   alumno puede; avisar de cada una sería un correo por clase del cronograma.
+
+### Intentos agotados — `QuizService::reset()`
+
+Un alumno que agota los intentos de una autoevaluación sin aprobarla **queda
+trabado**: `ProgressService::complete()` exige aprobarla, así que no puede seguir
+el curso. El aula le decía «hablá con tu docente» y el docente no tenía nada que
+apretar; lo único a mano era subirle el límite a la evaluación —que se lo sube a
+todo el curso— o borrar el intento.
+
+- **Resetear no borra: abre un ciclo.** `quiz_attempt_resets` guarda una fila por
+  reseteo, y `attemptsLeft()` cuenta los intentos **posteriores al último**. El
+  historial completo queda —es la prueba de sobre qué se lo calificó— y encima
+  queda registrado quién destrabó a quién y por qué.
+- **El número de intento sigue contando todos.** Hay un
+  `unique(quiz_id, student_id, attempt_number)`: reiniciar la numeración en cada
+  ciclo choca contra él.
+- **Aprobar es aprobar**, aunque haya sido antes de un reseteo.
+- **El aviso de que alguien se trabó va al docente, no al alumno.** El alumno ya
+  lo está leyendo en pantalla; el que tiene que hacer algo es el otro.
+- **Lo que sigue faltando**: si el docente decide no resetear, el alumno no
+  termina el curso. Destrabar eso pide poder dar una clase por aprobada a mano,
+  que hoy nada en el sistema permite.
 
 ### Certificados — `CertificateService`
 
@@ -676,17 +721,26 @@ disponible por si más adelante hace falta una API para mobile.
 
 ```php
 // app/Http/Controllers/Auth/
-RegisteredUserController::store(RegisterRequest)   // type: student|teacher
-AuthenticatedSessionController::store(LoginRequest)
-AuthenticatedSessionController::destroy()
-EmailVerificationController::verify(id, hash)
-GoogleOAuthController::redirect() / callback()     // Laravel Socialite
-PasswordResetLinkController::store(email)
-NewPasswordController::store(token, password)
+AuthenticatedSessionController::store(LoginRequest)   // ✅
+AuthenticatedSessionController::destroy()             // ✅
+RegisteredUserController::create() / store()          // ✅ siempre alumno
+EmailVerificationController::notice() / verify() / resend()  // ✅
+GoogleOAuthController::redirect() / callback()        // pendiente (Socialite)
+PasswordResetLinkController::store(email)             // pendiente
+NewPasswordController::store(token, password)         // pendiente
 ```
 
+El alta pública **no elige rol**, a diferencia del boceto: crea siempre un
+alumno. Uno que pudiera pedir ser docente sería una puerta abierta; los docentes
+y administradores los da de alta la administración desde el panel.
+
+A dónde entra cada uno después sale de `User::homeUrl()`, y el destino que
+quedó guardado antes de pedir la contraseña sólo se respeta si `canReach()` dice
+que esa superficie es suya.
+
 Autorización por rol con middleware y Policies (`CoursePolicy`,
-`EnrollmentPolicy`), no con chequeos sueltos en los controladores.
+`CoursePartPolicy`, `UserPolicy`, `QueuedEmailPolicy`), no con chequeos sueltos
+en los controladores.
 
 ### Módulo Courses
 
@@ -694,12 +748,23 @@ Autorización por rol con middleware y Policies (`CoursePolicy`,
 > y clases se hace desde el panel de Filament (§11). Estos controladores son los
 > del **sitio público**: lo que ve y hace un alumno.
 
+Quedaron bajo `app/Http/Controllers/Classroom/` y no `Courses/`: el nombre dice
+de qué superficie son, que es la distinción que importa ahora que la
+administración vive en otro lado.
+
 ```php
-// app/Http/Controllers/Courses/
-CourseController::index()      // GET  /cursos                catálogo
-CourseController::show(Course) // GET  /cursos/{course}       (route model binding)
-EnrollmentController::store(Course)  // POST /cursos/{course}/inscripcion → pending
-ClassroomController::show(CourseClass) // GET /clases/{class}  aula: contenido y quiz
+// app/Http/Controllers/Classroom/
+CatalogController::index() / store(Course)   // catálogo y solicitud de inscripción
+MyCoursesController::index()                 // los suyos, con avance
+CourseController::show(Course) / evaluations(Course)
+ClassroomController::show(CourseClass) / complete(CourseClass)
+QuizController::show(Quiz) / submit(Quiz)
+SubmissionController::store(ClassContent)    // entrega de una tarea
+ProgressController::index()
+CertificateController::index() / download(Certificate)
+AnnouncementController::index(Course)        // tablón del curso
+TicketController::index() / store() / show() / reply() / close()
+SearchController::index()
 ```
 
 La aprobación de inscripciones (§3-A) es una acción del panel, no de este
@@ -712,34 +777,45 @@ progreso) va en clases de servicio bajo `app/Services/`, no en el controlador.
 
 Es la parte más intrincada del dominio; ver §3-B y las tablas de §2.
 
+Así quedó implementado, que difiere del boceto original: cargar preguntas y
+configurar el quiz no son métodos del servicio sino formularios del panel, y el
+servicio se quedó con lo que nadie más puede hacer bien.
+
 ```php
-// app/Services/Quiz/
-QuizService::createQuestion(CourseClass, text, options, correctOption)
-QuizService::configure(CourseClass, questionsPerStudent, passingScore, maxAttempts)
-QuizService::startAttempt(Quiz, Student): QuizAttempt
-    // Sortea N preguntas del banco de la clase y las graba en
-    // quiz_question_assignment, para que el intento sea reproducible
-QuizService::submit(QuizAttempt, array $answers): QuizResult
-    // Califica automáticamente y devuelve score + passed
-QuizService::attemptsFor(Quiz, Student): Collection
+// app/Services/QuizService.php
+QuizService::start(Quiz, Student): QuizAttempt
+    // Sortea las preguntas y las graba en quiz_question_assignment, para que
+    // el intento sea reproducible
+QuizService::submit(QuizAttempt, array $respuestas): QuizAttempt
+    // Corrige sola y deja score y passed
+QuizService::attemptsOf(Quiz, Student): Collection
+QuizService::hasPassed(Quiz, Student): bool
+QuizService::attemptsLeft(Quiz, Student): int
 ```
 
 ### Vistas Blade
 
 Sustituyen a las páginas React del plan original. Cada una extiende
-`layouts.app` y reutiliza los componentes de `resources/views/components/`.
+`layouts.classroom` —o `layouts.guest` en el acceso— y reutiliza los componentes
+de `resources/views/components/`.
+
+Tampoco hay dos tableros como preveía el boceto: el docente trabaja en su panel
+(§11), así que del lado Blade quedó sólo el aula.
 
 ```
-auth/login, auth/register          Form + botón de Google + olvido de contraseña
-dashboard/student                  Mis cursos (con % de progreso), próximas
-                                   clases, tareas pendientes, certificados
-dashboard/teacher                  Mis cursos, inscripciones pendientes con
-                                   aprobar/rechazar, tareas por calificar
-courses/index, courses/show        Catálogo; detalle con árbol módulos → clases
-                                   y botón de inscripción
-classroom/class                    Contenido (video, PDF, texto), quiz con
-                                   reintentos y score, tareas, siguiente clase
-certificates/index                 Listado y descarga
+auth/login, register, verify-email  Acceso, alta de cuenta y verificación
+classroom/catalog                   Cursos abiertos, con solicitud de inscripción
+classroom/my-courses                Los suyos, con el porcentaje de avance
+classroom/course                    Temario del curso, clase por clase
+classroom/class                     Contenido (video, PDF, texto), tarea y quiz
+classroom/quiz, quiz-result,        Rendir, el resultado y el caso sin intentos
+  quiz-closed
+classroom/evaluations               Lo rendido del curso y lo que falta
+classroom/progress                  Avance general del alumno
+classroom/certificates              Los emitidos y qué falta para los demás
+classroom/announcements             Tablón del curso
+classroom/tickets, ticket           Consultas y su hilo
+classroom/search                    Buscador de cursos y clases
 ```
 
 El quiz es la única pantalla con interacción no trivial. Se resuelve con envío
@@ -1281,7 +1357,7 @@ La acción masiva **«Correr fechas» no valida esto**: correr un subconjunto de
 clases hacia atrás puede dejar el módulo desordenado. Es deliberado —la acción
 existe para reprogramar en bloque— pero conviene saberlo.
 
-**Las tres solapas que faltan** —Calificaciones, Comunicación y Consultas a mesa
+**Las tres solapas que faltaban** —Calificaciones, Comunicación y Consultas a mesa
 de ayuda— necesitan tablas que todavía no existen. Están diseñadas en §13.
 
 **Convenciones a respetar** al sumar recursos:
@@ -1312,7 +1388,7 @@ proyecto es `<x-ui.icon>`.
 
 ## 12. PRÓXIMOS PASOS
 
-Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 347 tests**:
+Hecho hasta el 2026-08-16 — **25 migraciones, 22 modelos, 454 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
@@ -1340,6 +1416,11 @@ Hecho hasta el 2026-08-16 — **18 migraciones, 17 modelos, 347 tests**:
         y la cola a la vista en el panel
 18. [x] Registro público con verificación del correo, y el aula detrás de
         `verified`
+19. [x] Buscador del aula, y la navegación del sitio acotada a cada rol
+20. [x] Comunicaciones y consultas a mesa de ayuda: las dos últimas solapas del
+        curso, con contador de sin leer en el menú del aula
+21. [x] Intentos agotados: aviso al docente, solapa agrupada por alumno y
+        reseteo con historial
 
 ### Lo que falta
 
@@ -1349,12 +1430,9 @@ y corregirlo. Lo que queda son las piezas de alrededor.
 1. [ ] **Poner a andar el correo en el servidor** — el circuito está entero, pero
        falta la línea de cron y el SMTP. Hasta que se haga, la cola se llena y no
        sale nada (ver `docs/DEPLOY.md`)
-2. [ ] **Comunicaciones y consultas a mesa de ayuda** — diseñadas en §13, últimas
-       en la cola: en FID casi no se usaron
-3. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
+2. [ ] **Google OAuth y Google Cloud Storage** — previstos en el plan, sin
        configurar. Los archivos van hoy al disco `public`
-4. [ ] **`/ayuda` y `/buscar`** — siguen sirviendo el marcador, y el buscador
-       está en el encabezado de todas las pantallas sin buscar nada
+3. [ ] **`/ayuda`** — sigue sirviendo el marcador
 
 ### Deuda pendiente
 
@@ -1457,15 +1535,48 @@ petición, incluido el token CSRF. `HandleOversizedUpload` traduce ese caso a un
 mensaje entendible en lugar de un 419, pero es un parche: hay que subir el
 límite en el servidor. Ver `docs/DEPLOY.md`.
 
-**Comunicaciones.** Tablón de anuncios por curso: título, texto enriquecido,
-destinatario (todo el curso o un alumno) y visibilidad. En FID **no manda
-emails**, pese al nombre del módulo; acá se engancha a `email_queue`, que ya está
-en §2 pero todavía sin migración.
+**Comunicaciones — implementado el 2026-08-16.** Tablón por curso: título, texto
+enriquecido y destinatario, que en null significa todo el curso. En FID **no
+mandaba un solo email**, pese al nombre del módulo; acá el correo existe pero
+**no es obligatorio**: publicar y avisar son dos pasos. Un aviso de que se corrió
+una clase merece correo, una nota de color no, y si todo saliera por mail el
+docente terminaría no publicando lo menor. `notified_at` deja el aviso en una
+sola vez, así que corregir una errata no vuelve a llenarle la casilla a nadie.
 
-**Consultas a mesa de ayuda.** Ticket con estado y respuesta. Tres cosas de FID
-que se corrigen en el diseño: el hilo es de una sola respuesta, el listado **no
-filtra por curso** aunque viva dentro del menú del curso, y la notificación va a
-una casilla personal quemada en el código.
+Sin borradores a propósito: una comunicación se escribe cuando hay algo que
+decir, y la pantalla de edición existe para corregir, no para preparar textos.
+
+**La lectura se registra** en `announcement_reads` —tabla y no columna, porque
+una comunicación del curso tiene tantos lectores como inscriptos—, y el menú del
+aula muestra cuántas hay sin leer. Sin ese número, entrar al tablón es un acto de
+fe: el alumno no tiene forma de saber si hay algo nuevo salvo mirando.
+
+**Consultas a mesa de ayuda — implementado el 2026-08-16.** Las tres cosas de FID
+quedaron corregidas:
+
+| FID | Acá |
+|---|---|
+| El hilo era de una sola respuesta | `support_messages` es una tabla: la consulta es una conversación, aunque casi siempre sea corta |
+| El listado **no filtraba por curso** aunque viviera en su menú | La consulta cuelga del curso y la atiende quien lo dicta: una duda sobre una clase no pasa por gente que no la dictó |
+| La notificación iba a una casilla quemada en el código | Va por `email_queue`, al alumno, cuando le responden |
+
+El estado no se asigna: sale de quién escribió último. Escribe el alumno y queda
+esperando respuesta; contesta el docente y queda respondida. Una consulta cerrada
+no recibe más mensajes —reabrirla con una repregunta entierra la última
+respuesta—; para seguir se abre otra.
+
+El listado del alumno es de **todas** sus consultas, de todos sus cursos: lo que
+uno se pregunta es «qué pregunté», no «qué pregunté en este curso».
+
+Del lado del docente el panel avisa en tres lugares —el menú lateral, la columna
+del listado de cursos y la solapa del curso—, siempre con lo mismo: las que
+**esperan respuesta**. Es lo único del panel que tiene a alguien del otro lado;
+cargar material o corregir lo maneja el docente a su ritmo.
+
+Del lado del alumno alcanza con una columna, `student_read_at`, porque una
+consulta tiene un solo lector de este lado. Es un timestamp y no un booleano: se
+compara contra la fecha del último mensaje, así que una respuesta nueva la vuelve
+a marcar sin leer sin tener que tocar nada.
 
 ### Entrega de tareas y calificaciones — implementado
 

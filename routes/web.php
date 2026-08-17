@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
+use App\Http\Controllers\Classroom\SearchController;
+use App\Http\Controllers\Classroom\TicketController;
 use App\Http\Controllers\Classroom\CatalogController;
 use App\Http\Controllers\Classroom\ProgressController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\Classroom\MyCoursesController;
 use App\Http\Controllers\Classroom\SubmissionController;
 use App\Http\Controllers\Classroom\CertificateController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Classroom\AnnouncementController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
@@ -83,6 +86,22 @@ Route::middleware('auth')->group(function () {
 
         Route::get('certificados', [CertificateController::class, 'index'])->name('classroom.certificates');
         Route::get('certificados/{certificate}', [CertificateController::class, 'download'])->name('classroom.certificate');
+
+        Route::get('buscar', [SearchController::class, 'index'])->name('classroom.search');
+
+        Route::get('cursos/{course}/comunicaciones', [AnnouncementController::class, 'index'])
+            ->name('classroom.announcements');
+
+        /*
+         * Las consultas van sueltas y no colgadas del curso: el listado es de
+         * todas las del alumno, que es como se las busca —«qué pregunté»— y no
+         * curso por curso. El curso se elige al abrirla.
+         */
+        Route::get('consultas', [TicketController::class, 'index'])->name('classroom.tickets');
+        Route::post('consultas', [TicketController::class, 'store'])->name('classroom.tickets.store');
+        Route::get('consultas/{ticket}', [TicketController::class, 'show'])->name('classroom.ticket');
+        Route::post('consultas/{ticket}/responder', [TicketController::class, 'reply'])->name('classroom.ticket.reply');
+        Route::post('consultas/{ticket}/cerrar', [TicketController::class, 'close'])->name('classroom.ticket.close');
     });
 
     /*
@@ -92,7 +111,6 @@ Route::middleware('auth')->group(function () {
      */
     $pendientes = [
         'ayuda' => 'Ayuda',
-        'buscar' => 'Buscar',
     ];
 
     foreach ($pendientes as $path => $title) {

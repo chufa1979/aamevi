@@ -15,7 +15,7 @@
         <nav id="main-menu" data-menu
              class="max-h-0 w-full overflow-hidden transition-[max-height] duration-500 lg:max-h-none lg:w-auto lg:overflow-visible">
             <ul class="mt-5 text-center lg:mt-0 lg:flex lg:justify-between">
-                @foreach (config('navigation.main') as $item)
+                @foreach (\App\Support\Navigation::main(auth()->user()) as $item)
                     @php $active = request()->is($item['match']); @endphp
 
                     <li class="group relative lg:mx-6">
@@ -52,7 +52,11 @@
             </ul>
         </nav>
 
-        <form action="/buscar" method="GET" role="search"
+        {{-- Sólo para alumnos: busca cursos y clases del aula, que es lo único
+             que un docente o un administrador no maneja desde acá. Cada panel
+             tiene su propio buscador. --}}
+        @if (auth()->user()?->isStudent())
+        <form action="{{ route('classroom.search') }}" method="GET" role="search"
               class="mt-5 flex w-full items-center justify-center lg:mt-0 lg:w-auto">
             <button type="submit" class="px-2" aria-label="Buscar">
                 <x-ui.icon name="search" />
@@ -63,5 +67,6 @@
                    class="w-[110px] rounded-none rounded-br-[15px] border-0 border-r-[1.5px] border-b-[1.5px]
                           border-primary bg-transparent pb-1 text-xs focus:outline-none">
         </form>
+        @endif
     </div>
 </header>

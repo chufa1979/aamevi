@@ -54,6 +54,16 @@ class Course extends Model
         return $this->hasMany(CourseEnrollment::class);
     }
 
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class);
+    }
+
+    public function tickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
     /** Inscripciones que ocupan un lugar: aprobadas, en curso o finalizadas. */
     public function occupiedSeats(): int
     {

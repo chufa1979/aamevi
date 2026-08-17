@@ -7,20 +7,37 @@
     secciones. Es la forma del aula de referencia y evita un menú donde la
     mitad de los ítems no aplican hasta que entrás a algún lado.
 
-    Las secciones que todavía no existen —comunicaciones, mesa de ayuda— no
-    figuran: un menú con ítems muertos es peor que uno corto.
+    Las comunicaciones son del curso —cuelgan de él— y las consultas no: el
+    alumno busca «qué pregunté», no «qué pregunté en este curso». Por eso una
+    está abajo y la otra arriba.
 --}}
 @php
+    $alumno = auth()->user()->student;
+
+    /*
+     * Los pendientes del alumno. Dos consultas por pantalla del aula, las dos
+     * `count()` con índice: alcanza para esto y evita que cada ítem del menú
+     * pregunte por su cuenta.
+     */
+    $sinLeer = [
+        'classroom.tickets' => app(\App\Services\SupportService::class)->unreadFor($alumno),
+        'classroom.announcements' => $course === null
+            ? 0
+            : app(\App\Services\AnnouncementService::class)->unreadFor($alumno, $course),
+    ];
+
     $generales = [
         ['ruta' => 'classroom.courses', 'label' => 'Mis cursos', 'icono' => 'texto'],
         ['ruta' => 'classroom.catalog', 'label' => 'Catálogo', 'icono' => 'disponible'],
         ['ruta' => 'classroom.progress', 'label' => 'Mi progreso', 'icono' => 'aprobada'],
         ['ruta' => 'classroom.certificates', 'label' => 'Certificados', 'icono' => 'certificado'],
+        ['ruta' => 'classroom.tickets', 'label' => 'Consultas', 'icono' => 'evaluacion'],
     ];
 
     $delCurso = $course === null ? [] : [
         ['ruta' => 'classroom.course', 'params' => $course, 'label' => 'Clases', 'icono' => 'video'],
         ['ruta' => 'classroom.evaluations', 'params' => $course, 'label' => 'Mis evaluaciones', 'icono' => 'evaluacion'],
+        ['ruta' => 'classroom.announcements', 'params' => $course, 'label' => 'Comunicaciones', 'icono' => 'texto'],
     ];
 @endphp
 
@@ -41,6 +58,8 @@
                        ])>
                         <x-ui.icon :name="$item['icono']" class="h-4 w-4 shrink-0" />
                         {{ $item['label'] }}
+
+                        <x-classroom.unread :count="$sinLeer[$item['ruta']] ?? 0" />
                     </a>
                 </li>
             @endforeach
@@ -68,6 +87,8 @@
                            ])>
                             <x-ui.icon :name="$item['icono']" class="h-4 w-4 shrink-0" />
                             {{ $item['label'] }}
+
+                            <x-classroom.unread :count="$sinLeer[$item['ruta']] ?? 0" />
                         </a>
                     </li>
                 @endforeach

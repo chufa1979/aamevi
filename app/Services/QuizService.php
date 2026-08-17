@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use App\Models\Quiz;
+use App\Models\User;
 use App\Models\Student;
 use App\Models\Question;
 use App\Models\QuizAttempt;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
+use App\Models\QuizAttemptReset;
 use App\Exceptions\QuizException;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +22,8 @@ use Illuminate\Support\Facades\DB;
  */
 class QuizService
 {
+    public function __construct(private readonly NotificationService $avisos) {}
+
     /**
      * Abre un intento y le sortea las preguntas.
      *
@@ -40,17 +46,22 @@ class QuizService
             return $enCurso;
         }
 
-        $usados = $this->attemptsOf($quiz, $student)->count();
-
-        if ($usados >= $quiz->max_attempts) {
+        if ($this->attemptsLeft($quiz, $student) < 1) {
             throw QuizException::noAttemptsLeft($quiz->max_attempts);
         }
 
-        return DB::transaction(function () use ($quiz, $student, $usados): QuizAttempt {
+        /*
+         * El número de intento cuenta **todos** los que hizo, no los del ciclo
+         * actual: hay un `unique(quiz_id, student_id, attempt_number)`, y
+         * reiniciar la numeración después de un reseteo chocaría contra él.
+         */
+        $numero = $this->attemptsOf($quiz, $student)->count() + 1;
+
+        return DB::transaction(function () use ($quiz, $student, $numero): QuizAttempt {
             $attempt = QuizAttempt::create([
                 'quiz_id' => $quiz->getKey(),
                 'student_id' => $student->getKey(),
-                'attempt_number' => $usados + 1,
+                'attempt_number' => $numero,
                 'started_at' => now(),
             ]);
 
@@ -121,7 +132,19 @@ class QuizService
                 'passed' => $score >= $attempt->quiz->passing_score,
             ]);
 
-            return $attempt->fresh();
+            $attempt = $attempt->fresh();
+
+            /*
+             * Si éste era el último y no aprobó, el alumno queda trabado: la
+             * progresión exige aprobar la autoevaluación. Se avisa acá, que es
+             * donde recién se sabe el resultado — y sólo al docente, porque el
+             * alumno ya lo está leyendo en pantalla.
+             */
+            if ($attempt->student !== null && $this->isStuck($attempt->quiz, $attempt->student)) {
+                $this->avisos->attemptsExhausted($attempt->quiz, $attempt->student);
+            }
+
+            return $attempt;
         });
     }
 
@@ -142,10 +165,62 @@ class QuizService
             ->exists();
     }
 
-    /** Cuántos intentos le quedan. */
+    /**
+     * Cuántos intentos le quedan.
+     *
+     * Se cuentan los del ciclo actual: si el docente le reseteó los intentos,
+     * los anteriores quedan en el historial pero no ocupan cupo. Sin reseteos
+     * —el caso normal— se comporta igual que antes.
+     */
     public function attemptsLeft(Quiz $quiz, Student $student): int
     {
-        return max(0, $quiz->max_attempts - $this->attemptsOf($quiz, $student)->count());
+        $desde = $this->lastResetAt($quiz, $student);
+
+        $usados = QuizAttempt::where('quiz_id', $quiz->getKey())
+            ->where('student_id', $student->getKey())
+            ->when($desde !== null, fn ($q) => $q->where('started_at', '>', $desde))
+            ->count();
+
+        return max(0, $quiz->max_attempts - $usados);
+    }
+
+    /** ¿Se quedó sin intentos y sin aprobar? Es el alumno que queda trabado. */
+    public function isStuck(Quiz $quiz, Student $student): bool
+    {
+        return $this->attemptsLeft($quiz, $student) === 0
+            && ! $this->hasPassed($quiz, $student);
+    }
+
+    /**
+     * Le devuelve al alumno sus intentos.
+     *
+     * No borra nada: abre un ciclo nuevo. Los intentos anteriores siguen en el
+     * historial —son la prueba de sobre qué se lo calificó— pero dejan de contar
+     * para el límite.
+     */
+    public function reset(Quiz $quiz, Student $student, ?User $docente = null, ?string $motivo = null): QuizAttemptReset
+    {
+        $reset = QuizAttemptReset::create([
+            'quiz_id' => $quiz->getKey(),
+            'student_id' => $student->getKey(),
+            'granted_by' => $docente?->getKey(),
+            'reason' => filled($motivo) ? trim($motivo) : null,
+            'created_at' => now(),
+        ]);
+
+        $this->avisos->attemptsReset($quiz, $student, $reset);
+
+        return $reset;
+    }
+
+    /** Cuándo fue el último reseteo, o null si nunca hubo. */
+    public function lastResetAt(Quiz $quiz, Student $student): ?CarbonInterface
+    {
+        $fecha = QuizAttemptReset::where('quiz_id', $quiz->getKey())
+            ->where('student_id', $student->getKey())
+            ->max('created_at');
+
+        return $fecha === null ? null : Carbon::parse($fecha);
     }
 
     private function isCorrect(Question $question, string $optionId): bool

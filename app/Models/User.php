@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Filament\Panel;
 use App\Enums\UserRole;
+use Filament\Facades\Filament;
 use Database\Factories\UserFactory;
 use Illuminate\Support\Facades\URL;
 use App\Services\NotificationService;
@@ -123,6 +124,53 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         );
 
         app(NotificationService::class)->verification($this, $enlace);
+    }
+
+    /**
+     * Dónde le corresponde entrar a este usuario.
+     *
+     * Cada rol trabaja en una superficie distinta y la portada no es la de
+     * nadie: al alumno le sirve ver sus cursos, y al docente o al administrador
+     * su panel. Sin esto, entrar dejaba a los tres en la misma pantalla de
+     * bienvenida, con un clic de más para todos.
+     *
+     * Se usa en dos lados —después de iniciar sesión, y al abrir /login con la
+     * sesión ya iniciada— por eso vive acá y no en el controlador.
+     */
+    public function homeUrl(): string
+    {
+        return match (true) {
+            $this->isAdmin() => Filament::getPanel('admin')->getUrl(),
+            $this->isTeacher() => Filament::getPanel('profesores')->getUrl(),
+            default => route('classroom.courses'),
+        };
+    }
+
+    /**
+     * ¿Este usuario puede llegar a esa dirección?
+     *
+     * Se usa para filtrar el destino que quedó guardado antes de pedir la
+     * contraseña. Sin este filtro, una visita previa a /admin dejaba a un alumno
+     * yendo ahí después de entrar, y recibiendo un 403 como bienvenida.
+     *
+     * La regla es por superficie: el administrador entra a /admin, el docente a
+     * /profesores, y el alumno a todo lo que no sea un panel. Cuando el destino
+     * no es de la superficie de quien entró, se descarta y va a la suya.
+     */
+    public function canReach(string $url): bool
+    {
+        $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+
+        foreach (Filament::getPanels() as $panel) {
+            $prefijo = trim($panel->getPath(), '/');
+
+            if ($path === $prefijo || str_starts_with($path, $prefijo.'/')) {
+                return $this->canAccessPanel($panel);
+            }
+        }
+
+        // Fuera de los paneles está el aula, que es de los alumnos
+        return $this->isStudent();
     }
 
     public function isTeacher(): bool
