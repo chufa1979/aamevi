@@ -15,7 +15,7 @@
         <nav id="main-menu" data-menu
              class="max-h-0 w-full overflow-hidden transition-[max-height] duration-500 lg:max-h-none lg:w-auto lg:overflow-visible">
             <ul class="mt-5 text-center lg:mt-0 lg:flex lg:justify-between">
-                @foreach (config('navigation.main') as $item)
+                @foreach (\App\Support\Navigation::main(auth()->user()) as $item)
                     @php $active = request()->is($item['match']); @endphp
 
                     <li class="group relative lg:mx-6">
