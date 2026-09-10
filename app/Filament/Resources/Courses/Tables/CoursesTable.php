@@ -74,6 +74,20 @@ class CoursesTable
                     ->label('Activo')
                     ->boolean(),
 
+                TextColumn::make('start_date')
+                    ->label('Inicio')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->placeholder('Sin definir')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('end_date')
+                    ->label('Fin')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->placeholder('Sin definir')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('Alta')
                     ->dateTime('d/m/Y')
