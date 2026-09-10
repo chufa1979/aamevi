@@ -171,4 +171,39 @@ class CourseNavigationTest extends TestCase
         $this->get(CourseClassResource::getUrl('questions', ['record' => $class]))
             ->assertSuccessful();
     }
+
+    /**
+     * `CourseModuleResource` y `CourseClassResource` no tienen `$parentResource`
+     * —a propósito, ver `ChainsCourseBreadcrumbs`—, así que sin la cadena a
+     * mano el breadcrumb caía en el listado plano del recurso («Módulos» o
+     * «Clases»), que no dice de qué curso es ni lleva a ningún lado útil.
+     */
+    public function test_el_breadcrumb_del_modulo_lleva_hasta_el_curso(): void
+    {
+        $course = Course::factory()->create(['title' => 'Nutrición aplicada']);
+        $module = CourseModule::factory()->for($course)->create(['title' => 'Los seis pilares']);
+
+        $datos = $this->get(CourseModuleResource::getUrl('edit', ['record' => $module]))->assertSuccessful();
+        $datos->assertSeeInOrder(['Nutrición aplicada', 'Contenidos', 'Los seis pilares']);
+
+        $clases = $this->get(CourseModuleResource::getUrl('classes', ['record' => $module]))->assertSuccessful();
+        $clases->assertSeeInOrder(['Nutrición aplicada', 'Contenidos', 'Los seis pilares', 'Clases']);
+    }
+
+    public function test_el_breadcrumb_de_la_clase_lleva_hasta_el_curso_y_el_modulo(): void
+    {
+        $course = Course::factory()->create(['title' => 'Nutrición aplicada']);
+        $module = CourseModule::factory()->for($course)->create(['title' => 'Los seis pilares']);
+        $class = CourseClass::factory()->for($module, 'module')->create(['title' => 'Qué es la medicina del estilo de vida']);
+
+        $autoevaluacion = $this->get(CourseClassResource::getUrl('edit', ['record' => $class]))->assertSuccessful();
+        $autoevaluacion->assertSeeInOrder([
+            'Nutrición aplicada', 'Contenidos', 'Los seis pilares', 'Clases', 'Qué es la medicina del estilo de vida',
+        ]);
+
+        $preguntas = $this->get(CourseClassResource::getUrl('questions', ['record' => $class]))->assertSuccessful();
+        $preguntas->assertSeeInOrder([
+            'Nutrición aplicada', 'Contenidos', 'Los seis pilares', 'Clases', 'Qué es la medicina del estilo de vida', 'Preguntas',
+        ]);
+    }
 }

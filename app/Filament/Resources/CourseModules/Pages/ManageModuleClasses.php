@@ -29,6 +29,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
+use App\Filament\Concerns\ChainsCourseBreadcrumbs;
 use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseClasses\CourseClassResource;
 use App\Filament\Resources\CourseModules\CourseModuleResource;
@@ -36,6 +37,8 @@ use App\Filament\Resources\CourseModules\CourseModuleResource;
 /** Las clases del módulo, con su contenido. */
 class ManageModuleClasses extends ManageRelatedRecords
 {
+    use ChainsCourseBreadcrumbs;
+
     protected static string $resource = CourseModuleResource::class;
 
     protected static string $relationship = 'classes';
@@ -45,6 +48,15 @@ class ManageModuleClasses extends ManageRelatedRecords
     protected static ?string $title = 'Clases del módulo';
 
     protected static ?string $breadcrumb = 'Clases';
+
+    /** @return array<string, string> */
+    public function getBreadcrumbs(): array
+    {
+        return [
+            ...$this->moduleBreadcrumbs($this->getOwnerRecord()),
+            static::$breadcrumb,
+        ];
+    }
 
     public function form(Schema $schema): Schema
     {

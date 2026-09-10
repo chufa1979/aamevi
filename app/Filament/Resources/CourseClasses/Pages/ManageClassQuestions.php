@@ -14,12 +14,15 @@ use App\Filament\Forms\QuestionOptions;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
+use App\Filament\Concerns\ChainsCourseBreadcrumbs;
 use Filament\Resources\Pages\ManageRelatedRecords;
 use App\Filament\Resources\CourseClasses\CourseClassResource;
 
 /** Banco de preguntas de la clase. Alimenta su autoevaluación y el examen del módulo. */
 class ManageClassQuestions extends ManageRelatedRecords
 {
+    use ChainsCourseBreadcrumbs;
+
     protected static string $resource = CourseClassResource::class;
 
     protected static string $relationship = 'questions';
@@ -29,6 +32,15 @@ class ManageClassQuestions extends ManageRelatedRecords
     protected static ?string $title = 'Banco de preguntas de la clase';
 
     protected static ?string $breadcrumb = 'Preguntas';
+
+    /** @return array<string, string> */
+    public function getBreadcrumbs(): array
+    {
+        return [
+            ...$this->classBreadcrumbs($this->getOwnerRecord()),
+            static::$breadcrumb,
+        ];
+    }
 
     public function form(Schema $schema): Schema
     {
