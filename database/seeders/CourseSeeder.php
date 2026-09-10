@@ -15,6 +15,7 @@ use App\Models\QuizAttempt;
 use App\Models\Announcement;
 use App\Models\ClassContent;
 use App\Models\CourseModule;
+use App\Enums\CourseModality;
 use App\Models\SupportTicket;
 use App\Services\QuizService;
 use App\Models\QuestionOption;
@@ -162,20 +163,40 @@ class CourseSeeder extends Seeder
 
     // ── Contenido ───────────────────────────────────────────────────────────
 
-    /** @param array<string, mixed> $datos */
+    /**
+     * `start_date`/`end_date` no son un dato aparte en el catálogo: salen del
+     * mismo cronograma que reparte las clases, para no tener dos fuentes de
+     * verdad sobre cuándo dicta un curso. Por eso `cronograma()` se calcula
+     * antes de crear el registro.
+     *
+     * @param  array<string, mixed>  $datos
+     */
     private function armarCurso(array $datos, int $indice): Course
     {
+        $fechas = $this->cronograma($datos, $indice);
+
         $course = Course::updateOrCreate(
             ['title' => $datos['title']],
             [
                 'description' => $datos['description'],
+                'start_date' => $fechas[0],
+                'end_date' => $fechas[count($fechas) - 1],
+                'modality' => $datos['modality'] ?? CourseModality::Online,
+                'location' => $datos['location'] ?? null,
+                'specialties' => $datos['specialties'] ?? null,
+                'schedule_days' => $datos['schedule_days'] ?? null,
+                'schedule_time' => $datos['schedule_time'] ?? null,
+                'investment_info' => $datos['investment_info'] ?? null,
+                'certification_info' => $datos['certification_info'] ?? null,
+                'teaching_staff' => $datos['teaching_staff'] ?? null,
+                'objectives' => $datos['objectives'] ?? null,
+                'enrollment_requirements' => $datos['enrollment_requirements'] ?? null,
                 'teacher_id' => $this->docente($datos['teacher'])->getKey(),
                 'max_students' => $datos['max_students'],
                 'is_active' => $datos['is_active'] ?? true,
             ],
         );
 
-        $fechas = $this->cronograma($datos, $indice);
         $clase = 0;
 
         foreach ($datos['modules'] as $orden => [$titulo, $titulosDeClase]) {
@@ -336,6 +357,12 @@ class CourseSeeder extends Seeder
     // ── Personas ────────────────────────────────────────────────────────────
 
     /** El docente con ese email, creándolo si hace falta. */
+    /**
+     * Bio y especialización van por `updateOrCreate` y no por `firstOrCreate`:
+     * son del docente, no del curso —dos de estos cinco cursos comparten
+     * profesor—, así que tienen que quedar sincronizadas cada vez que corre
+     * el seeder, no sólo la primera.
+     */
     private function docente(string $email): Teacher
     {
         $esInvitada = $email === 'profesora@aamevi.ar';
@@ -352,9 +379,17 @@ class CourseSeeder extends Seeder
             ],
         );
 
-        return Teacher::firstOrCreate(
+        return Teacher::updateOrCreate(
             ['id' => $user->getKey()],
-            ['bio' => 'Docente de prueba.', 'specialization' => 'Medicina del estilo de vida'],
+            $esInvitada
+                ? [
+                    'bio' => 'Especialista invitada, con formación de posgrado en nutrición clínica y coaching en salud.',
+                    'specialization' => 'Nutrición y Coaching en Salud',
+                ]
+                : [
+                    'bio' => 'Médico especialista en Medicina del Estilo de Vida, con más de 15 años de trayectoria en formación de profesionales de la salud.',
+                    'specialization' => 'Medicina del Estilo de Vida',
+                ],
         );
     }
 
