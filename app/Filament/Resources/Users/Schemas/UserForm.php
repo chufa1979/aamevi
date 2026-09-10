@@ -106,32 +106,53 @@ class UserForm
                     ->columns(2)
                     ->components([
                         TextInput::make('dni')
-                            ->label('DNI')
+                            ->label('N° Documento')
                             ->maxLength(20)
                             ->unique(ignoreRecord: true),
-
-                        DatePicker::make('date_of_birth')
-                            ->label('Fecha de nacimiento')
-                            ->displayFormat('d/m/Y')
-                            ->maxDate(now()),
 
                         TextInput::make('phone')
                             ->label('Teléfono')
                             ->tel()
-                            ->maxLength(20),
+                            ->maxLength(20)
+                            ->placeholder('+54 9 ...'),
 
-                        TextInput::make('cell_phone')
-                            ->label('Celular')
-                            ->tel()
-                            ->maxLength(20),
+                        TextInput::make('country')
+                            ->label('País de residencia')
+                            ->maxLength(100)
+                            ->default('Argentina'),
 
-                        TextInput::make('delegation')
-                            ->label('Delegación')
-                            ->maxLength(100),
+                        TextInput::make('city')
+                            ->label('Ciudad')
+                            ->maxLength(100)
+                            ->placeholder('Ciudad / Estado'),
 
-                        TextInput::make('sub_delegation')
-                            ->label('Subdelegación')
-                            ->maxLength(100),
+                        DatePicker::make('date_of_birth')
+                            ->label('Fecha de nacimiento')
+                            ->displayFormat('d/m/Y')
+                            ->native(false)
+                            ->maxDate(now()),
+
+                        DatePicker::make('graduation_date')
+                            ->label('Fecha de egreso')
+                            ->displayFormat('d/m/Y')
+                            ->native(false)
+                            ->maxDate(now())
+                            ->helperText('Si solo se sabe el año, cualquier día de ese año sirve.'),
+
+                        TextInput::make('university')
+                            ->label('Universidad / Instituto')
+                            ->maxLength(255),
+
+                        TextInput::make('profession')
+                            ->label('Profesión')
+                            ->maxLength(255)
+                            ->placeholder('Profesional sin matrícula'),
+
+                        TextInput::make('membership_number')
+                            ->label('N° de socio')
+                            ->maxLength(50)
+                            ->helperText('Opcional. Sin número, la cuenta queda como no socio.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Ficha de profesor')

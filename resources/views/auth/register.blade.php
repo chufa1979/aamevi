@@ -41,10 +41,64 @@
         </div>
 
         <div class="mb-4">
-            <label for="dni" class="field-label">DNI <span class="normal-case">(opcional)</span></label>
+            <label for="dni" class="field-label">N° Documento <span class="normal-case">(opcional)</span></label>
             <input id="dni" name="dni" type="text" class="field"
                    value="{{ old('dni') }}" inputmode="numeric" autocomplete="off">
             <p class="mt-1 text-xs text-subtle">Hace falta para emitir el certificado; lo podés completar después.</p>
+        </div>
+
+        <div class="mb-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="country" class="field-label">País de residencia</label>
+                <input id="country" name="country" type="text" class="field"
+                       value="{{ old('country', 'Argentina') }}" autocomplete="country-name">
+            </div>
+
+            <div>
+                <label for="city" class="field-label">Ciudad</label>
+                <input id="city" name="city" type="text" class="field"
+                       value="{{ old('city') }}" placeholder="Ciudad / Estado" autocomplete="address-level2">
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="phone" class="field-label">Teléfono</label>
+            <input id="phone" name="phone" type="tel" class="field"
+                   value="{{ old('phone') }}" placeholder="+54 9 ..." autocomplete="tel">
+        </div>
+
+        <div class="mb-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <label for="date_of_birth" class="field-label">Fecha de nacimiento</label>
+                <input id="date_of_birth" name="date_of_birth" type="date" class="field"
+                       value="{{ old('date_of_birth') }}" max="{{ now()->toDateString() }}">
+            </div>
+
+            <div>
+                <label for="graduation_date" class="field-label">Fecha de egreso</label>
+                <input id="graduation_date" name="graduation_date" type="date" class="field"
+                       value="{{ old('graduation_date') }}" max="{{ now()->toDateString() }}">
+                <p class="mt-1 text-xs text-subtle">Si solo tenés el año, elegí cualquier día de ese año.</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="university" class="field-label">Universidad / Instituto</label>
+            <input id="university" name="university" type="text" class="field"
+                   value="{{ old('university') }}" autocomplete="organization">
+        </div>
+
+        <div class="mb-4">
+            <label for="profession" class="field-label">Profesión</label>
+            <input id="profession" name="profession" type="text" class="field"
+                   value="{{ old('profession') }}" placeholder="Profesional sin matrícula">
+        </div>
+
+        <div class="mb-4">
+            <label for="membership_number" class="field-label">N° de socio <span class="normal-case">(opcional)</span></label>
+            <input id="membership_number" name="membership_number" type="text" class="field"
+                   value="{{ old('membership_number') }}" autocomplete="off">
+            <p class="mt-1 text-xs text-subtle">Si tenés, ingresalo. Si no, seguís como no socio.</p>
         </div>
 
         <div class="mb-4 grid gap-4 sm:grid-cols-2">
@@ -60,6 +114,7 @@
                        required autocomplete="new-password">
             </div>
         </div>
+        <p class="-mt-2 mb-4 text-xs text-subtle">La vas a usar para entrar a tu cuenta de AAMEVi.</p>
 
         <x-button type="submit" class="w-full">Crear cuenta</x-button>
     </form>

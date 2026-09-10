@@ -51,6 +51,16 @@ class RegisteredUserController extends Controller
             Student::create([
                 'id' => $user->getKey(),
                 'dni' => $request->filled('dni') ? $request->string('dni')->trim()->value() : null,
+                'country' => $request->filled('country') ? $request->string('country')->trim()->value() : null,
+                'city' => $request->filled('city') ? $request->string('city')->trim()->value() : null,
+                'phone' => $request->filled('phone') ? $request->string('phone')->trim()->value() : null,
+                'date_of_birth' => $request->date('date_of_birth'),
+                'graduation_date' => $request->date('graduation_date'),
+                'university' => $request->filled('university') ? $request->string('university')->trim()->value() : null,
+                'profession' => $request->filled('profession') ? $request->string('profession')->trim()->value() : null,
+                'membership_number' => $request->filled('membership_number')
+                    ? $request->string('membership_number')->trim()->value()
+                    : null,
             ]);
 
             return $user;

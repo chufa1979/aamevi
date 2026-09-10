@@ -8,13 +8,11 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Alta de cuenta desde el sitio.
  *
- * Pide lo mínimo para tener una cuenta usable: quién es, cómo entra, y el DNI
- * —opcional— porque es lo que va a hacer falta el día que se emita un
- * certificado. El resto de la ficha la completa la administración o el propio
- * alumno más adelante.
- *
- * Registrarse no da acceso a nada: un curso sigue necesitando inscripción y
- * aprobación. Por eso el formulario puede ser abierto sin que eso abra el aula.
+ * Sólo el nombre, el correo y la contraseña son obligatorios: el resto de la
+ * ficha —documento, residencia, egreso, profesión, N° de socio— se puede
+ * completar acá o más adelante desde la administración. Nada de esto abre el
+ * aula por sí solo: un curso sigue necesitando inscripción y aprobación, así
+ * que el formulario puede quedar abierto sin ese riesgo.
  */
 class RegisterRequest extends FormRequest
 {
@@ -32,6 +30,14 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'dni' => ['nullable', 'string', 'max:20', 'unique:students,dni'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'date_of_birth' => ['nullable', 'date', 'before_or_equal:today'],
+            'graduation_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'university' => ['nullable', 'string', 'max:255'],
+            'profession' => ['nullable', 'string', 'max:255'],
+            'membership_number' => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -47,6 +53,8 @@ class RegisterRequest extends FormRequest
             'password.required' => 'Elegí una contraseña.',
             'password.confirmed' => 'Las dos contraseñas no coinciden.',
             'dni.unique' => 'Ya hay una cuenta con ese DNI.',
+            'date_of_birth.before_or_equal' => 'La fecha de nacimiento no puede ser futura.',
+            'graduation_date.before_or_equal' => 'La fecha de egreso no puede ser futura.',
         ];
     }
 }

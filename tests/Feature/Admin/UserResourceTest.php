@@ -61,7 +61,7 @@ class UserResourceTest extends TestCase
                 'is_active' => true,
                 'student' => [
                     'dni' => '31222333',
-                    'delegation' => 'Buenos Aires',
+                    'city' => 'Buenos Aires',
                 ],
             ])
             ->call('create')

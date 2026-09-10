@@ -52,7 +52,7 @@ class StudentResourceTest extends TestCase
                 'is_active' => true,
                 'student' => [
                     'dni' => '35123456',
-                    'delegation' => 'Buenos Aires',
+                    'city' => 'Buenos Aires',
                 ],
             ])
             ->call('create')

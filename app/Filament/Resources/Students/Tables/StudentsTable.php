@@ -35,8 +35,8 @@ class StudentsTable
                     ->searchable()
                     ->placeholder('—'),
 
-                TextColumn::make('student.delegation')
-                    ->label('Delegación')
+                TextColumn::make('student.city')
+                    ->label('Ciudad')
                     ->placeholder('—')
                     ->toggleable(),
 

@@ -67,10 +67,13 @@ class DatabaseSeeder extends Seeder
             [
                 'dni' => '30000000',
                 'date_of_birth' => '1985-06-15',
-                'phone' => '1140000000',
-                'cell_phone' => '1150000000',
-                'sub_delegation' => 'CABA',
-                'delegation' => 'Buenos Aires',
+                'phone' => '+54 9 11 40000000',
+                'country' => 'Argentina',
+                'city' => 'CABA',
+                'graduation_date' => '2010-12-10',
+                'university' => 'Universidad de Buenos Aires',
+                'profession' => 'Médico/a',
+                'membership_number' => '10001',
             ]
         );
 
