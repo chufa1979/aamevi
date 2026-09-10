@@ -19,18 +19,23 @@ class AuthenticationTest extends TestCase
         RateLimiter::clear('test@aamevi.ar|127.0.0.1');
     }
 
-    public function test_el_invitado_es_redirigido_al_login(): void
+    /**
+     * El home es la vidriera pública de la plataforma: un invitado ve el
+     * catálogo de cursos activos, no un redirect al login.
+     */
+    public function test_el_invitado_ve_el_home_publico(): void
     {
-        $this->get('/')->assertRedirect('/login');
+        $this->get('/')->assertOk();
     }
 
     /**
-     * Ninguna sección de la plataforma puede verse sin sesión: es el requisito
-     * central de este módulo.
+     * Ninguna sección PRIVADA de la plataforma puede verse sin sesión: es el
+     * requisito central de este módulo. El home y la ficha pública de un
+     * curso quedan afuera a propósito — son la vidriera de la plataforma.
      */
-    public function test_ninguna_seccion_es_accesible_sin_sesion(): void
+    public function test_ninguna_seccion_privada_es_accesible_sin_sesion(): void
     {
-        foreach (['/', '/cursos', '/mis-cursos', '/progreso', '/certificados', '/ayuda', '/buscar'] as $ruta) {
+        foreach (['/cursos', '/mis-cursos', '/progreso', '/certificados', '/ayuda', '/buscar'] as $ruta) {
             $this->get($ruta)->assertRedirect('/login');
         }
     }

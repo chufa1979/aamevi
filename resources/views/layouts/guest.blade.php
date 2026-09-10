@@ -12,16 +12,28 @@
 </head>
 {{--
     Layout de las pantallas de acceso. A diferencia de `layouts.app`, no incluye
-    navegación ni pie con menú: quien no inició sesión no debe ver la estructura
-    de la plataforma.
+    el menú de la plataforma: quien no inició sesión no debe ver secciones que
+    de todos modos le van a rebotar en un redirect a este mismo login.
+
+    Sí lleva un camino de vuelta al sitio —logo enlazado e «Inicio»—, porque
+    desde que el home es público (ver `Public\HomeController`) hay a dónde
+    volver. No lleva «Ayuda»: esa sección sigue detrás de `auth` (ver
+    `routes/web.php`), así que ofrecerla acá sería un link que rebota al
+    mismo login en el que ya está.
 --}}
 <body class="flex min-h-screen flex-col">
     <a href="#contenido" class="skip-link">Saltar al contenido</a>
 
     <div class="border-b-[6px] border-primary bg-canvas py-6">
         <div class="container-site-sm flex items-center justify-between gap-4">
-            <x-brand-logo width="220px" />
-            <x-preferences />
+            <a href="/" aria-label="AAMEVi — Inicio">
+                <x-brand-logo width="220px" />
+            </a>
+
+            <div class="flex items-center gap-5 text-xs">
+                <a href="/" class="underline-offset-2 hover:underline hover:text-accent">Inicio</a>
+                <x-preferences />
+            </div>
         </div>
     </div>
 
