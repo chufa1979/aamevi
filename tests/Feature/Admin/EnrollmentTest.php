@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Course;
 use Livewire\Livewire;
 use App\Models\Student;
-use App\Models\Teacher;
 use App\Enums\EnrollmentStatus;
 use App\Models\CourseEnrollment;
 use App\Exceptions\EnrollmentException;
@@ -35,12 +34,12 @@ class EnrollmentTest extends TestCase
     public function test_aprobar_registra_quien_y_cuando(): void
     {
         $enrollment = CourseEnrollment::factory()->create();
-        $teacher = Teacher::factory()->create();
+        $registrar = User::factory()->registrar()->create();
 
-        $enrollment->approve($teacher);
+        $enrollment->approve($registrar);
 
         $this->assertSame(EnrollmentStatus::Approved, $enrollment->status);
-        $this->assertSame($teacher->id, $enrollment->approved_by);
+        $this->assertSame($registrar->id, $enrollment->approved_by);
         $this->assertNotNull($enrollment->approval_date);
     }
 
@@ -48,7 +47,7 @@ class EnrollmentTest extends TestCase
     {
         $enrollment = CourseEnrollment::factory()->create();
 
-        $enrollment->reject(Teacher::factory()->create());
+        $enrollment->reject(User::factory()->registrar()->create());
 
         $this->assertSame(EnrollmentStatus::Rejected, $enrollment->status);
     }
@@ -146,13 +145,18 @@ class EnrollmentTest extends TestCase
         $this->assertSame(EnrollmentStatus::Pending, $enrollment->refresh()->status);
     }
 
-    public function test_borrar_el_docente_que_aprobo_no_borra_la_inscripcion(): void
+    /**
+     * `approved_by` apunta a `users`, no a `teachers`: da igual qué rol tenía
+     * quien resolvió la solicitud, borrar esa cuenta deja el dato en null sin
+     * tocar la inscripción.
+     */
+    public function test_borrar_a_quien_aprobo_no_borra_la_inscripcion(): void
     {
-        $teacher = Teacher::factory()->create();
+        $registrar = User::factory()->registrar()->create();
         $enrollment = CourseEnrollment::factory()->create();
-        $enrollment->approve($teacher);
+        $enrollment->approve($registrar);
 
-        $teacher->user->delete();
+        $registrar->delete();
 
         $enrollment->refresh();
 

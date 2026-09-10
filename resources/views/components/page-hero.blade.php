@@ -10,11 +10,21 @@
     Cabecera de sección: imagen a sangre, título blanco de peso liviano alineado
     abajo a la izquierda y borde inferior verde de 6px (patrón `.header` de
     www.aamevi.ar).
+
+    Con foto, la altura de `full` baja un 20% (320px → 256px) respecto del
+    degradado: una foto a esa altura ya se lee bien, y a 320px de alto
+    recortaba de más el encuadre. `object-cover` sobre altura fija es lo que
+    permite ese recorte controlado — con `h-auto` la imagen se ve completa
+    pero a su relación de aspecto original, no a la del contenedor.
 --}}
 <section class="relative border-b-[6px] border-primary">
     @if ($image)
         <img src="{{ $image }}" alt=""
-             @class(['block w-full object-cover', 'h-[200px]' => $size === 'small', 'h-auto' => $size !== 'small'])>
+             @class(['block w-full object-cover', 'h-[200px]' => $size === 'small', 'h-[256px]' => $size !== 'small'])>
+
+        {{-- Degradado oscuro: sin esto el título blanco se pierde contra el
+             cielo claro de una foto, que es justo donde cae el texto. --}}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
     @else
         <div @class([
             'w-full bg-gradient-to-r from-pillar-blue via-primary to-pillar-green',

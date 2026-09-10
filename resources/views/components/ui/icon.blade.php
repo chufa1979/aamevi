@@ -139,5 +139,9 @@
             <line x1="20" y1="12" x2="5" y2="12" />
             <polyline points="11,6 5,12 11,18" />
             @break
+
+        @case('chevron-down')
+            <polyline points="6,9 12,15 18,9" />
+            @break
     @endswitch
 </svg>

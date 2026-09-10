@@ -50,6 +50,9 @@ class Navigation
             $user?->isTeacher() ?? false => [
                 ['label' => 'Mis cursos', 'href' => '/profesores', 'match' => 'profesores*'],
             ],
+            $user?->isRegistrar() ?? false => [
+                ['label' => 'Solicitudes', 'href' => '/administracion', 'match' => 'administracion*'],
+            ],
             default => [],
         };
     }

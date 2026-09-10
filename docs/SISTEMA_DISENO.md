@@ -124,7 +124,7 @@ Son los rasgos que hacen que la plataforma se lea como parte del sitio instituci
 2. **Navegación en mayúsculas** con hover naranja.
 3. **Submenú desplegable** en panel naranja translúcido, texto blanco en itálica y negrita, con separadores blancos.
 4. **Buscador asimétrico**: solo bordes inferior y derecho en verde, radio `0 0 15px 0` (`rounded-br-[15px]`).
-5. **Cabecera de página**: imagen a sangre con título blanco de peso liviano (`font-light`) alineado abajo, escalado con `clamp()`.
+5. **Cabecera de página**: imagen a sangre con título blanco de peso liviano (`font-light`) alineado abajo, escalado con `clamp()` — vía `<x-page-hero>`. La ficha de curso (`public/course.blade.php`) no lo usa: el título es un dato real y variable, no una etiqueta corta como «Educación», así que ahí va un bloque propio con el mismo degradado de marca pero altura libre y una escala de `clamp()` más moderada, para no desbordar con títulos largos ni recortar los cortos.
 6. **Pie oscuro** `#333333` con menú en mayúsculas e íconos de contacto y redes.
 7. **Fotos de personas circulares** (`rounded-full`), como en las grillas de médicos y staff.
 8. **Botones** con fondo verde, texto oscuro heredado y radio `0.5rem`; la variante de CTA va en itálica.
@@ -193,12 +193,15 @@ la composición de utilidades:
 ```
 resources/views/components/
 ├── brand-logo.blade.php     # Isotipo, con su variante para modo oscuro
-├── top-bar.blade.php        # Barra de cortesía: preferencias, quién sos, salir
+├── top-bar.blade.php        # Barra de cortesía: preferencias, quién sos, salir — o login si no hay sesión
+├── login-widget.blade.php   # Login desplegable del header, para quien no tiene sesión
 ├── header.blade.php         # Logo, navegación, submenú, buscador
 ├── footer.blade.php         # Pie oscuro con menú, contacto y redes
 ├── footer-icons.blade.php
 ├── page-hero.blade.php      # Cabecera de página (imagen + título + borde verde)
 ├── section.blade.php        # Bloque de contenido con título y contenedor
+├── collapsible.blade.php    # Sección desplegable, <details>/<summary> nativo
+├── bullet-list.blade.php    # Lista con viñetas a partir de texto plano (una línea = un ítem)
 ├── button.blade.php         # Botón y enlace-botón, con variantes
 ├── preferences.blade.php    # Tema y tamaño de letra
 ├── rich-text.blade.php      # Único lugar del proyecto con `{!! !!}`
@@ -212,6 +215,12 @@ resources/views/components/
     ├── content-block.blade.php # Video, PDF, texto o consigna
     └── task-panel.blade.php    # Entrega, estado, nota y devolución
 ```
+
+`resources/views/public/` (`home.blade.php`, `course.blade.php`) es la vidriera pública —el
+catálogo y la ficha de un curso, ambos visibles sin sesión— y usa estos mismos componentes:
+`collapsible` para las secciones de la ficha (Acerca del curso, Director, Cuerpo docente,
+Programa, Inversión, Objetivos, Certificación, Inscripción e Informes) y `bullet-list` para
+las que se cargan como texto plano línea por línea.
 
 Los layouts están en `resources/views/layouts/`.
 
@@ -265,8 +274,9 @@ sobre fondo oscuro no se lee.
 
 ## 10. Pendientes
 
-- Imágenes de cabecera propias por sección. Hoy `<x-page-hero>` cae a un degradado con los
-  colores del isotipo cuando no recibe imagen.
+- Imágenes de cabecera propias por sección. El home ya tiene la suya
+  (`public/images/home-hero.jpg`); el resto de las páginas sigue cayendo al degradado con los
+  colores del isotipo que `<x-page-hero>` usa cuando no recibe imagen.
 - `/ayuda` es la última sección que sigue sirviendo el marcador.
 - El modelo visual definitivo del certificado: hoy es tipográfico, sin firma escaneada.
 - El sitio madre incluye un cursor personalizado y un carrusel (slick) en la home. Se

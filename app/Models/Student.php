@@ -26,15 +26,19 @@ class Student extends Model
         'dni',
         'date_of_birth',
         'phone',
-        'cell_phone',
-        'sub_delegation',
-        'delegation',
+        'country',
+        'city',
+        'graduation_date',
+        'university',
+        'profession',
+        'membership_number',
     ];
 
     protected function casts(): array
     {
         return [
             'date_of_birth' => 'date',
+            'graduation_date' => 'date',
         ];
     }
 

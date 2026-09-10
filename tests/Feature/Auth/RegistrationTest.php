@@ -55,6 +55,36 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    /**
+     * El resto de la ficha —residencia, egreso, profesión, N° de socio— se
+     * guarda igual que el DNI: si viene, se persiste; si no, queda en null y
+     * no bloquea el alta.
+     */
+    public function test_la_ficha_extendida_se_guarda_si_viene(): void
+    {
+        $this->post('/registro', $this->datos([
+            'country' => 'Argentina',
+            'city' => 'Rosario',
+            'phone' => '+54 9 341 1234567',
+            'date_of_birth' => '1990-05-20',
+            'graduation_date' => '2015-12-01',
+            'university' => 'Universidad Nacional de Rosario',
+            'profession' => 'Nutricionista',
+            'membership_number' => '48213',
+        ]))->assertRedirect(route('verification.notice'));
+
+        $student = User::where('email', 'camila@example.com')->firstOrFail()->student;
+
+        $this->assertSame('Argentina', $student->country);
+        $this->assertSame('Rosario', $student->city);
+        $this->assertSame('+54 9 341 1234567', $student->phone);
+        $this->assertSame('1990-05-20', $student->date_of_birth->toDateString());
+        $this->assertSame('2015-12-01', $student->graduation_date->toDateString());
+        $this->assertSame('Universidad Nacional de Rosario', $student->university);
+        $this->assertSame('Nutricionista', $student->profession);
+        $this->assertSame('48213', $student->membership_number);
+    }
+
     /** El DNI es opcional: pedirlo obligatorio traba el alta por un dato que puede esperar. */
     public function test_el_dni_puede_quedar_vacio(): void
     {

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
 use App\Http\Controllers\Classroom\SearchController;
@@ -12,15 +13,20 @@ use App\Http\Controllers\Classroom\ClassroomController;
 use App\Http\Controllers\Classroom\MyCoursesController;
 use App\Http\Controllers\Classroom\SubmissionController;
 use App\Http\Controllers\Classroom\CertificateController;
+use App\Http\Controllers\Public\CourseShowcaseController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Classroom\AnnouncementController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
- * La plataforma es privada: nada es accesible sin sesión iniciada. Quien no
- * está autenticado solo ve el login, y el middleware `auth` lo redirige ahí
- * desde cualquier otra ruta.
+ * El «/» y la ficha de curso son públicos: es la vidriera de la plataforma
+ * para quien todavía no tiene cuenta. Todo lo demás sigue siendo privado —
+ * quien no está autenticado solo ve el login, y el middleware `auth` lo
+ * redirige ahí desde cualquier otra ruta.
  */
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('curso/{course}', [CourseShowcaseController::class, 'show'])->name('course.showcase');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -35,8 +41,6 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', fn () => view('home'))->name('home');
-
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
     /*

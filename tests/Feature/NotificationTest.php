@@ -109,7 +109,7 @@ class NotificationTest extends TestCase
             'student_id' => $student->getKey(),
         ]);
 
-        $enrollment->approve(Teacher::factory()->create());
+        $enrollment->approve(User::factory()->registrar()->create());
 
         $aviso = QueuedEmail::where('recipient_id', $student->getKey())->firstOrFail();
 
@@ -123,7 +123,7 @@ class NotificationTest extends TestCase
     {
         $enrollment = CourseEnrollment::factory()->create();
 
-        $enrollment->reject(Teacher::factory()->create());
+        $enrollment->reject(User::factory()->registrar()->create());
 
         $this->assertSame(0, QueuedEmail::count());
     }

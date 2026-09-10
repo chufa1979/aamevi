@@ -52,9 +52,14 @@ class CourseEnrollment extends Model
         return $this->belongsTo(Student::class);
     }
 
+    /**
+     * Quien resolvió la solicitud: un docente, un administrador o el perfil
+     * administrativo (`UserRole::Registrar`). Ninguno de los tres últimos
+     * tiene ficha de profesor, así que apunta a `users` y no a `teachers`.
+     */
     public function approvedBy(): BelongsTo
     {
-        return $this->belongsTo(Teacher::class, 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function certificate(): HasOne
@@ -67,7 +72,7 @@ class CourseEnrollment extends Model
      *
      * @throws EnrollmentException si no está pendiente o el curso está lleno
      */
-    public function approve(?Teacher $teacher = null): void
+    public function approve(?User $user = null): void
     {
         $this->ensureStatusIs(EnrollmentStatus::Pending, 'aprobar');
 
@@ -78,21 +83,21 @@ class CourseEnrollment extends Model
         $this->update([
             'status' => EnrollmentStatus::Approved,
             'approval_date' => now(),
-            'approved_by' => $teacher?->getKey(),
+            'approved_by' => $user?->getKey(),
         ]);
 
         EnrollmentApproved::dispatch($this);
     }
 
     /** @throws EnrollmentException si no está pendiente */
-    public function reject(?Teacher $teacher = null): void
+    public function reject(?User $user = null): void
     {
         $this->ensureStatusIs(EnrollmentStatus::Pending, 'rechazar');
 
         $this->update([
             'status' => EnrollmentStatus::Rejected,
             'approval_date' => now(),
-            'approved_by' => $teacher?->getKey(),
+            'approved_by' => $user?->getKey(),
         ]);
     }
 

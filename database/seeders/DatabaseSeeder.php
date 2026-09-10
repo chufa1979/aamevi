@@ -67,14 +67,31 @@ class DatabaseSeeder extends Seeder
             [
                 'dni' => '30000000',
                 'date_of_birth' => '1985-06-15',
-                'phone' => '1140000000',
-                'cell_phone' => '1150000000',
-                'sub_delegation' => 'CABA',
-                'delegation' => 'Buenos Aires',
+                'phone' => '+54 9 11 40000000',
+                'country' => 'Argentina',
+                'city' => 'CABA',
+                'graduation_date' => '2010-12-10',
+                'university' => 'Universidad de Buenos Aires',
+                'profession' => 'Médico/a',
+                'membership_number' => '10001',
             ]
         );
 
-        $this->command?->info("Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email} (contraseña: password)");
+        $registrar = User::firstOrCreate(
+            ['email' => 'administracion@aamevi.ar'],
+            [
+                'password' => 'password',
+                'first_name' => 'Administrativo',
+                'last_name' => 'De Prueba',
+                'role' => UserRole::Registrar,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $this->command?->info(
+            "Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email}, {$registrar->email} (contraseña: password)"
+        );
 
         $this->call([
             StudentSeeder::class,

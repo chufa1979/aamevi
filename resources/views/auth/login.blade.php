@@ -22,6 +22,9 @@
 
     <form method="POST" action="{{ route('login') }}" class="bg-card p-6">
         @csrf
+        @if (request()->query('next'))
+            <input type="hidden" name="next" value="{{ request()->query('next') }}">
+        @endif
 
         <div class="mb-4">
             <label for="email" class="field-label">Correo electrónico</label>

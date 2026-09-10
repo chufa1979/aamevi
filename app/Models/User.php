@@ -104,6 +104,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         return match ($panel->getId()) {
             'admin' => $this->isAdmin() && $this->is_active,
             'profesores' => $this->isTeacher() && $this->is_active,
+            'administracion' => $this->isRegistrar() && $this->is_active,
             default => false,
         };
     }
@@ -142,6 +143,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         return match (true) {
             $this->isAdmin() => Filament::getPanel('admin')->getUrl(),
             $this->isTeacher() => Filament::getPanel('profesores')->getUrl(),
+            $this->isRegistrar() => Filament::getPanel('administracion')->getUrl(),
             default => route('classroom.courses'),
         };
     }
@@ -181,5 +183,10 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     public function isStudent(): bool
     {
         return $this->role === UserRole::Student;
+    }
+
+    public function isRegistrar(): bool
+    {
+        return $this->role === UserRole::Registrar;
     }
 }

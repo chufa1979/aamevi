@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CourseModality;
 use App\Enums\EnrollmentStatus;
 use Database\Factories\CourseFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,18 @@ class Course extends Model
     protected $fillable = [
         'title',
         'description',
+        'start_date',
+        'end_date',
+        'modality',
+        'location',
+        'specialties',
+        'schedule_days',
+        'schedule_time',
+        'investment_info',
+        'certification_info',
+        'teaching_staff',
+        'objectives',
+        'enrollment_requirements',
         'teacher_id',
         'max_students',
         'is_active',
@@ -30,6 +43,9 @@ class Course extends Model
         return [
             'is_active' => 'boolean',
             'max_students' => 'integer',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'modality' => CourseModality::class,
         ];
     }
 

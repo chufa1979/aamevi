@@ -19,33 +19,43 @@ use Illuminate\Database\Seeder;
  */
 class StudentSeeder extends Seeder
 {
-    /** @var array<int, array{string, string, string, string}> nombre, apellido, delegación, subdelegación */
+    /** @var array<int, array{string, string, string}> nombre, apellido, ciudad */
     private const ALUMNOS = [
-        ['Camila', 'Ferreyra', 'Buenos Aires', 'La Plata'],
-        ['Joaquín', 'Basualdo', 'Buenos Aires', 'CABA'],
-        ['Malena', 'Ocampo', 'Córdoba', 'Villa María'],
-        ['Nicolás', 'Zabala', 'Santa Fe', 'Rosario'],
-        ['Rocío', 'Bustamante', 'Mendoza', 'Godoy Cruz'],
-        ['Tomás', 'Iriarte', 'Buenos Aires', 'Bahía Blanca'],
-        ['Agustina', 'Peralta', 'Tucumán', 'San Miguel'],
-        ['Bruno', 'Maldonado', 'Neuquén', 'Neuquén Capital'],
-        ['Florencia', 'Quiroga', 'Entre Ríos', 'Paraná'],
-        ['Ignacio', 'Sanabria', 'Salta', 'Salta Capital'],
-        ['Julieta', 'Vergara', 'Buenos Aires', 'Mar del Plata'],
-        ['Lucas', 'Andrada', 'Chubut', 'Comodoro Rivadavia'],
-        ['Micaela', 'Toledo', 'Córdoba', 'Río Cuarto'],
-        ['Federico', 'Aguirre', 'Santa Fe', 'Santa Fe Capital'],
-        ['Valentina', 'Cardozo', 'Corrientes', 'Corrientes Capital'],
-        ['Matías', 'Bengoechea', 'Buenos Aires', 'San Isidro'],
-        ['Paula', 'Recalde', 'Misiones', 'Posadas'],
-        ['Santiago', 'Olmedo', 'San Juan', 'San Juan Capital'],
-        ['Delfina', 'Arrieta', 'Río Negro', 'Bariloche'],
-        ['Gonzalo', 'Ledesma', 'Jujuy', 'San Salvador'],
+        ['Camila', 'Ferreyra', 'La Plata'],
+        ['Joaquín', 'Basualdo', 'CABA'],
+        ['Malena', 'Ocampo', 'Villa María'],
+        ['Nicolás', 'Zabala', 'Rosario'],
+        ['Rocío', 'Bustamante', 'Godoy Cruz'],
+        ['Tomás', 'Iriarte', 'Bahía Blanca'],
+        ['Agustina', 'Peralta', 'San Miguel de Tucumán'],
+        ['Bruno', 'Maldonado', 'Neuquén Capital'],
+        ['Florencia', 'Quiroga', 'Paraná'],
+        ['Ignacio', 'Sanabria', 'Salta Capital'],
+        ['Julieta', 'Vergara', 'Mar del Plata'],
+        ['Lucas', 'Andrada', 'Comodoro Rivadavia'],
+        ['Micaela', 'Toledo', 'Río Cuarto'],
+        ['Federico', 'Aguirre', 'Santa Fe Capital'],
+        ['Valentina', 'Cardozo', 'Corrientes Capital'],
+        ['Matías', 'Bengoechea', 'San Isidro'],
+        ['Paula', 'Recalde', 'Posadas'],
+        ['Santiago', 'Olmedo', 'San Juan Capital'],
+        ['Delfina', 'Arrieta', 'Bariloche'],
+        ['Gonzalo', 'Ledesma', 'San Salvador de Jujuy'],
     ];
+
+    /** @var array<int, string> rota entre los veinte alumnos para dar variedad sin inventar veinte universidades */
+    private const UNIVERSIDADES = [
+        'Universidad de Buenos Aires',
+        'Universidad Austral',
+        'Universidad Nacional de Córdoba',
+        'Universidad Nacional de Rosario',
+    ];
+
+    private const PROFESIONES = ['Médico/a', 'Nutricionista', 'Kinesiólogo/a', 'Psicólogo/a', 'Enfermero/a'];
 
     public function run(): void
     {
-        foreach (self::ALUMNOS as $i => [$nombre, $apellido, $delegacion, $subdelegacion]) {
+        foreach (self::ALUMNOS as $i => [$nombre, $apellido, $ciudad]) {
             $numero = str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT);
 
             $user = User::firstOrCreate(
@@ -67,10 +77,15 @@ class StudentSeeder extends Seeder
                 [
                     'dni' => (string) (28_000_000 + $i * 137_411),
                     'date_of_birth' => now()->subYears(28 + ($i % 22))->subDays($i * 11)->toDateString(),
-                    'phone' => '011'.str_pad((string) (4000_0000 + $i * 5_431), 8, '0', STR_PAD_LEFT),
-                    'cell_phone' => '011'.str_pad((string) (1500_0000 + $i * 7_919), 8, '0', STR_PAD_LEFT),
-                    'delegation' => $delegacion,
-                    'sub_delegation' => $subdelegacion,
+                    'phone' => '+54 9 11 '.str_pad((string) (4000_0000 + $i * 5_431), 8, '0', STR_PAD_LEFT),
+                    'country' => 'Argentina',
+                    'city' => $ciudad,
+                    'graduation_date' => now()->subYears(3 + ($i % 10))->toDateString(),
+                    'university' => self::UNIVERSIDADES[$i % count(self::UNIVERSIDADES)],
+                    'profession' => self::PROFESIONES[$i % count(self::PROFESIONES)],
+                    // Uno de cada tres tiene número de socio: es opcional, y así
+                    // se ve el «—» del listado para el resto
+                    'membership_number' => $i % 3 === 0 ? (string) (10_000 + $i) : null,
                 ],
             );
         }

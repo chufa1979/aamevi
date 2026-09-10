@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="/favicon.png">
     <title>@yield('title', 'AAMEVi - Educación')</title>
     @include('partials.preferences-head')
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/preferences.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/preferences.js', 'resources/js/login-widget.js'])
 </head>
 {{--
     Estructura general de página del sitio madre: `.wrapper` en columna con el
