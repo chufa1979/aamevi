@@ -57,7 +57,7 @@ class ManageCourseStudents extends ManageRelatedRecords
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with('certificate'))
+            ->modifyQueryUsing(fn ($query) => $query->with(['certificate', 'approvedBy']))
             ->recordTitleAttribute('id')
             // Los títulos de los modales salen de acá: esta clase de página no
             // lee las propiedades estáticas $modelLabel del recurso.
@@ -90,7 +90,7 @@ class ManageCourseStudents extends ManageRelatedRecords
                         ? 'Emitido el '.$record->certificate->issued_at->format('d/m/Y')
                         : null),
 
-                TextColumn::make('approvedBy.user.full_name')
+                TextColumn::make('approvedBy.full_name')
                     ->label('Resuelta por')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -103,6 +103,9 @@ class ManageCourseStudents extends ManageRelatedRecords
             ->headerActions([
                 CreateAction::make()
                     ->label('Inscribir alumno')
+                    // Darla de alta es un acto administrativo, como aprobar o
+                    // rechazar: el docente deja de verla, igual que esas dos.
+                    ->visible(fn (): bool => ! auth()->user()->isTeacher())
                     // Alta desde administración: entra directamente aprobada,
                     // porque el acto de crearla acá ya es la aprobación
                     ->mutateDataUsing(fn (array $data): array => [
@@ -171,6 +174,11 @@ class ManageCourseStudents extends ManageRelatedRecords
      * Aprobar y rechazar comparten todo salvo el método del modelo. Las reglas
      * —solo desde pendiente, y no exceder el cupo— viven en CourseEnrollment;
      * acá solo se traduce la excepción a una notificación.
+     *
+     * Ocultos para el docente: resolver una solicitud es tarea del perfil
+     * administrativo (o del administrador, que conserva todo). El docente
+     * sigue viendo esta pantalla para saber quién cursa, pero deja de poder
+     * darla de alta o resolverla — ver `UserRole::Registrar`.
      */
     private static function resolver(string $metodo, string $label, string $exito, string $icono, string $color): Action
     {
@@ -179,11 +187,10 @@ class ManageCourseStudents extends ManageRelatedRecords
             ->icon($icono)
             ->color($color)
             ->requiresConfirmation()
-            ->visible(fn (CourseEnrollment $record): bool => $record->isPending())
+            ->visible(fn (CourseEnrollment $record): bool => $record->isPending() && ! auth()->user()->isTeacher())
             ->action(function (CourseEnrollment $record) use ($metodo, $exito): void {
                 try {
-                    // Un administrador no tiene ficha de profesor: queda en null
-                    $record->{$metodo}(auth()->user()->teacher);
+                    $record->{$metodo}(auth()->user());
                 } catch (EnrollmentException $e) {
                     Notification::make()
                         ->title('No se pudo completar')

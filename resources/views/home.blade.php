@@ -31,14 +31,26 @@
                 ],
             ]
             : [
-                [
-                    'href' => auth()->user()->isAdmin() ? '/admin' : '/profesores',
-                    'title' => auth()->user()->isAdmin() ? 'Administración' : 'Mis cursos',
-                    'text' => auth()->user()->isAdmin()
-                        ? 'Cursos, alumnos, evaluaciones y la configuración de la plataforma.'
-                        : 'El material, las evaluaciones y el seguimiento de los cursos que dictás.',
-                    'color' => 'bg-pillar-blue',
-                ],
+                match (true) {
+                    auth()->user()->isAdmin() => [
+                        'href' => '/admin',
+                        'title' => 'Administración',
+                        'text' => 'Cursos, alumnos, evaluaciones y la configuración de la plataforma.',
+                        'color' => 'bg-pillar-blue',
+                    ],
+                    auth()->user()->isRegistrar() => [
+                        'href' => '/administracion',
+                        'title' => 'Solicitudes',
+                        'text' => 'Aceptá o rechazá inscripciones y dá de alta alumnos.',
+                        'color' => 'bg-pillar-blue',
+                    ],
+                    default => [
+                        'href' => '/profesores',
+                        'title' => 'Mis cursos',
+                        'text' => 'El material, las evaluaciones y el seguimiento de los cursos que dictás.',
+                        'color' => 'bg-pillar-blue',
+                    ],
+                },
                 [
                     'href' => '/ayuda',
                     'title' => 'Ayuda',

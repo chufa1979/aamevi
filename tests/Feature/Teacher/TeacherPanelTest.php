@@ -11,8 +11,11 @@ use App\Models\Question;
 use App\Models\CourseClass;
 use App\Models\CourseModule;
 use Filament\Facades\Filament;
+use App\Models\CourseEnrollment;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Filament\Resources\Courses\Pages\EditCourse;
+use App\Filament\Resources\Courses\Pages\ManageCourseStudents;
 
 /**
  * El panel del docente.
@@ -228,6 +231,27 @@ class TeacherPanelTest extends TestCase
             ->assertSuccessful()
             ->assertSee('porciones de fruta')
             ->assertDontSee('sueño profundo');
+    }
+
+    /**
+     * Lo administrativo es del perfil administrativo, no del docente: sigue
+     * viendo quién cursa, pero deja de poder darlo de alta, aprobarlo o
+     * rechazarlo. El administrador conserva las tres — ver
+     * `EnrollmentTest::test_el_panel_aprueba_desde_la_tabla`.
+     */
+    public function test_el_docente_no_ve_los_botones_para_resolver_solicitudes(): void
+    {
+        $teacher = $this->docenteCon('Nutrición aplicada');
+        $curso = $teacher->courses()->firstOrFail();
+        $enrollment = CourseEnrollment::factory()->create(['course_id' => $curso->getKey()]);
+
+        $this->actingAs($teacher->user);
+        Filament::setCurrentPanel('profesores');
+
+        Livewire::test(ManageCourseStudents::class, ['record' => $curso->getKey()])
+            ->assertActionHidden(TestAction::make('create')->table())
+            ->assertActionHidden(TestAction::make('approve')->table($enrollment))
+            ->assertActionHidden(TestAction::make('reject')->table($enrollment));
     }
 
     /** Las cuentas son del administrador; el docente ve a sus alumnos desde el curso. */

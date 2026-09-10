@@ -14,6 +14,8 @@
             <a href="/admin" class="underline-offset-2 hover:underline hover:text-accent">Administración</a>
         @elseif (auth()->user()->isTeacher())
             <a href="/profesores" class="underline-offset-2 hover:underline hover:text-accent">Mis cursos</a>
+        @elseif (auth()->user()->isRegistrar())
+            <a href="/administracion" class="underline-offset-2 hover:underline hover:text-accent">Solicitudes</a>
         @endif
 
         <form method="POST" action="{{ route('logout') }}">

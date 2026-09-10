@@ -18,6 +18,13 @@ enum UserRole: string implements HasColor, HasLabel
     case Teacher = 'teacher';
     case Student = 'student';
 
+    /**
+     * El perfil administrativo: crea y acepta inscripciones, y da de alta
+     * alumnos, pero no toca contenido de curso ni cuentas de docente o
+     * administrador. Ver `App\Providers\Filament\RegistrarPanelProvider`.
+     */
+    case Registrar = 'registrar';
+
     /** Etiqueta para mostrar en la interfaz. */
     public function label(): string
     {
@@ -25,6 +32,7 @@ enum UserRole: string implements HasColor, HasLabel
             self::Admin => 'Administrador',
             self::Teacher => 'Profesor',
             self::Student => 'Alumno',
+            self::Registrar => 'Administrativo',
         };
     }
 
@@ -39,6 +47,7 @@ enum UserRole: string implements HasColor, HasLabel
             self::Admin => 'danger',
             self::Teacher => 'primary',
             self::Student => 'gray',
+            self::Registrar => 'warning',
         };
     }
 

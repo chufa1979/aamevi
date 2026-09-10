@@ -77,7 +77,21 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $this->command?->info("Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email} (contraseña: password)");
+        $registrar = User::firstOrCreate(
+            ['email' => 'administracion@aamevi.ar'],
+            [
+                'password' => 'password',
+                'first_name' => 'Administrativo',
+                'last_name' => 'De Prueba',
+                'role' => UserRole::Registrar,
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $this->command?->info(
+            "Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email}, {$registrar->email} (contraseña: password)"
+        );
 
         $this->call([
             StudentSeeder::class,

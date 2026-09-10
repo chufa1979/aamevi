@@ -404,6 +404,10 @@ class CourseSeeder extends Seeder
      */
     private function inscribir($cursos): void
     {
+        // Quien resuelve las solicitudes en la demo: el perfil administrativo,
+        // no el docente — es el flujo real (ver UserRole::Registrar).
+        $registrar = User::where('email', 'administracion@aamevi.ar')->first();
+
         $alumnos = Student::with('user')
             ->get()
             ->sortBy(fn (Student $s): string => $s->user?->email ?? '')
@@ -433,8 +437,8 @@ class CourseSeeder extends Seeder
                 match (true) {
                     // Una de cada once queda pendiente y una rechazada
                     $i % 11 === 7 => null,
-                    $i % 11 === 9 => $enrollment->reject($course->teacher),
-                    default => $enrollment->approve($course->teacher),
+                    $i % 11 === 9 => $enrollment->reject($registrar),
+                    default => $enrollment->approve($registrar),
                 };
             }
         }

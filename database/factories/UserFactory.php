@@ -43,6 +43,11 @@ class UserFactory extends Factory
         return $this->state(['role' => UserRole::Student]);
     }
 
+    public function registrar(): static
+    {
+        return $this->state(['role' => UserRole::Registrar]);
+    }
+
     public function unverified(): static
     {
         return $this->state(['email_verified_at' => null]);
