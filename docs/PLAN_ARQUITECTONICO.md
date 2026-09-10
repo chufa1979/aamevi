@@ -193,6 +193,21 @@ CREATE TABLE teachers (
 >
 > `students` y `teachers` llevan `updated_at` además de `created_at`.
 
+> **Desviación implementada (2026-09-10)** — Dos cambios más, ninguno tocado
+> en el DDL de arriba:
+>
+> - `users.role` suma un cuarto valor, `registrar`: el perfil administrativo
+>   que acepta alumnos en los cursos sin ser docente ni administrador
+>   —ver `App\Providers\Filament\RegistrarPanelProvider` en CLAUDE.md—.
+>   Es un ENUM real de la base, así que sumarlo pidió una migración que
+>   recrea la columna, no sólo el caso nuevo en `App\Enums\UserRole`.
+> - `students` reemplaza `cell_phone`, `sub_delegation` y `delegation`
+>   —sin uso en ninguna pantalla— por los campos que pide el alta real:
+>   `country`, `city`, `graduation_date`, `university`, `profession` y
+>   `membership_number`. Todos nullable: el registro público sólo exige
+>   nombre, correo y contraseña, y el resto de la ficha se puede completar
+>   después, mismo criterio que ya regía para `dni`.
+
 ### Cursos, Módulos & Clases
 ```sql
 CREATE TABLE courses (
@@ -243,7 +258,19 @@ CREATE TABLE course_enrollments (
   approved_by CHAR(36) REFERENCES teachers(id),
   UNIQUE(course_id, student_id)
 );
+```
 
+> **Desviación implementada (2026-09-10)** — `approved_by` pasa de apuntar a
+> `teachers` a apuntar a `users`. El perfil administrativo que ahora resuelve
+> la mayoría de las solicitudes (`UserRole::Registrar`, ver arriba) no tiene
+> ficha de profesor, así que no podía quedar registrado ahí — y de paso
+> corrige un caso que ya estaba roto: un administrador tampoco tenía ficha
+> de profesor, así que "Resuelta por" quedaba vacío cuando aprobaba él
+> mismo. No hace falta tocar los valores ya guardados: `teachers.id` es la
+> misma clave que `users.id` (extensión 1:1), así que cada `approved_by`
+> existente sigue siendo válido contra la tabla nueva.
+
+```sql
 -- Módulos (planificación)
 CREATE TABLE modules (
   id CHAR(36) PRIMARY KEY,
@@ -465,6 +492,14 @@ CREATE TABLE email_queue (
 7. Alumno accede → status='active'
 ```
 
+> **Desviación implementada (2026-09-10)** — El paso 6 ya no es del profesor.
+> Aprueba (o rechaza) un administrador o el perfil administrativo nuevo
+> (`UserRole::Registrar`, pensado justamente para esto: alguien que revisa el
+> pago por otro medio y decide si el alumno entra a cursar). El paso 5
+> tampoco notifica al profesor — no tiene nada que resolver ahí—; lo que se
+> encola es el aviso de bienvenida del paso 6, y sólo cuando se aprueba. Ver
+> `App\Filament\Resources\EnrollmentRequests` y CLAUDE.md.
+
 ### B) Progresión por Clase
 ```
 1. Profesor crea clase en módulo
@@ -589,7 +624,7 @@ finalizada una inscripción rechazada.
 |---|---|
 | Cupo | Solo cuentan las **aprobadas, en curso y finalizadas**. Si las pendientes y rechazadas ocuparan lugar, un curso con veinte solicitudes rechazadas quedaría bloqueado teniendo vacantes |
 | Duplicados | `unique (course_id, student_id)` en la base, más validación en el formulario |
-| Docente eliminado | `approved_by` es `SET NULL`, no cascada: perder inscripciones porque cambió el profesor sería irrecuperable |
+| Quien aprobó, eliminado | `approved_by` es `SET NULL`, no cascada: perder inscripciones porque se dio de baja a quien las resolvió —docente, administrador o el perfil administrativo— sería irrecuperable |
 
 ### Evaluaciones — `Quiz`, `QuizService`
 

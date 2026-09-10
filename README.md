@@ -7,12 +7,12 @@ Construida con **Laravel 12 + Blade + MySQL 8**.
 
 ## Estado
 
-En desarrollo. Hay **tres superficies** sobre el mismo dominio de datos, con una
+En desarrollo. Hay **cuatro superficies** sobre el mismo dominio de datos, con una
 sola puerta de entrada: `/login`, con limitador de intentos y bloqueo de cuentas
 desactivadas. Ningún panel expone su propio formulario, así que hay un solo lugar
-que auditar. Cada rol cae después en lo suyo —el alumno en sus cursos, el docente
-y el administrador en su panel—, salvo que viniera de una URL concreta, en cuyo
-caso vuelve ahí.
+que auditar. Cada rol cae después en lo suyo —el alumno en sus cursos, el docente,
+el administrativo y el administrador en su panel—, salvo que viniera de una URL
+concreta, en cuyo caso vuelve ahí.
 
 ### Vidriera pública
 
@@ -54,7 +54,7 @@ Solo para el rol administrador. El menú tiene cuatro grupos —**Cursos**,
 | Exámenes | Exámenes de módulo, con aviso cuando el banco de preguntas está vacío |
 | Intentos | Cómo le fue a cada alumno en cada evaluación, con su historial completo y la opción de devolverle los intentos al que se trabó |
 | Calificaciones | Bandeja de entregas: corregir con nota y devolución, y publicar en tanda |
-| Alumnos del curso | Inscripciones, con aprobación, rechazo y control de cupo |
+| Alumnos del curso | Inscripciones del curso, sólo lectura para el docente — ver «Panel administrativo» |
 | Seguimiento alumnos | Grilla de alumnos por clases: aprobada, en curso, bloqueada o no habilitada |
 | Comunicación | Tablón del curso: para todos o para un alumno, con aviso por email opcional |
 | Consultas | Las preguntas de los alumnos del curso, con su hilo y su estado |
@@ -77,6 +77,25 @@ duplica los recursos: lo que separa a un docente de otro es
 registros por la consulta del recurso, escribir a mano la URL del curso ajeno
 devuelve 404.
 
+El docente sigue viendo la solapa Alumnos de su curso —necesita saber quién
+cursa—, pero ya no da de alta, aprueba ni rechaza ninguna inscripción ahí: eso
+se mudó al panel administrativo.
+
+### Panel administrativo (`/administracion`)
+
+Mismo software otra vez, con dos pantallas nada más:
+
+| Pantalla | Qué hace |
+|---|---|
+| Solicitudes | Todas las inscripciones, de todos los cursos, en una sola tabla filtrable por curso y estado — aprobar, rechazar o inscribir directo sin entrar curso por curso |
+| Alumnos | Alta y edición de fichas de alumno |
+
+Es el rol pensado para quien revisa el pago por otro medio y decide si un
+alumno entra a cursar: solicita el aula, no la da. No llega a contenido de
+curso, exámenes, calificaciones, comunicaciones, consultas, la cola de email
+ni a cuentas de docente o administrador — eso sigue siendo del
+administrador, que conserva todo lo que tenía.
+
 **Pendiente**: `/ayuda`, Google OAuth y Google Cloud Storage.
 El [plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) lleva la cuenta de qué
 está hecho; su §3-bis documenta las reglas de negocio implementadas y su §13 el
@@ -92,7 +111,7 @@ análisis de un LMS en producción del que salió la organización del panel.
 | **Cursos con módulos y clases** | Estructura jerárquica: curso → módulo → clase → contenido | ✅ |
 | **Quiz** | Preguntas aleatorias por alumno, calificación automática, reintentos | ✅ |
 | **Contenido multimodal** | Videos, PDFs, textos y consignas | ✅ |
-| **Inscripción con aprobación** | El alumno solicita, el docente aprueba | ✅ |
+| **Inscripción con aprobación** | El alumno solicita, el administrativo o el administrador aprueba | ✅ |
 | **Seguimiento de progreso** | Grilla de curso para el docente, barra de avance para el alumno | ✅ |
 | **Tareas** | Envío de archivos y corrección con nota y devolución | ✅ |
 | **Panel de administración** | Backoffice en `/admin` y `/profesores` para gestionar el material | ✅ |
@@ -308,11 +327,12 @@ php artisan migrate:status   # ninguna pendiente
 
 ### Usuarios de prueba
 
-`php artisan db:seed` deja tres cuentas, todas con contraseña `password`:
+`php artisan db:seed` deja estas cuentas, todas con contraseña `password`:
 
 | Email | Rol | Entra a |
 |---|---|---|
 | `admin@aamevi.ar` | administrador | `/admin` y el sitio |
+| `administracion@aamevi.ar` | administrativo | `/administracion` |
 | `profesor@aamevi.ar` | profesor | `/profesores` — dicta 3 de los 5 cursos |
 | `profesora@aamevi.ar` | profesora | `/profesores` — dicta los otros 2 |
 | `alumno@aamevi.ar` | alumno | el aula |
@@ -419,11 +439,13 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 2. Recibe un correo con un enlace firmado y con vencimiento
 3. Lo abre y entra al catálogo
 4. Solicita inscripción a un curso
-5. El docente la aprueba desde el panel
+5. El administrativo revisa el pago por otro medio y la aprueba desde
+   `/administracion` (o el administrador, que también puede)
 6. Le llega el aviso de que ya puede empezar
 
 Registrarse no da acceso a ningún curso: la inscripción la sigue aprobando una
-persona. Por eso el alta puede ser abierta.
+persona, y no es el docente del curso — es a propósito, para separar lo
+administrativo de lo pedagógico. Por eso el alta puede ser abierta.
 
 ### Progresión por clase
 1. Accede al contenido de la clase: videos, PDFs, textos
