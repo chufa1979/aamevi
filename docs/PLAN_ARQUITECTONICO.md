@@ -205,7 +205,33 @@ CREATE TABLE courses (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+```
 
+> **Desviación implementada (2026-09-10)** — `courses` suma once columnas que
+> este plan no contemplaba, todas nullable y todas con un único propósito: la
+> ficha pública del curso en `curso/{course}`, la página que ve cualquiera
+> antes de anotarse (ver `App\Http\Controllers\Public\CourseShowcaseController`
+> en CLAUDE.md).
+>
+> | Columna | Tipo | Para qué |
+> |---|---|---|
+> | `start_date`, `end_date` | `DATE` nullable | Fecha de dictado. Se derivan del mismo cronograma que espacia `class.activation_date` — no son un dato aparte |
+> | `modality` | `VARCHAR` (enum `CourseModality`: online / presencial / semipresencial) | — |
+> | `location` | `VARCHAR` nullable | Lugar/campus |
+> | `specialties` | `VARCHAR` nullable | Especialidades a las que aplica |
+> | `schedule_days`, `schedule_time` | `VARCHAR` nullable | Texto libre: días y horario de las clases sincrónicas |
+> | `investment_info` | `TEXT` nullable | Costo y forma de pago, texto libre |
+> | `certification_info` | `TEXT` nullable | Quién certifica y bajo qué validación |
+> | `teaching_staff` | `TEXT` nullable | Docentes además del responsable del curso, uno por línea |
+> | `objectives` | `TEXT` nullable | Objetivos del curso, uno por línea |
+> | `enrollment_requirements` | `TEXT` nullable | Requisitos de inscripción, uno por línea |
+>
+> Ninguna de estas columnas participa de una regla de negocio: no gatean
+> inscripción, ni progreso, ni nada que ya dependiera de `courses`. Un curso
+> sin ninguna completa sigue funcionando igual puertas adentro — la ficha
+> pública simplemente muestra menos secciones.
+
+```sql
 -- Inscripción a cursos (con estado)
 CREATE TABLE course_enrollments (
   id CHAR(36) PRIMARY KEY,

@@ -14,11 +14,23 @@ que auditar. Cada rol cae después en lo suyo —el alumno en sus cursos, el doc
 y el administrador en su panel—, salvo que viniera de una URL concreta, en cuyo
 caso vuelve ahí.
 
+### Vidriera pública
+
+`/` y `curso/{id}` son la excepción deliberada: sin sesión, el home muestra el
+catálogo de cursos activos y cada uno abre en su propia ficha —fechas,
+modalidad, docentes, temario, inversión, certificación— con un botón para
+inscribirse. Ese botón lleva a un login desplegable en el propio header, no a
+otra pantalla, y si de ahí se crea una cuenta y se confirma el correo, vuelve
+exactamente a esa ficha en vez de perder el curso que se estaba mirando.
+
+Con sesión iniciada, `/` deja de ser vidriera: cae en el dashboard de
+siempre, con los accesos de cada rol.
+
 ### El aula (Blade)
 
-La plataforma es **privada**: sin sesión iniciada no se ve nada, ni el menú. La
-identidad visual de [www.aamevi.ar](https://www.aamevi.ar) está portada a
-componentes Blade.
+El resto de la plataforma es **privado**: sin sesión iniciada no se ve nada,
+ni el menú. La identidad visual de [www.aamevi.ar](https://www.aamevi.ar) está
+portada a componentes Blade.
 
 El alumno tiene catálogo con solicitud de inscripción, sus cursos, la pantalla de
 clase con su material, las evaluaciones, la entrega de trabajos prácticos, una
@@ -76,6 +88,7 @@ análisis de un LMS en producción del que salió la organización del panel.
 
 | | | |
 |---|---|---|
+| **Vidriera pública** | Catálogo de cursos activos y ficha de cada uno, visibles sin sesión | ✅ |
 | **Cursos con módulos y clases** | Estructura jerárquica: curso → módulo → clase → contenido | ✅ |
 | **Quiz** | Preguntas aleatorias por alumno, calificación automática, reintentos | ✅ |
 | **Contenido multimodal** | Videos, PDFs, textos y consignas | ✅ |
@@ -389,6 +402,16 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 ---
 
 ## Flujos principales
+
+### Visitante sin cuenta
+1. Entra a `/`, sin sesión: ve el catálogo de cursos activos
+2. Abre uno y llega a su ficha (`curso/{id}`): fechas, modalidad, docentes,
+   temario, inversión, certificación
+3. Toca «Inscribirme»: como no tiene sesión, se abre el login del header en
+   vez de perder la ficha en un redirect
+4. Si no tiene cuenta, sigue a `/registro` desde ahí mismo
+5. Al crearla y verificar el correo, vuelve a la misma ficha —no al home— y
+   ahí sí puede pedir la inscripción real
 
 ### Inscripción de alumno
 1. El alumno completa el formulario de registro y queda con la cuenta creada
