@@ -10,7 +10,7 @@ use Filament\Widgets\AccountWidget;
 use Filament\Support\Icons\Heroicon;
 use App\Filament\Widgets\StuckStudents;
 use Filament\Navigation\NavigationGroup;
-use Filament\Widgets\FilamentInfoWidget;
+use App\Filament\Widgets\CurrentDateTime;
 use Filament\Http\Middleware\Authenticate;
 use App\Filament\Widgets\AdminStatsOverview;
 use App\Filament\Widgets\PendingSupportTickets;
@@ -73,11 +73,11 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
+                CurrentDateTime::class,
                 AdminStatsOverview::class,
                 StuckStudents::class,
                 PendingSupportTickets::class,
                 CoursesWithoutActivity::class,
-                FilamentInfoWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
