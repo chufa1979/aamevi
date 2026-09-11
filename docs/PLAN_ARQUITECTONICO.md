@@ -933,13 +933,13 @@ así que desarrollar así se parece más a producción.
     "mockery/mockery": "^1.6"
   },
   "config": {
-    "platform": { "php": "8.3.11" }
+    "platform": { "php": "8.4.0" }
   }
 }
 ```
 
-`config.platform.php` fija la resolución de dependencias a **8.3.11**, que es el
-PHP del CLI en el servidor de destino. Ver §9 y `docs/DEPLOY.md`.
+`config.platform.php` fija la resolución de dependencias a **8.4.0**, el piso de
+lo que ofrece el servidor de destino. Ver §9 y `docs/DEPLOY.md`.
 
 ### PHP — pendiente de incorporar
 
@@ -987,8 +987,7 @@ sí lleva Livewire, que viene con Filament.
 - [x] Login con sesión de Laravel, limitador de intentos y bloqueo de cuentas
       inactivas. **Todo el sitio está detrás de `auth`**: sin sesión no se ve nada
 - [x] Seeders con usuarios de prueba de cada rol
-- [ ] Registro público (hoy es un marcador; las cuentas las crea la administración)
-- [x] Policies por rol, compartidas por los dos paneles (§11)
+- [x] Policies por rol, compartidas por los tres paneles (§11)
 - [x] Registro público, siempre con rol Alumno
 - [x] Verificación de email vía `email_queue`, con enlace firmado
 - [ ] Google OAuth con Socialite
@@ -1039,7 +1038,7 @@ sí lleva Livewire, que viene con Filament.
 
 ### Fase 7: Deployment & Polish (1 semana)
 - [x] Documentación de deploy (`docs/DEPLOY.md`)
-- [x] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
+- [x] Despliegue en producción (`aamevicampus.com.ar`, LatinCloud)
 - [x] Variables de entorno de producción (`APP_DEBUG=false`, base)
 - [ ] Subir `upload_max_filesize` y `post_max_size` — hoy 2 MB y 8 MB
 - [ ] Clave SSH en lugar de contraseña
@@ -1054,45 +1053,46 @@ estado de cliente y la duplicación de validaciones entre back y front.
 
 ## 8. DEPLOYMENT
 
-El procedimiento completo está en **`docs/DEPLOY.md`**. Acá va lo que condiciona
-el diseño.
+El procedimiento completo está en **`docs/DEPLOY.md`**, con el paso a paso ya
+ejecutado en `docs/DEPLOYMENT_GUIDE.md`. Acá va lo que condiciona el diseño.
 
-### Entorno de demo
+### Entorno de producción
 
-`aamevi.demosdesarrollos.com.ar`, hosting compartido en LatinCloud (CloudSSH).
-Se clona el repo en la carpeta del dominio, de modo que el `public/` del proyecto
+`aamevicampus.com.ar`, hosting compartido en LatinCloud (ContainerSSH). Se
+clona el repo en la carpeta del dominio, de modo que el `public/` del proyecto
 **es** el docroot y `.env` con `vendor/` quedan fuera del alcance web.
 
 ```
-~/aamevi.demosdesarrollos.com.ar/
+/www/aamevicampus.com.ar/aamevicampus.com.ar/
 ├── app/  config/  resources/  vendor/  .env      ← fuera del docroot
-└── public/                                       ← docroot verificado
+└── public/                                       ← docroot
 ```
 
-### Restricciones relevadas (2026-08-11)
+### Restricciones relevadas
 
 | | |
 |---|---|
-| PHP del web (FPM) | 8.4.3 |
-| PHP del CLI (SSH) | **8.3.11** — `/etc/php/` no lista 8.4 |
+| PHP disponible | **8.2 y 8.4** — sin 8.3 de por medio |
+| Extensiones PHP | faltan `intl` y `zip`, sin `sudo` para instalarlas |
 | Composer / Git | disponibles |
-| Node / npm | **18.20.4** / 10.7.0 |
-| rsync | no está |
+| Node / npm | el del sistema no alcanza para Vite 8; se instala 22 con nvm |
 
 Dos consecuencias de diseño:
 
-1. **Artisan corre en el CLI**, o sea en 8.3. Eso descartó Laravel 13, que vía
-   Symfony 8 exige `php >=8.4.1`: el sitio habría cargado, pero migraciones,
-   cachés y colas quedaban inutilizables.
-2. **Node 18 no alcanza para Vite 8** (`^20.19.0 || >=22.12.0`). Se instala Node
-   moderno con `nvm` en el home del usuario, o se compilan los assets localmente
-   y se suben con `scp` (no hay `rsync`).
+1. **`composer.json` fija `config.platform.php = 8.4.0`**, el piso de lo que
+   ofrece este servidor, para que Composer resuelva siempre contra una versión
+   que existe acá. Este piso ya cubre lo que pediría Laravel 13 vía Symfony 8
+   (`php >=8.4.1`), pero eso no implica migrar: seguir en Laravel 12 sigue
+   siendo la elección vigente, es una decisión aparte.
+2. **Sin `intl` ni `zip`**: `composer install` corre con
+   `--ignore-platform-req` para ambas hasta que LatinCloud las instale (ver
+   `docs/DEPLOY.md` § Pendiente).
 
 ### Actualizaciones
 
 ```bash
 git pull
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-intl --ignore-platform-req=ext-zip
 npm ci && npm run build
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
@@ -1100,9 +1100,10 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 ### Producción definitiva
 
-Sin definir. Las opciones razonables son un VPS con PHP 8.4 —que permitiría
-volver a Laravel 13— o mantener hosting compartido. Google Cloud Storage sigue
-siendo la elección para archivos (§9), y es independiente de dónde corra la app.
+Sin definir. Las opciones razonables son un VPS —que evitaría las restricciones
+de extensiones de este hosting compartido— o quedarse acá una vez que LatinCloud
+instale `intl` y `zip`. Google Cloud Storage sigue siendo la elección para
+archivos (§9), y es independiente de dónde corra la app.
 
 ---
 
@@ -1142,14 +1143,18 @@ ya branded. Se decidió portarlo a Blade en vez de conservarlo:
 
 ### ¿Por qué Laravel 12 y no 13?
 
-Laravel 13 arrastra Symfony 8, que exige `php >=8.4.1`. El servidor de destino
-sirve el sitio con PHP 8.4.3 pero **solo ofrece 8.3.11 por SSH**, y Artisan corre
-ahí: migraciones, `config:cache`, scheduler y workers habrían quedado
-inutilizables. Laravel 12 usa Symfony 7 (`php >=8.2`) y funciona en ambos.
+Laravel 13 arrastra Symfony 8, que exige `php >=8.4.1`. El primer servidor de
+destino solo ofrecía 8.3.11 por SSH —y Artisan corre ahí: migraciones,
+`config:cache`, scheduler y workers habrían quedado inutilizables—, así que se
+optó por Laravel 12, que usa Symfony 7 (`php >=8.2`) y funciona en cualquiera de
+los dos.
 
-Es reversible: si el hosting llega a ofrecer PHP 8.4 en el CLI, volver a 13 es
-revertir un commit. `config.platform.php = 8.3.11` evita mientras tanto que
-`composer update` incorpore paquetes que el CLI no pueda ejecutar.
+El servidor cambió desde entonces: `aamevicampus.com.ar` ofrece 8.2 y 8.4 por
+SSH, sin el límite que motivó la decisión. Eso no implica migrar de vuelta a
+Laravel 13 —es una decisión aparte, no algo que resuelva solo el cambio de
+servidor—, pero sí dejó de ser el impedimento técnico que era.
+`config.platform.php = 8.4.0` evita mientras tanto que `composer update`
+incorpore paquetes que el CLI no pueda ejecutar.
 
 ### ¿Por qué Google Cloud Storage (no local)?
 - ✅ Escalable (no depende del servidor)
@@ -1453,7 +1458,7 @@ Hecho hasta el 2026-08-16 — **25 migraciones, 22 modelos, 454 tests**:
 
 1. [x] Plan arquitectónico actualizado a Laravel 12 + Blade
 2. [x] Base del proyecto: pipeline de assets, identidad visual, layout
-3. [x] Primer despliegue en `aamevi.demosdesarrollos.com.ar`
+3. [x] Despliegue en producción (`aamevicampus.com.ar`, LatinCloud)
 4. [x] Login, con el sitio entero detrás de sesión
 5. [x] Panel de administración con Filament (§11)
 6. [x] Dominio académico completo: cursos → módulos → clases → contenido

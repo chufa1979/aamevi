@@ -21,9 +21,10 @@ Documentos relacionados:
 | MySQL | 8.x | También sirve MariaDB |
 
 > **Nota sobre versiones de PHP**: `composer.json` fija
-> `config.platform.php = 8.3.11`, que es el PHP del servidor de producción.
-> Podés desarrollar con una versión mayor —Composer resuelve igual contra
-> 8.3.11— y así evitás instalar paquetes que después no corran en el hosting.
+> `config.platform.php = 8.4.0`, el piso de lo que ofrece el servidor de
+> producción. Podés desarrollar con una versión mayor —Composer resuelve
+> igual contra 8.4.0— y así evitás instalar paquetes que después no corran
+> en el hosting.
 
 ---
 

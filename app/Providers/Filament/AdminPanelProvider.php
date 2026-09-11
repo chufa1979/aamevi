@@ -8,10 +8,14 @@ use Filament\Pages\Dashboard;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
 use Filament\Support\Icons\Heroicon;
+use App\Filament\Widgets\StuckStudents;
 use Filament\Navigation\NavigationGroup;
-use Filament\Widgets\FilamentInfoWidget;
+use App\Filament\Widgets\CurrentDateTime;
 use Filament\Http\Middleware\Authenticate;
+use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\PendingSupportTickets;
 use Illuminate\Session\Middleware\StartSession;
+use App\Filament\Widgets\CoursesWithoutActivity;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -69,7 +73,11 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
-                FilamentInfoWidget::class,
+                CurrentDateTime::class,
+                AdminStatsOverview::class,
+                StuckStudents::class,
+                PendingSupportTickets::class,
+                CoursesWithoutActivity::class,
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -55,16 +55,6 @@ class CourseAttempts extends Page implements HasTable
 
     protected string $view = 'filament-panels::pages.page';
 
-    /**
-     * Desde cuándo cuentan los intentos: el último reseteo, o el principio de
-     * los tiempos si nunca hubo uno.
-     */
-    private const DESDE_EL_RESETEO = "coalesce((
-        select max(r.created_at) from quiz_attempt_resets r
-        where r.quiz_id = student_quiz_attempts.quiz_id
-          and r.student_id = student_quiz_attempts.student_id
-    ), '1970-01-01')";
-
     /** Cuántos alumnos están trabados en este curso: es la razón de entrar acá. */
     public static function getNavigationBadge(): ?string
     {
@@ -74,7 +64,7 @@ class CourseAttempts extends Page implements HasTable
             return null;
         }
 
-        $trabados = self::soloTrabados(self::ultimosIntentos(self::evaluacionesDe($course)))->count();
+        $trabados = QuizAttempt::ultimosPorEvaluacion(self::evaluacionesDe($course))->trabados()->count();
 
         return $trabados > 0 ? (string) $trabados : null;
     }
@@ -101,7 +91,7 @@ class CourseAttempts extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn (): Builder => self::ultimosIntentos($this->evaluacionesDelCurso())
+            ->query(fn (): Builder => QuizAttempt::ultimosPorEvaluacion($this->evaluacionesDelCurso())
                 ->with(['quiz.class.module', 'quiz.module', 'student.user']))
             ->modelLabel('evaluación rendida')
             ->pluralModelLabel('evaluaciones rendidas')
@@ -168,7 +158,7 @@ class CourseAttempts extends Page implements HasTable
                  */
                 Filter::make('trabados')
                     ->label('Sólo los que se quedaron sin intentos')
-                    ->query(fn (Builder $query): Builder => self::soloTrabados($query)),
+                    ->query(fn (Builder $query): Builder => $query->trabados()),
 
                 SelectFilter::make('clase')
                     ->label('Clase')
@@ -257,70 +247,6 @@ class CourseAttempts extends Page implements HasTable
             $quedan === 1 => 'Le queda 1',
             default => "Le quedan {$quedan}",
         };
-    }
-
-    /**
-     * Los que se quedaron sin intentos y sin aprobar: los que están trabados.
-     *
-     * Va en SQL y no filtrando la colección en PHP porque lo usan el filtro y el
-     * badge, y el badge se calcula en cada pintada del panel.
-     *
-     * @param  Builder<QuizAttempt>  $query
-     * @return Builder<QuizAttempt>
-     */
-    private static function soloTrabados(Builder $query): Builder
-    {
-        return $query
-            ->whereNotExists(fn ($q) => $q
-                ->selectRaw('1')
-                ->from('student_quiz_attempts as aprobado')
-                ->whereColumn('aprobado.quiz_id', 'student_quiz_attempts.quiz_id')
-                ->whereColumn('aprobado.student_id', 'student_quiz_attempts.student_id')
-                ->where('aprobado.passed', true))
-            ->whereRaw('(
-                select count(*) from student_quiz_attempts usado
-                where usado.quiz_id = student_quiz_attempts.quiz_id
-                  and usado.student_id = student_quiz_attempts.student_id
-                  and usado.started_at > '.self::DESDE_EL_RESETEO.'
-            ) >= (select q.max_attempts from quizzes q where q.id = student_quiz_attempts.quiz_id)');
-    }
-
-    /**
-     * El último intento de cada par alumno-evaluación, con su resumen.
-     *
-     * `usados` y `aprobado` salen de subconsultas correlacionadas: son dos
-     * columnas más en la misma consulta, no dos consultas por fila.
-     *
-     * @param  Builder<Quiz>  $evaluaciones
-     * @return Builder<QuizAttempt>
-     */
-    private static function ultimosIntentos(Builder $evaluaciones): Builder
-    {
-        return QuizAttempt::query()
-            ->whereIn('quiz_id', $evaluaciones)
-            ->whereNotExists(fn ($q) => $q
-                ->selectRaw('1')
-                ->from('student_quiz_attempts as posterior')
-                ->whereColumn('posterior.quiz_id', 'student_quiz_attempts.quiz_id')
-                ->whereColumn('posterior.student_id', 'student_quiz_attempts.student_id')
-                ->whereColumn('posterior.attempt_number', '>', 'student_quiz_attempts.attempt_number'))
-            ->withCasts(['aprobado' => 'integer', 'usados' => 'integer'])
-            ->addSelect([
-                'student_quiz_attempts.*',
-
-                // Los del ciclo actual: los anteriores a un reseteo no cuentan
-                'usados' => QuizAttempt::selectRaw('count(*)')
-                    ->from('student_quiz_attempts as usado')
-                    ->whereColumn('usado.quiz_id', 'student_quiz_attempts.quiz_id')
-                    ->whereColumn('usado.student_id', 'student_quiz_attempts.student_id')
-                    ->whereRaw('usado.started_at > '.self::DESDE_EL_RESETEO),
-
-                'aprobado' => QuizAttempt::selectRaw('count(*)')
-                    ->from('student_quiz_attempts as aprobado')
-                    ->whereColumn('aprobado.quiz_id', 'student_quiz_attempts.quiz_id')
-                    ->whereColumn('aprobado.student_id', 'student_quiz_attempts.student_id')
-                    ->where('aprobado.passed', true),
-            ]);
     }
 
     /** @return Builder<Quiz> las evaluaciones del curso: de clase y de módulo */
