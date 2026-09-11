@@ -13,6 +13,11 @@ use Filament\Widgets\Widget;
  */
 class CurrentDateTime extends Widget
 {
+    // Justo después de AccountWidget (-3): sin fijarlo, empata en -1 con
+    // AdminStatsOverview y el orden entre ambos queda librado al desempate de
+    // sortBy(), que a veces lo intercala entre el saludo y las tarjetas.
+    protected static ?int $sort = -2;
+
     protected static bool $isLazy = false;
 
     protected string $view = 'filament.widgets.current-date-time';

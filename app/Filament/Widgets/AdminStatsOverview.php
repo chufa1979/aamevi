@@ -23,6 +23,8 @@ use App\Filament\Resources\EnrollmentRequests\EnrollmentRequestResource;
  */
 class AdminStatsOverview extends StatsOverviewWidget
 {
+    protected static ?int $sort = -1;
+
     protected function getStats(): array
     {
         return [
