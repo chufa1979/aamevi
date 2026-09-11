@@ -416,6 +416,7 @@ levantar la base. Es a propósito y **no hay que cambiarlo**: los tests usan
 | [Plan arquitectónico](./docs/PLAN_ARQUITECTONICO.md) | Modelo de datos, flujos, decisiones y timeline |
 | [Sistema de diseño](./docs/SISTEMA_DISENO.md) | Paleta, tipografía y elementos heredados de www.aamevi.ar |
 | [Guía de deploy](./docs/DEPLOY.md) | Despliegue en el hosting, con sus restricciones |
+| [Guía de deployment](./docs/DEPLOYMENT_GUIDE.md) | Paso a paso ya ejecutado en el primer despliegue |
 | [Guía de inicio](./GETTING_STARTED.md) | Entorno local, comandos y convenciones |
 | [CLAUDE.md](./CLAUDE.md) | Convenciones para trabajar en el repo |
 

@@ -1,22 +1,24 @@
-# Deploy — aamevi.demosdesarrollos.com.ar
+# Deploy — aamevicampus.com.ar
 
-Entorno de demo en LatinCloud (CloudSSH). Este documento describe el despliegue
-real, con las restricciones concretas de ese hosting.
+Hosting compartido en LatinCloud (ContainerSSH), acceso solo por contraseña.
+Este documento describe el despliegue real, con las restricciones concretas de
+ese hosting. Para el paso a paso ya ejecutado en el primer despliegue, con
+credenciales y comandos tal como se corrieron, ver `docs/DEPLOYMENT_GUIDE.md`.
 
 ## Restricciones del servidor
 
-Relevadas por SSH el 2026-08-11:
+Relevadas por SSH:
 
 | | |
 |---|---|
-| PHP del **web** (FPM) | **8.4.3** |
-| PHP del **CLI** (SSH) | **8.3.11** — `/etc/php/` solo lista 5.6, 7.4, 8.2, 8.3 |
-| Composer | `/usr/local/bin/composer` |
-| Git | `/usr/bin/git` |
-| Node / npm | **18.20.4** / 10.7.0 |
-| rsync | **no está** |
-| Home | `/www/demosdesarrollos` |
-| Docroot | `~/aamevi.demosdesarrollos.com.ar/public` (verificado) |
+| PHP disponible | **8.2 y 8.4** — no hay 8.3 |
+| Extensiones PHP | faltan `intl` y `zip` en todas las versiones; sin `sudo` para instalarlas |
+| Composer | disponible |
+| Git | disponible |
+| Node / npm | el del sistema no alcanza para Vite 8; se instala 22 con nvm |
+| Home / raíz del proyecto | `/www/aamevicampus.com.ar/aamevicampus.com.ar` |
+| Docroot | `~/public` (mismo docroot que trae el panel) |
+| Base de datos | MySQL 5.7, alcanzable desde el servidor por IP privada |
 
 ### El límite de subida hay que revisarlo
 
@@ -48,15 +50,14 @@ pero es un parche: el archivo se sigue perdiendo.
 
 Dos consecuencias que explican decisiones del proyecto:
 
-1. **El CLI es 8.3, no 8.4.** Artisan corre ahí (migraciones, cachés, colas), así
-   que el proyecto está en Laravel 12 / Symfony 7 (`php >=8.2`). Laravel 13
-   arrastra Symfony 8, que exige `>=8.4.1`, y no se podría administrar.
-   `composer.json` fija `config.platform.php = 8.3.11` para que Composer resuelva
-   siempre contra la versión del CLI, que es donde corre `composer install`.
-
-2. **Node 18 no alcanza.** Vite 8 declara `node: ^20.19.0 || >=22.12.0`. Hay que
-   instalar Node moderno con nvm (paso 2) o compilar los assets localmente y
-   subirlos (ver *Alternativa sin nvm*).
+1. **Sin `intl` ni `zip` en el servidor.** Hasta que LatinCloud las instale,
+   `composer install` corre con `--ignore-platform-req=ext-intl --ignore-platform-req=ext-zip`
+   (ver *Pendiente*). Mientras tanto, las pantallas de Filament que formatean
+   números y fechas con `intl`, y la exportación a Excel (`openspout`, necesita
+   `zip`), no funcionan.
+2. **`composer.json` fija `config.platform.php = 8.4.0`**, el piso de lo que
+   ofrece este servidor (8.2 u 8.4, sin 8.3 de por medio), para que Composer
+   resuelva siempre contra una versión que existe acá.
 
 ## Puesta en marcha (una sola vez)
 
@@ -70,7 +71,8 @@ un `.` final crea un subdirectorio `aamevi/` y deja todo un nivel más abajo, co
 lo que el docroot queda apuntando a una carpeta vacía.
 
 ```bash
-cd ~/aamevi.demosdesarrollos.com.ar
+ssh aamevi
+cd /www/aamevicampus.com.ar/aamevicampus.com.ar
 
 git init
 git remote add origin https://github.com/chufa1979/aamevi.git
@@ -89,9 +91,6 @@ ls -la
 Así, `.env`, `vendor/` y el código quedan fuera del docroot: solo `public/` es
 alcanzable por web.
 
-> Si en un intento anterior quedó un subdirectorio `aamevi/`, borrarlo con
-> `rm -rf aamevi` antes de empezar. No contiene nada propio.
-
 ### 2. Node moderno con nvm
 
 ```bash
@@ -101,18 +100,26 @@ nvm install 22
 node -v          # debe dar v22.x
 ```
 
-`nvm` queda en el home del usuario; no toca el Node del sistema.
+`nvm` queda en el home del usuario; no toca el Node del sistema. En cada sesión
+SSH nueva hay que volver a cargarlo:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+```
 
 ### 3. Dependencias y assets
 
 ```bash
-cd ~/aamevi.demosdesarrollos.com.ar
-composer install --no-dev --optimize-autoloader
+cd /www/aamevicampus.com.ar/aamevicampus.com.ar
+composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-intl --ignore-platform-req=ext-zip
 npm ci
 npm run build
 ```
 
-`--no-dev` deja afuera Pest, Pint y Sail, que no hacen falta en producción.
+`--no-dev` deja afuera Pest, Pint y Sail, que no hacen falta en producción. Los
+`--ignore-platform-req` se sacan apenas LatinCloud instale `intl` y `zip` (ver
+*Pendiente*).
 
 ### 4. Configuración
 
@@ -126,10 +133,10 @@ Editar `.env`:
 ```
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://aamevi.demosdesarrollos.com.ar
+APP_URL=https://aamevicampus.com.ar
 
 DB_CONNECTION=mysql
-DB_HOST=<host del panel>
+DB_HOST=<IP privada del panel>
 DB_PORT=3306
 DB_DATABASE=<base>
 DB_USERNAME=<usuario>
@@ -148,14 +155,30 @@ tabla `cache` inexistente. El síntoma aparece recién cuando algo usa la caché
 —por ejemplo el limitador de intentos del login— y revienta con
 `no such table: cache`. Lo mismo con `BROADCAST_DRIVER`, hoy `BROADCAST_CONNECTION`.
 
-Si el `.env` del servidor se creó antes de agosto de 2026, tiene los nombres
-viejos y hay que corregirlos a mano.
+Los datos de la base salen del panel de LatinCloud (los ya usados en el primer
+despliegue están en `docs/DEPLOYMENT_GUIDE.md`). Usar la **IP privada**, no la
+pública: es la que corresponde para tráfico interno del mismo hosting.
 
-Los datos de la base salen del panel de LatinCloud. El `DB_HOST` que figura en
-el `.env` de desarrollo apunta a un servidor externo y **no** es necesariamente
-el que corresponde acá.
+### 5. `.htaccess`
 
-### 5. Base de datos y permisos
+El panel no lo genera solo. Sin él, sólo `/` responde y el resto de las rutas
+da 404:
+
+```apache
+# public/.htaccess
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
+
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+```
+
+### 6. Base de datos y permisos
 
 ```bash
 php artisan migrate --force
@@ -174,12 +197,13 @@ Para dejar el servidor con contenido de ejemplo —**sólo si la base está vac�
 php artisan db:seed --force
 ```
 
-### 6. Cachés de producción
+### 7. Cachés de producción
 
 ```bash
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan filament:assets
 ```
 
 ## Tareas programadas
@@ -192,7 +216,7 @@ Una sola línea en el crontab del hosting alcanza para todo, porque Laravel
 decide adentro qué toca en cada minuto:
 
 ```cron
-* * * * * cd ~/aamevi.demosdesarrollos.com.ar && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /www/aamevicampus.com.ar/aamevicampus.com.ar && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
 ```
 
 Hoy están programados dos: `emails:enviar` cada cinco minutos y
@@ -234,7 +258,7 @@ para reintentar.
 ## Actualizaciones
 
 ```bash
-cd ~/aamevi.demosdesarrollos.com.ar
+cd /www/aamevicampus.com.ar/aamevicampus.com.ar
 ./deploy.sh
 ```
 
@@ -247,7 +271,7 @@ A mano es lo mismo:
 ```bash
 source ~/.nvm/nvm.sh
 git pull
-composer install --no-dev --optimize-autoloader
+composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-intl --ignore-platform-req=ext-zip
 npm ci && npm run build
 php artisan filament:assets
 php artisan migrate --force
@@ -279,31 +303,18 @@ desde `public/css|js|fonts/filament`, fuera del manifiesto de Vite y sin
 versionar, así que `npm run build` no los toca. Si se actualiza Filament y no se
 republican, el panel queda con los assets viejos.
 
-## Alternativa sin nvm
-
-Si no se quiere instalar Node en el servidor, los assets se compilan localmente
-y se suben. `public/build` está en `.gitignore`, así que no viaja por git:
-
-```bash
-# local
-npm run build
-scp -P 22 -r public/build \
-    aamevidemosdesarrolloscomar@ssh.latincloud.app:~/aamevi.demosdesarrollos.com.ar/public/
-```
-
-No hay `rsync` en el servidor, así que `scp` o SFTP. Hay que repetirlo cada vez
-que cambie algo de `resources/css` o `resources/js`.
-
 ## Pendiente
 
+- **Extensiones PHP**: pedirle a LatinCloud `php8.4-intl` y `php8.4-zip`. Hasta
+  entonces, `composer install` necesita `--ignore-platform-req` para ambas (ver
+  arriba), y las pantallas que dependen de ellas no funcionan del todo.
 - **Límite de subida**: verificar `upload_max_filesize` y `post_max_size` en el
   servidor y subirlos (ver arriba). Hasta que se haga, las entregas de más de
   2 MB se pierden.
 - **Cron y correo saliente**: sin la línea de `schedule:run` y sin SMTP
   configurado, los avisos se acumulan en la cola sin salir (ver arriba).
-- **Clave SSH**: hoy el acceso es por contraseña. `ssh-copy-id -i ~/.ssh/id_ed25519.pub`
-  y después deshabilitar la contraseña.
+- **Clave SSH**: hoy el acceso es por contraseña — el gateway ContainerSSH de
+  este hosting no admite autenticación por clave, aunque `ssh-copy-id` reporte
+  éxito.
 - **HTTPS**: verificar que el certificado del dominio esté activo y que haya
   redirección desde HTTP.
-- **PHP 8.4 en el CLI**: si en algún momento el hosting lo ofrece, se puede
-  volver a Laravel 13 revirtiendo el commit del downgrade.
