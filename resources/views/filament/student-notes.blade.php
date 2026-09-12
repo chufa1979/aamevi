@@ -1,5 +1,5 @@
 {{--
-    La bitácora de una solicitud: interna, el alumno nunca la ve.
+    La bitácora de un alumno: interna, el alumno nunca la ve.
 
     Existe para pagos confirmados por fuera de la plataforma —transferencia,
     Mercado Pago— o cualquier gestión que se resuelva por teléfono o

@@ -76,6 +76,15 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         return $this->hasMany(CourseEnrollment::class, 'student_id');
     }
 
+    /**
+     * La bitácora administrativa del alumno. Interna: nunca pasa por
+     * `email_queue`, así que no la ve.
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(StudentNote::class, 'student_id')->orderBy('created_at');
+    }
+
     protected function fullName(): Attribute
     {
         return Attribute::get(fn (): string => trim("{$this->first_name} {$this->last_name}"));

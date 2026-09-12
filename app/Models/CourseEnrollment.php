@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Database\Factories\CourseEnrollmentFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -66,12 +65,6 @@ class CourseEnrollment extends Model
     public function certificate(): HasOne
     {
         return $this->hasOne(Certificate::class, 'enrollment_id');
-    }
-
-    /** La bitácora administrativa de esta solicitud. Interna: el alumno no la ve. */
-    public function notes(): HasMany
-    {
-        return $this->hasMany(EnrollmentNote::class, 'enrollment_id')->orderBy('created_at');
     }
 
     /**
