@@ -10,9 +10,13 @@ use Filament\Schemas\Schema;
 use App\Enums\EnrollmentStatus;
 use App\Models\CourseEnrollment;
 use Filament\Actions\CreateAction;
+use Illuminate\Contracts\View\View;
+use App\Services\NotificationService;
 use Filament\Forms\Components\Select;
 use App\Exceptions\EnrollmentException;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Resources\Pages\ManageRecords;
@@ -62,7 +66,7 @@ class ManageEnrollmentRequests extends ManageRecords
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->with(['student.user', 'course', 'certificate']))
+            ->modifyQueryUsing(fn ($query) => $query->with(['student.user', 'course', 'certificate', 'notes.author']))
             ->recordTitleAttribute('id')
             ->modelLabel('solicitud')
             ->pluralModelLabel('solicitudes')
@@ -117,10 +121,110 @@ class ManageEnrollmentRequests extends ManageRecords
                     ]),
             ])
             ->recordActions([
+                self::verAlumno(),
+                self::bitacora(),
+                self::avisar(),
                 self::resolver('approve', 'Aprobar', 'Inscripción aprobada', 'heroicon-o-check-circle', 'success'),
                 self::resolver('reject', 'Rechazar', 'Inscripción rechazada', 'heroicon-o-x-circle', 'danger'),
             ])
             ->emptyStateHeading('No hay solicitudes de inscripción');
+    }
+
+    /** Ficha del alumno, de sólo lectura: no hace falta salir a `StudentResource` a buscarlo. */
+    private static function verAlumno(): Action
+    {
+        return Action::make('ver_alumno')
+            ->label('Ver alumno')
+            ->icon('heroicon-o-user')
+            ->color('gray')
+            ->modalHeading(fn (CourseEnrollment $record): string => $record->student?->user?->full_name ?? 'Alumno')
+            ->modalWidth('2xl')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalContent(fn (CourseEnrollment $record): View => view('filament.enrollment-student', [
+                'student' => $record->student,
+            ]));
+    }
+
+    /**
+     * La bitácora administrativa de la solicitud.
+     *
+     * Interna: no pasa por `email_queue`, el alumno nunca la ve. Existe para
+     * pagos confirmados por fuera de la plataforma —transferencia, Mercado
+     * Pago— o cualquier gestión resuelta por teléfono que hasta ahora no
+     * quedaba escrita en ningún lado.
+     */
+    private static function bitacora(): Action
+    {
+        return Action::make('bitacora')
+            ->label('Bitácora')
+            ->icon('heroicon-o-clipboard-document-list')
+            ->color('gray')
+            ->modalHeading('Bitácora')
+            ->modalWidth('2xl')
+            ->modalSubmitActionLabel('Agregar')
+            ->modalContent(fn (CourseEnrollment $record): View => view('filament.enrollment-notes', [
+                'notas' => $record->notes,
+            ]))
+            ->schema([
+                Textarea::make('nota')
+                    ->label('Nueva anotación')
+                    ->rows(3)
+                    ->required(),
+            ])
+            ->action(function (CourseEnrollment $record, array $data): void {
+                $record->notes()->create([
+                    'author_id' => auth()->id(),
+                    'body' => $data['nota'],
+                    'created_at' => now(),
+                ]);
+
+                Notification::make()->title('Anotación agregada')->success()->send();
+            });
+    }
+
+    /**
+     * Un aviso administrativo, por fuera de cualquier curso o consulta.
+     *
+     * Sale por el mismo circuito que el resto de los avisos de la
+     * plataforma —`email_queue`, drenada por `emails:enviar`—, no en el
+     * momento.
+     */
+    private static function avisar(): Action
+    {
+        return Action::make('avisar')
+            ->label('Enviar aviso')
+            ->icon('heroicon-o-envelope')
+            ->color('gray')
+            ->modalHeading('Enviar aviso administrativo')
+            ->modalSubmitActionLabel('Enviar')
+            ->schema([
+                TextInput::make('asunto')
+                    ->label('Asunto')
+                    ->required(),
+
+                Textarea::make('mensaje')
+                    ->label('Mensaje')
+                    ->rows(5)
+                    ->required(),
+            ])
+            ->action(function (CourseEnrollment $record, array $data): void {
+                $destinatario = $record->student?->user;
+
+                if ($destinatario === null) {
+                    Notification::make()->title('No se pudo enviar')->body('El alumno ya no existe.')->danger()->send();
+
+                    return;
+                }
+
+                app(NotificationService::class)->administrativeNotice($destinatario, $data['asunto'], $data['mensaje']);
+
+                Notification::make()
+                    ->title('Aviso enviado')
+                    ->body('Se le encoló el aviso por email.')
+                    ->success()
+                    ->send();
+            });
     }
 
     /** Mismo mecanismo que `ManageCourseStudents::resolver()`: ver ese comentario. */

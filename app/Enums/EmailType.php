@@ -24,6 +24,7 @@ enum EmailType: string implements HasColor, HasLabel
     case SupportReply = 'support_reply';
     case AttemptsExhausted = 'attempts_exhausted';
     case AttemptsReset = 'attempts_reset';
+    case AdministrativeNotice = 'administrative_notice';
 
     public function getLabel(): string
     {
@@ -37,6 +38,7 @@ enum EmailType: string implements HasColor, HasLabel
             self::SupportReply => 'Respuesta a una consulta',
             self::AttemptsExhausted => 'Alumno sin intentos',
             self::AttemptsReset => 'Intentos habilitados',
+            self::AdministrativeNotice => 'Aviso administrativo',
         };
     }
 
@@ -52,6 +54,7 @@ enum EmailType: string implements HasColor, HasLabel
             self::SupportReply => 'info',
             self::AttemptsExhausted => 'warning',
             self::AttemptsReset => 'success',
+            self::AdministrativeNotice => 'gray',
         };
     }
 
