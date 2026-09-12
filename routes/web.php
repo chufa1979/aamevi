@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
@@ -27,6 +28,19 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('curso/{course}', [CourseShowcaseController::class, 'show'])->name('course.showcase');
+
+/*
+ * Disparador de `schedule:run` para hosting sin acceso a `crontab` por SSH
+ * (ver docs/DEPLOY.md): el panel del hosting pega a esta URL cada minuto en
+ * lugar de correr un comando de shell. `signed` es la única protección —sin
+ * la firma correcta, calculada contra APP_KEY, nadie puede adivinar ni forzar
+ * la URL— así que no hace falta autenticación de usuario para esta ruta.
+ */
+Route::get('cron/tick', function () {
+    Artisan::call('schedule:run');
+
+    return response('OK');
+})->middleware('signed')->name('cron.tick');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
