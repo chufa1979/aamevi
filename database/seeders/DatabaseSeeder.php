@@ -6,7 +6,9 @@ use App\Models\User;
 use App\Enums\UserRole;
 use App\Models\Student;
 use App\Models\Teacher;
+use App\Models\QueuedEmail;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * Usuarios de prueba, uno por rol. Es idempotente: se puede volver a correr
@@ -93,9 +95,41 @@ class DatabaseSeeder extends Seeder
             "Usuarios de prueba: {$admin->email}, {$teacher->email}, {$student->email}, {$registrar->email} (contraseña: password)"
         );
 
+        $yaEncoladosAntes = QueuedEmail::pluck('id');
+
         $this->call([
             StudentSeeder::class,
             CourseSeeder::class,
         ]);
+
+        $this->recortarColaDeEmails($yaEncoladosAntes);
+    }
+
+    /**
+     * `CourseSeeder` encola un aviso real por cada inscripción aprobada,
+     * entrega corregida y comunicación general —así se ve la cola con los tres
+     * tipos, no sólo uno—, pero los destinatarios son los veinte alumnos de
+     * prueba (`alumno01@aamevi.ar` … `alumno20@aamevi.ar`), que no existen.
+     * Si algún día se corre `emails:enviar` contra un SMTP real, esas
+     * direcciones rebotan en bloque y dañan la reputación del dominio recién
+     * autenticado — ya pasó una vez.
+     *
+     * Se dejan sólo dos: alcanza para confirmar que el envío real funciona sin
+     * mandar decenas de correos a cuentas que no existen. Sólo se tocan las
+     * filas nuevas de esta corrida —nunca las que ya estaban antes de
+     * sembrar—, para que volver a correr el seeder sobre un servidor con uso
+     * real no le borre la cola a un alumno de verdad.
+     *
+     * @param  Collection<int, string>  $yaEncoladosAntes
+     */
+    private function recortarColaDeEmails($yaEncoladosAntes): void
+    {
+        $aBorrar = QueuedEmail::query()
+            ->whereNotIn('id', $yaEncoladosAntes)
+            ->orderBy('created_at')
+            ->pluck('id')
+            ->slice(2);
+
+        QueuedEmail::whereIn('id', $aBorrar)->delete();
     }
 }

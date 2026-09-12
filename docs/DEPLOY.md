@@ -244,13 +244,15 @@ MAIL_HOST=smtp.proveedor.com
 MAIL_PORT=587
 MAIL_USERNAME=...
 MAIL_PASSWORD=...
-MAIL_FROM_ADDRESS="no-responder@aamevi.ar"
+MAIL_FROM_ADDRESS="no-responder@aamevicampus.com.ar"
 MAIL_FROM_NAME="AAMEVi"
 ```
 
-La dirección remitente tiene que ser del dominio, y conviene tener SPF y DKIM
-puestos: sin eso, buena parte de los avisos va a spam y la cola va a decir
-«enviado» igual, porque para el servidor salió.
+La dirección remitente tiene que ser del dominio del proyecto
+(`aamevicampus.com.ar`, no `aamevi.ar` —ese es el sitio institucional madre,
+con su propio DNS—), y conviene tener SPF y DKIM puestos ahí: sin eso, buena
+parte de los avisos va a spam y la cola va a decir «enviado» igual, porque
+para el servidor salió.
 
 Lo que no salió se ve en **Sistema → Avisos por email**, con el error y un botón
 para reintentar.
