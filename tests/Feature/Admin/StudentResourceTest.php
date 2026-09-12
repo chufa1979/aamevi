@@ -92,16 +92,23 @@ class StudentResourceTest extends TestCase
             ->assertCanNotSeeTableRecords([$conCurso->user]);
     }
 
-    /** El número solo no dice a qué curso: la descripción lista los títulos. */
-    public function test_la_columna_de_cursos_muestra_los_titulos(): void
+    /**
+     * El número solo no dice a qué curso: el tooltip lista los títulos.
+     *
+     * El texto va dentro de un atributo `x-tooltip` codificado como JSON
+     * (`Js::from()`), que escapa los caracteres no ASCII —por eso el título de
+     * prueba no lleva tildes: de lo contrario habría que buscar el `í`
+     * en vez del texto legible.
+     */
+    public function test_la_columna_de_cursos_muestra_los_titulos_en_el_tooltip(): void
     {
         $student = Student::factory()->create();
         CourseEnrollment::factory()->create([
             'student_id' => $student->id,
-            'course_id' => Course::factory()->create(['title' => 'Nutrición aplicada']),
+            'course_id' => Course::factory()->create(['title' => 'Nutricion aplicada']),
         ]);
 
-        Livewire::test(ListStudents::class)->assertSee('Nutrición aplicada');
+        Livewire::test(ListStudents::class)->assertSee('Nutricion aplicada', escape: false);
     }
 
     public function test_se_puede_agregar_una_anotacion_a_la_bitacora_del_alumno(): void

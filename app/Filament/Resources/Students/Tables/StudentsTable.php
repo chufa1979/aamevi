@@ -52,7 +52,9 @@ class StudentsTable
                     ->label('Cursos')
                     ->alignCenter()
                     ->sortable()
-                    ->description(fn (User $record): ?string => $record->enrollments->isEmpty()
+                    // El número solo no dice a cuáles: el tooltip los lista sin
+                    // ensanchar la columna, a diferencia de una descripción fija.
+                    ->tooltip(fn (User $record): ?string => $record->enrollments->isEmpty()
                         ? null
                         : $record->enrollments->pluck('course.title')->filter()->implode(', ')),
 
