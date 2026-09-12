@@ -212,8 +212,8 @@ La plataforma no manda correos en el momento: los escribe en `email_queue` y un
 comando la vacía. Sin cron eso no sale nunca, así que **el paso es obligatorio**,
 no una mejora.
 
-Una sola línea en el crontab del hosting alcanza para todo, porque Laravel
-decide adentro qué toca en cada minuto:
+Una sola línea de cron alcanza para todo, porque Laravel decide adentro qué
+toca en cada minuto:
 
 ```cron
 * * * * * cd /www/aamevicampus.com.ar/aamevicampus.com.ar && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
@@ -229,8 +229,30 @@ php artisan emails:recordatorios
 php artisan schedule:list
 ```
 
-Si el panel de LatinCloud no deja poner `schedule:run` cada minuto, la
-alternativa es una línea por tarea con la frecuencia de cada una.
+### Sin `crontab` por SSH
+
+Esta cuenta no tiene `crontab` (`bash: crontab: command not found`), y el panel
+de LatinCloud sólo ofrece "Nueva tarea programada" con una **URL**, no un
+comando de shell. Para eso existe la ruta `cron/tick`
+(`routes/web.php`): el panel le pega a esa URL cada minuto en lugar de correr
+`schedule:run` desde una línea de cron.
+
+Está protegida con el middleware `signed` —la misma protección que ya usa el
+enlace de verificación de email—: sin la firma correcta, calculada contra
+`APP_KEY`, la ruta devuelve 403. Por eso no hace falta usuario ni contraseña
+HTTP en el panel, sólo la URL firmada completa.
+
+Generarla una vez, en el servidor (la firma depende del `APP_KEY` de ese
+`.env`, así que no sirve una generada en otro entorno):
+
+```bash
+php artisan tinker --execute="echo \Illuminate\Support\Facades\URL::signedRoute('cron.tick');"
+```
+
+Esa URL —`https://aamevicampus.com.ar/cron/tick?signature=...`— es la que va en
+el campo **URL** del panel, con **Minuto**, **Hora**, **Día del mes**, **Día de
+la semana** y **Mes** todos en `*` (cada minuto). No expira: no hace falta
+regenerarla salvo que cambie `APP_KEY`.
 
 ### El correo saliente
 
