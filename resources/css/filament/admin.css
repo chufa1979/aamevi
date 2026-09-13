@@ -439,3 +439,40 @@
     font-weight: 500;
     color: var(--danger-600);
 }
+
+/* ── Sección Ayuda (videos instructivos) ── */
+
+.aamevi-help-intro {
+    margin: 0 0 1.5rem;
+    color: var(--gray-500);
+}
+
+.aamevi-help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 1.5rem;
+}
+
+.aamevi-help-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.5rem;
+    background: black;
+}
+
+.aamevi-help-title {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-950);
+}
+
+.dark .aamevi-help-title {
+    color: var(--color-white);
+}
+
+.aamevi-help-description {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--gray-500);
+}

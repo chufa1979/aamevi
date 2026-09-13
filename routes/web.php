@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Classroom\QuizController;
 use App\Http\Controllers\Classroom\CourseController;
@@ -122,16 +123,5 @@ Route::middleware('auth')->group(function () {
         Route::post('consultas/{ticket}/cerrar', [TicketController::class, 'close'])->name('classroom.ticket.close');
     });
 
-    /*
-     * Secciones todavía sin módulo propio. Existen para que la navegación del
-     * layout no apunte a 404; se van reemplazando por sus controladores reales
-     * a medida que se implementan (ver docs/PLAN_ARQUITECTONICO.md).
-     */
-    $pendientes = [
-        'ayuda' => 'Ayuda',
-    ];
-
-    foreach ($pendientes as $path => $title) {
-        Route::get($path, fn () => view('placeholder', ['title' => $title]));
-    }
+    Route::get('ayuda', [HelpController::class, 'index'])->name('ayuda');
 });

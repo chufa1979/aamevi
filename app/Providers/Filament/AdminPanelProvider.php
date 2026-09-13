@@ -66,6 +66,8 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Sistema')->icon(Heroicon::OutlinedCog6Tooth),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
+            // `Ayuda` vive en app/Filament/Pages: la descubre sola, no hace
+            // falta declararla acá.
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
