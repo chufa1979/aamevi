@@ -7,6 +7,7 @@ use Filament\PanelProvider;
 use App\Filament\Pages\Ayuda;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use App\Filament\Pages\TeacherProfile;
 use App\Filament\PanelHome\TeacherHome;
 use Filament\Navigation\NavigationGroup;
 use Filament\Http\Middleware\Authenticate;
@@ -37,9 +38,10 @@ use App\Filament\Resources\CourseModules\CourseModuleResource;
  * separación aguanta aunque alguien escriba la URL a mano — el panel no es la
  * cerradura, es la puerta.
  *
- * Lo que queda afuera: las cuentas de usuario, que son del administrador, y el
- * alta y la baja de cursos. Los alumnos se ven desde cada curso, que es donde
- * significan algo.
+ * Lo que queda afuera: las cuentas de OTROS usuarios —eso lo sigue manejando
+ * el administrador—, y el alta y la baja de cursos. Los alumnos se ven desde
+ * cada curso, que es donde significan algo. La propia cuenta del docente sí
+ * la edita él, desde "Mi perfil" (`TeacherProfile`, en el menú de la cuenta).
  *
  * No expone formulario de entrada, igual que /admin: se entra por /login.
  */
@@ -81,6 +83,7 @@ class TeacherPanelProvider extends PanelProvider
                 QuestionResource::class,
             ])
             ->homeUrl(fn (): string => CourseResource::getUrl('index', panel: 'profesores'))
+            ->profile(TeacherProfile::class)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

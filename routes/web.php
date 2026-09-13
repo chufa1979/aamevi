@@ -9,6 +9,7 @@ use App\Http\Controllers\Classroom\CourseController;
 use App\Http\Controllers\Classroom\SearchController;
 use App\Http\Controllers\Classroom\TicketController;
 use App\Http\Controllers\Classroom\CatalogController;
+use App\Http\Controllers\Classroom\ProfileController;
 use App\Http\Controllers\Classroom\ProgressController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Classroom\ClassroomController;
@@ -91,6 +92,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['student', 'verified'])->group(function () {
         Route::get('mis-cursos', [MyCoursesController::class, 'index'])->name('classroom.courses');
         Route::get('progreso', [ProgressController::class, 'index'])->name('classroom.progress');
+
+        Route::get('perfil', [ProfileController::class, 'edit'])->name('classroom.profile');
+        Route::put('perfil', [ProfileController::class, 'update'])->name('classroom.profile.update');
 
         Route::get('cursos', [CatalogController::class, 'index'])->name('classroom.catalog');
         Route::post('cursos/{course}/inscripcion', [CatalogController::class, 'store'])->name('classroom.enroll');

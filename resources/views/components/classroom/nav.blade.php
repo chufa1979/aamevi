@@ -32,6 +32,7 @@
         ['ruta' => 'classroom.progress', 'label' => 'Mi progreso', 'icono' => 'aprobada'],
         ['ruta' => 'classroom.certificates', 'label' => 'Certificados', 'icono' => 'certificado'],
         ['ruta' => 'classroom.tickets', 'label' => 'Consultas', 'icono' => 'evaluacion'],
+        ['ruta' => 'classroom.profile', 'label' => 'Mi perfil', 'icono' => 'perfil'],
         ['ruta' => 'ayuda', 'label' => 'Ayuda', 'icono' => 'ayuda'],
     ];
 

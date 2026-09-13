@@ -143,6 +143,12 @@
             <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none" />
             @break
 
+        {{-- Cabeza + hombros: silueta de persona, para "Mi perfil" --}}
+        @case('perfil')
+            <circle cx="12" cy="8.5" r="3.5" />
+            <path d="M4.5 20.5c0-3.6 3.4-6.5 7.5-6.5s7.5 2.9 7.5 6.5" />
+            @break
+
         @case('volver')
             <line x1="20" y1="12" x2="5" y2="12" />
             <polyline points="11,6 5,12 11,18" />
