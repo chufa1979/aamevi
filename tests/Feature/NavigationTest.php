@@ -94,11 +94,34 @@ class NavigationTest extends TestCase
         $this->actingAs($this->alumno())->get('/')->assertSee('Ver el catálogo');
     }
 
-    /** La ayuda es de todos: no depende del rol. */
-    public function test_la_ayuda_la_ven_todos(): void
+    /*
+     * La ayuda es de todos, pero no vive en un solo lugar: el menú horizontal
+     * de la portada desaparece apenas se entra a usar la plataforma —adentro
+     * del aula manda `x-classroom.nav`, adentro de un panel manda Filament—,
+     * así que cada rol la tiene en la superficie donde de verdad vive.
+     *
+     * Un método por rol y no un foreach/secuencia en uno solo: Filament deja
+     * estado estático del panel actual entre requests simuladas dentro del
+     * mismo test, y mezclar dos paneles en el mismo método da falsos
+     * negativos.
+     */
+    public function test_el_alumno_ve_la_ayuda_en_el_aula(): void
     {
-        foreach ([$this->alumno(), User::factory()->admin()->create(), Teacher::factory()->create()->user] as $user) {
-            $this->actingAs($user)->get('/')->assertSee('Ayuda');
-        }
+        $this->actingAs($this->alumno())->get('/mis-cursos')->assertSee('Ayuda');
+    }
+
+    public function test_el_administrador_ve_la_ayuda_en_su_panel(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())->get('/admin')->assertSee('Ayuda');
+    }
+
+    public function test_el_docente_ve_la_ayuda_en_su_panel(): void
+    {
+        $this->actingAs(Teacher::factory()->create()->user)->get('/profesores/courses')->assertSee('Ayuda');
+    }
+
+    public function test_el_administrativo_ve_la_ayuda_en_su_panel(): void
+    {
+        $this->actingAs(User::factory()->registrar()->create())->get('/administracion/solicitudes')->assertSee('Ayuda');
     }
 }

@@ -135,6 +135,14 @@
             <polyline points="8.5,13.8 7.5,21 12,18.5 16.5,21 15.5,13.8" />
             @break
 
+        {{-- Info dentro de un círculo, distinto del signo de pregunta de
+             'evaluacion' para no repetir glifo con Consultas en el mismo menú --}}
+        @case('ayuda')
+            <circle cx="12" cy="12" r="9" />
+            <line x1="12" y1="11" x2="12" y2="16" />
+            <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none" />
+            @break
+
         @case('volver')
             <line x1="20" y1="12" x2="5" y2="12" />
             <polyline points="11,6 5,12 11,18" />
