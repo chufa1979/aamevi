@@ -37,6 +37,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         'is_active',
         'oauth_provider',
         'oauth_id',
+        'email_verified_at',
     ];
 
     protected $hidden = [
