@@ -82,7 +82,10 @@ class CourseSchedule extends Page implements HasTable
 
                 TextColumn::make('title')
                     ->label('Clase')
-                    ->searchable()
+                    // `classes` y `modules` tienen las dos columna `title`: sin
+                    // calificar, el where del buscador queda ambiguo y la
+                    // consulta revienta con «Column 'title' ... is ambiguous».
+                    ->searchable(['classes.title'])
                     ->wrap(),
 
                 TextColumn::make('activation_date')

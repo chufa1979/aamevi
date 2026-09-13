@@ -82,6 +82,22 @@ class CourseSchedulePageTest extends TestCase
         );
     }
 
+    /**
+     * `classes` y `modules` tienen las dos una columna `title`: buscar sin
+     * calificarla reventaba con «Column 'title' in where clause is
+     * ambiguous» apenas se escribía algo en el buscador.
+     */
+    public function test_buscar_por_titulo_no_revienta_por_columna_ambigua(): void
+    {
+        $course = $this->cursoConDosModulos();
+        $clases = $course->classes()->get();
+
+        Livewire::test(CourseSchedule::class, ['record' => $course->getKey()])
+            ->searchTable('módulo 1')
+            ->assertCanSeeTableRecords([$clases->firstWhere('title', 'Clase del módulo 1')])
+            ->assertCanNotSeeTableRecords([$clases->firstWhere('title', 'Clase del módulo 2')]);
+    }
+
     public function test_se_pueden_filtrar_las_clases_ya_habilitadas(): void
     {
         $course = Course::factory()->create();

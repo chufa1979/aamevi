@@ -76,8 +76,6 @@ class CourseAnnouncements extends ManageRelatedRecords
                 ->label('Avisar por email')
                 ->helperText('Se le manda a quien corresponda. Si no, queda sólo en el tablón del aula.')
                 ->default(false)
-                // No es una columna: es lo que se decide al publicar
-                ->dehydrated(false)
                 ->visibleOn('create'),
         ]);
     }
@@ -122,6 +120,10 @@ class CourseAnnouncements extends ManageRelatedRecords
                         'author_id' => auth()->id(),
                     ])
                     ->after(function (Announcement $record, array $data): void {
+                        // `avisar` no es columna de Announcement: `fill()` la
+                        // ignora sola porque no está en $fillable. No puede
+                        // llevar `dehydrated(false)` porque entonces este hook
+                        // tampoco la vería — ver `$fillable` en el modelo.
                         if (! ($data['avisar'] ?? false)) {
                             return;
                         }
