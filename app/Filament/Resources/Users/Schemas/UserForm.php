@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Utilities\Get;
 
@@ -166,6 +167,19 @@ class UserForm
                         Textarea::make('bio')
                             ->label('Biografía')
                             ->rows(4),
+
+                        // Mientras no esté Google Cloud Storage, va al disco
+                        // público local — mismo criterio que content_file en
+                        // ManageModuleClasses.
+                        FileUpload::make('signature_path')
+                            ->label('Firma escaneada')
+                            ->image()
+                            ->disk('public')
+                            ->directory('teacher-signatures')
+                            ->downloadable()
+                            ->openable()
+                            ->columnSpanFull()
+                            ->helperText('Se usa en el certificado que descarga el alumno. Un PNG con fondo transparente da mejor resultado.'),
                     ]),
             ]);
     }

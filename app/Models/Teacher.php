@@ -24,6 +24,7 @@ class Teacher extends Model
         'id',
         'bio',
         'specialization',
+        'signature_path',
     ];
 
     public function user(): BelongsTo

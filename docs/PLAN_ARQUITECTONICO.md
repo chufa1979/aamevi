@@ -1028,13 +1028,13 @@ sí lleva Livewire, que viene con Filament.
 - [x] Verificación de email al registrarse
 - [ ] Configurar el SMTP del servidor: hoy `MAIL_MAILER=log`
 
-### Fase 6: Reportes & Certificados — **casi completa**
+### Fase 6: Reportes & Certificados — **completa**
 - [x] `student_progress` y la grilla de seguimiento por curso para el docente
 - [x] Barra de avance del alumno
 - [x] Modelo `certificates` y emisión automática al terminar el curso
 - [x] PDF con dompdf, armado al descargarlo
-- [ ] Modelo visual definitivo, con firma escaneada
-- [ ] Verificación pública del número de certificado
+- [x] Modelo visual definitivo, con firma escaneada
+- [x] Verificación pública del número de certificado
 
 ### Fase 7: Deployment & Polish (1 semana)
 - [x] Documentación de deploy (`docs/DEPLOY.md`)

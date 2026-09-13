@@ -19,16 +19,19 @@ use App\Http\Controllers\Public\CourseShowcaseController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Classroom\AnnouncementController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Public\CertificateVerificationController;
 
 /*
- * El «/» y la ficha de curso son públicos: es la vidriera de la plataforma
- * para quien todavía no tiene cuenta. Todo lo demás sigue siendo privado —
- * quien no está autenticado solo ve el login, y el middleware `auth` lo
- * redirige ahí desde cualquier otra ruta.
+ * El «/», la ficha de curso y la verificación de certificados son públicos:
+ * es la vidriera de la plataforma para quien todavía no tiene cuenta, y la
+ * verificación es para quien recibe un certificado y no tiene por qué tener
+ * una. Todo lo demás sigue siendo privado — quien no está autenticado solo ve
+ * el login, y el middleware `auth` lo redirige ahí desde cualquier otra ruta.
  */
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('curso/{course}', [CourseShowcaseController::class, 'show'])->name('course.showcase');
+Route::get('verificar-certificado', [CertificateVerificationController::class, 'index'])->name('certificate.verify');
 
 /*
  * Disparador de `schedule:run` para hosting sin acceso a `crontab` por SSH

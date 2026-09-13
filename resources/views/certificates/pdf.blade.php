@@ -86,12 +86,16 @@
 
         .horas { font-size: 10pt; color: #5b5b5b; padding-top: 14pt; }
 
+        {{--
+            Sin `position: absolute`: dompdf la maneja mal en cuanto el
+            contenido de adentro cambia de alto (agregar la imagen de la
+            firma dejaba, según la toma, texto recortado contra el borde de
+            la hoja o un resto fantasma en semitransparencia — dos síntomas
+            del mismo problema de fondo). En flujo normal, después de
+            `.cuerpo`, dompdf no tiene que adivinar nada.
+        --}}
         .pie {
-            position: absolute;
-            left: 54pt;
-            right: 54pt;
-            bottom: 42pt;
-            width: 734pt;
+            width: 100%;
             border-collapse: collapse;
         }
         .pie td { font-size: 8.5pt; color: #5b5b5b; vertical-align: bottom; }
@@ -109,6 +113,8 @@
             font-size: 9pt;
             color: #333333;
         }
+
+        .verificar { color: #5b5b5b; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -147,13 +153,26 @@
             <tr>
                 <td>
                     <div class="firma">
+                        @if ($firma = $certificate->enrollment->course->teacher?->signature_path)
+                            @php
+                                $firmaDisco = \Illuminate\Support\Facades\Storage::disk('public');
+                                $firmaMime = $firmaDisco->mimeType($firma);
+                                $firmaBase64 = base64_encode($firmaDisco->get($firma));
+                            @endphp
+                            <img width="110" height="24" src="data:{{ $firmaMime }};base64,{{ $firmaBase64 }}"><br>
+                        @endif
                         <div class="nombre">{{ $certificate->enrollment->course->teacher?->user?->full_name }}</div>
                         <div>Docente a cargo</div>
                     </div>
                 </td>
                 <td style="text-align: right">
                     <div class="numero">{{ $certificate->certificate_number }}</div>
-                    <div>Número de certificado</div>
+                    <div>
+                        Número de certificado ·
+                        <a class="verificar" href="{{ url('/verificar-certificado').'?numero='.$certificate->certificate_number }}">
+                            verificar en {{ parse_url(config('app.url'), PHP_URL_HOST) }}/verificar-certificado
+                        </a>
+                    </div>
                 </td>
             </tr>
         </table>

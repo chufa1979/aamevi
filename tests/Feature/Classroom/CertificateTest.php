@@ -311,6 +311,44 @@ class CertificateTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
+    /**
+     * Con firma cargada, el PDF la incrusta y sigue armándose sin reventar —
+     * dompdf lee la imagen del disco directo, sin pasar por una URL.
+     */
+    public function test_el_pdf_incluye_la_firma_del_docente_si_la_cargo(): void
+    {
+        [$course, $student] = $this->cursoCon(1);
+        $this->cursarTodo($student, $course);
+
+        $archivo = UploadedFile::fake()->image('firma.png', 400, 150);
+        $ruta = Storage::disk('public')->putFile('teacher-signatures', $archivo);
+        $course->teacher->update(['signature_path' => $ruta]);
+
+        $certificado = $this->certificados->of($student, $course);
+
+        $response = $this->actingAs($student->user)
+            ->get(route('classroom.certificate', $certificado));
+
+        $response->assertSuccessful();
+        $response->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    /** Sin firma cargada, el certificado sigue viéndose como siempre — solo el nombre. */
+    public function test_el_pdf_no_revienta_sin_firma_cargada(): void
+    {
+        [$course, $student] = $this->cursoCon(1);
+        $this->cursarTodo($student, $course);
+
+        $this->assertNull($course->teacher->signature_path);
+
+        $certificado = $this->certificados->of($student, $course);
+
+        $this->actingAs($student->user)
+            ->get(route('classroom.certificate', $certificado))
+            ->assertSuccessful();
+    }
+
     /** El link de un compañero no sirve. */
     public function test_no_se_descarga_el_certificado_de_otro(): void
     {
