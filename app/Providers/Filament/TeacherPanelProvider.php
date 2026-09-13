@@ -4,8 +4,10 @@ namespace App\Providers\Filament;
 
 use Filament\Panel;
 use Filament\PanelProvider;
+use App\Filament\Pages\Ayuda;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
+use App\Filament\PanelHome\TeacherHome;
 use Filament\Navigation\NavigationGroup;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
@@ -60,6 +62,10 @@ class TeacherPanelProvider extends PanelProvider
                 NavigationGroup::make('Cursos')->icon(Heroicon::OutlinedBookOpen),
                 NavigationGroup::make('Evaluación')->icon(Heroicon::OutlinedClipboardDocumentCheck),
             ])
+            ->pages([
+                TeacherHome::class,
+                Ayuda::class,
+            ])
             /*
              * Declarados uno por uno y no por descubrimiento: si mañana se suma
              * un recurso de administración, aparecería solo en este panel. La
@@ -74,8 +80,6 @@ class TeacherPanelProvider extends PanelProvider
                 CourseClassResource::class,
                 QuestionResource::class,
             ])
-            // Sin panel de inicio: la primera pantalla es el listado de cursos,
-            // que es con lo que un docente arranca el día
             ->homeUrl(fn (): string => CourseResource::getUrl('index', panel: 'profesores'))
             ->middleware([
                 EncryptCookies::class,

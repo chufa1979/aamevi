@@ -20,10 +20,15 @@ class QuestionsTable
     {
         return $table
             ->columns([
+                // Truncadas con tooltip: el título completo de un curso o
+                // módulo ocupaba tanto que apretaba Pregunta y Respuesta
+                // correcta a columnas angostas, envueltas en muchas líneas.
                 TextColumn::make('class.module.course.title')
                     ->label('Curso')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->limit(20)
+                    ->tooltip(fn (Question $record): string => $record->class->module->course->title),
 
                 TextColumn::make('class.title')
                     ->label('Clase')
@@ -33,10 +38,13 @@ class QuestionsTable
                 TextColumn::make('text')
                     ->label('Pregunta')
                     ->searchable()
-                    ->wrap()
-                    // En el listado interesa el texto, no el marcado
+                    // Una línea con «…» y el texto completo al pasar el mouse:
+                    // envolver un enunciado largo en varias líneas por fila
+                    // volvía la lista, con cientos de preguntas, imposible de
+                    // recorrer de un vistazo.
                     ->formatStateUsing(fn (?string $state): string => strip_tags((string) $state))
-                    ->limit(100),
+                    ->limit(60)
+                    ->tooltip(fn (Question $record): string => strip_tags($record->text)),
 
                 TextColumn::make('options_count')
                     ->label('Opciones')
@@ -46,8 +54,8 @@ class QuestionsTable
                 TextColumn::make('correcta')
                     ->label('Respuesta correcta')
                     ->state(fn (Question $record): string => $record->correctOption()?->option_text ?? '— sin definir —')
-                    ->wrap()
-                    ->limit(50),
+                    ->limit(40)
+                    ->tooltip(fn (Question $record): string => $record->correctOption()?->option_text ?? '— sin definir —'),
 
                 IconColumn::make('is_active')
                     ->label('Activa')

@@ -37,6 +37,7 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
         'is_active',
         'oauth_provider',
         'oauth_id',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -74,6 +75,15 @@ class User extends Authenticatable implements FilamentUser, HasName, MustVerifyE
     public function enrollments(): HasMany
     {
         return $this->hasMany(CourseEnrollment::class, 'student_id');
+    }
+
+    /**
+     * La bitácora administrativa del alumno. Interna: nunca pasa por
+     * `email_queue`, así que no la ve.
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(StudentNote::class, 'student_id')->orderBy('created_at');
     }
 
     protected function fullName(): Attribute

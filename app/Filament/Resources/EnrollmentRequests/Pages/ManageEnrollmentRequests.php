@@ -10,6 +10,7 @@ use Filament\Schemas\Schema;
 use App\Enums\EnrollmentStatus;
 use App\Models\CourseEnrollment;
 use Filament\Actions\CreateAction;
+use Illuminate\Contracts\View\View;
 use Filament\Forms\Components\Select;
 use App\Exceptions\EnrollmentException;
 use Filament\Tables\Columns\TextColumn;
@@ -117,10 +118,27 @@ class ManageEnrollmentRequests extends ManageRecords
                     ]),
             ])
             ->recordActions([
+                self::verAlumno(),
                 self::resolver('approve', 'Aprobar', 'Inscripción aprobada', 'heroicon-o-check-circle', 'success'),
                 self::resolver('reject', 'Rechazar', 'Inscripción rechazada', 'heroicon-o-x-circle', 'danger'),
             ])
             ->emptyStateHeading('No hay solicitudes de inscripción');
+    }
+
+    /** Ficha del alumno, de sólo lectura: no hace falta salir a `StudentResource` a buscarlo. */
+    private static function verAlumno(): Action
+    {
+        return Action::make('ver_alumno')
+            ->label('Ver alumno')
+            ->icon('heroicon-o-user')
+            ->color('gray')
+            ->modalHeading(fn (CourseEnrollment $record): string => $record->student?->user?->full_name ?? 'Alumno')
+            ->modalWidth('2xl')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalContent(fn (CourseEnrollment $record): View => view('filament.enrollment-student', [
+                'student' => $record->student,
+            ]));
     }
 
     /** Mismo mecanismo que `ManageCourseStudents::resolver()`: ver ese comentario. */

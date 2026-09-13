@@ -4,9 +4,11 @@ namespace App\Providers\Filament;
 
 use Filament\Panel;
 use Filament\PanelProvider;
+use App\Filament\Pages\Ayuda;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
 use Filament\Navigation\NavigationGroup;
+use App\Filament\PanelHome\RegistrarHome;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -54,6 +56,10 @@ class RegistrarPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Alumnos')->icon(Heroicon::OutlinedAcademicCap),
             ])
+            ->pages([
+                RegistrarHome::class,
+                Ayuda::class,
+            ])
             /*
              * Declarados uno por uno, mismo criterio que TeacherPanelProvider:
              * la lista corta es la que dice qué ve este perfil.
@@ -62,8 +68,6 @@ class RegistrarPanelProvider extends PanelProvider
                 EnrollmentRequestResource::class,
                 StudentResource::class,
             ])
-            // Sin panel de inicio propio: arranca directo en las solicitudes,
-            // que es con lo que este perfil trabaja el día a día
             ->homeUrl(fn (): string => EnrollmentRequestResource::getUrl('index', panel: 'administracion'))
             ->middleware([
                 EncryptCookies::class,

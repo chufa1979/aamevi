@@ -221,6 +221,24 @@ class NotificationService
         );
     }
 
+    /**
+     * Un aviso administrativo, escrito a mano por quien procesa inscripciones.
+     *
+     * No está ligado a un curso ni a una consulta de soporte: es la vía para
+     * temas de cuenta —un dato mal cargado, un pago que hay que aclarar— que no
+     * encajan en ninguno de los otros tipos.
+     */
+    public function administrativeNotice(User $recipient, string $asunto, string $cuerpo): QueuedEmail
+    {
+        return $this->encolar(
+            $recipient,
+            EmailType::AdministrativeNotice,
+            $asunto,
+            'emails.administrative-notice',
+            ['user' => $recipient, 'cuerpo' => $cuerpo],
+        );
+    }
+
     /** ¿Ya se le encoló este aviso? Evita duplicar recordatorios en cada corrida. */
     public function alreadyQueued(User $user, EmailType $type, string $enElAsunto): bool
     {
